@@ -1,0 +1,13 @@
+{
+  "items": [
+    {
+      "title": "Example Event",
+      "description": "Add a short description for this event via /admin → Our Events. Set a future date to automatically show it as an upcoming, bookable event.",
+      "date": "",
+      "photos": [],
+      "video": "",
+      "emoji": "🎉",
+      "color": "#FDE6F1"
+    }
+  ]
+}

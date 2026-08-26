@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cute Kids Academy | Nursery &amp; Preschool</title>
+<meta name="description" content="Cute Kids Academy is a warm, play-based nursery and preschool in Sheikh Zayed, Giza serving ages 3 months to 4 years.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!--
+  Hidden static forms so Netlify's build-time form detector can find them.
+  These are the SAME forms used by the visible modals below (same name +
+  field names) — see js/main.js. Netlify only needs one instance of each
+  form to exist in the deployed HTML to register it.
+-->
+
+<header>
+  <div class="container nav">
+    <a href="#" class="logo-mark">
+      <img src="/images/logo.png" alt="Cute Kids Academy — Nursery &amp; Preschool" class="logo-img">
+    </a>
+    <nav class="nav-links" id="navLinks">
+      <a href="#programs">Programs</a><a href="#ages">Age Groups</a><a href="#mission">About Us</a><a href="#team">Our Team</a><a href="#events">Events</a><a href="#testimonials">Parents Love Us</a><a href="#contact">Contact</a>
+      <div class="nav-links-cta">
+        <a href="#" class="btn btn-outline-blue" data-open-modal="tour">Book a Tour</a>
+        <a href="#" class="btn btn-pink" data-open-modal="enroll">Enroll Now</a>
+      </div>
+    </nav>
+    <div class="nav-cta">
+      <a href="#" class="btn btn-outline-blue" data-open-modal="tour">Book a Tour</a>
+      <a href="#" class="btn btn-pink" data-open-modal="enroll">Enroll Now</a>
+      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <div class="hero-copy">
+      <span class="eyebrow" id="heroEyebrow">Ages 3 months – 4 years</span>
+      <h1 id="heroHeading">Where every day sparks a giggle, a discovery, and a little bit of magic.</h1>
+      <p class="lead" id="heroSubheading">Cute Kids Academy is a warm, play-based nursery and preschool in Sheikh Zayed where curious little minds grow through hands-on learning, creativity, and lots of laughter.</p>
+      <div class="hero-ctas">
+        <a href="#" class="btn btn-pink" data-open-modal="enroll">Enroll Now</a>
+        <a href="#programs" class="btn btn-outline-blue">Explore Programs</a>
+      </div>
+    </div>
+    <div class="hero-art">
+      <div class="blob" style="width:220px;height:220px;background:var(--yellow);opacity:.35;top:0;left:10px;"></div>
+      <div class="blob" style="width:160px;height:160px;background:var(--blue);opacity:.18;bottom:10px;right:0;"></div>
+      <svg width="90%" viewBox="0 0 400 340" fill="none">
+        <circle cx="150" cy="150" r="110" stroke="#E6197F" stroke-width="7" fill="#FDE6F1"/>
+        <circle cx="118" cy="120" r="9" fill="#2B2340"/><circle cx="182" cy="120" r="9" fill="#2B2340"/>
+        <path d="M110 175 Q150 205 190 175" stroke="#2B2340" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <path d="M70 60 Q40 20 20 45" stroke="#E6197F" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <path d="M85 45 Q60 0 35 20" stroke="#E6197F" stroke-width="6" fill="none" stroke-linecap="round"/>
+        <circle cx="280" cy="220" r="85" stroke="#1CADE4" stroke-width="7" fill="#E4F7FC"/>
+        <circle cx="255" cy="200" r="7" fill="#2B2340"/><circle cx="305" cy="200" r="7" fill="#2B2340"/>
+        <path d="M250 245 Q280 268 312 245" stroke="#2B2340" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M320 150 Q345 120 335 105" stroke="#1CADE4" stroke-width="6" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<div class="stats-strip"><div class="container">
+  <div class="stat"><div class="num" id="statPrograms">9</div><div class="label">Services Offered</div></div>
+  <div class="stat"><div class="num" id="statEstablished">2007</div><div class="label" id="statEstablishedLabel">Serving Sheikh Zayed Since</div></div>
+  <div class="stat"><div class="num" id="statAges">3 months – 4 years</div><div class="label">Ages Welcome</div></div>
+  <div class="stat"><div class="num" id="statDifferentiator">1st</div><div class="label" id="statDifferentiatorLabel">Nursery in Sheikh Zayed</div></div>
+</div></div>
+
+<section id="programs"><div class="container">
+  <div class="section-head"><span class="eyebrow">What We Offer</span><h2>Programs little learners love</h2><p>From first steps to preschool graduation, every program is built around play, curiosity, and gentle structure.</p></div>
+  <div class="grid-4" id="programsGrid"></div>
+</div></section>
+
+<section id="ages" class="ages"><div class="container">
+  <div class="section-head"><span class="eyebrow">Every Stage, Covered</span><h2>A program for every age &amp; stage</h2><p>Our curriculum grows with your child — always rooted in play, always age-appropriate.</p></div>
+  <div class="grid-4" id="ageGroupsGrid"></div>
+</div></section>
+
+<section id="mission"><div class="container mission">
+  <div class="mission-art">
+    <div class="blob" style="width:260px;height:260px;background:var(--pink-light);top:0;left:20px;"></div>
+    <svg width="80%" viewBox="0 0 300 300" fill="none" style="position:relative;">
+      <circle cx="150" cy="150" r="120" stroke="#1CADE4" stroke-width="6" fill="#fff"/>
+      <circle cx="115" cy="120" r="8" fill="#2B2340"/><circle cx="185" cy="120" r="8" fill="#2B2340"/>
+      <path d="M105 175 Q150 210 195 175" stroke="#E6197F" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <path d="M60 70 Q30 30 10 55" stroke="#FFC93C" stroke-width="6" fill="none" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="mission-copy">
+    <span class="eyebrow blue">Our Mission</span><h2 id="missionHeading">Childhood is our favorite subject</h2>
+    <p style="color:#544c66; margin-top:12px;" id="missionText">At Cute Kids Academy, we believe learning should feel like play. Our teachers create a warm, safe environment where every child is free to explore, ask questions, and grow at their own pace.</p>
+    <div class="mission-points" id="missionPoints"></div>
+  </div>
+</div></section>
+
+<section id="team"><div class="container">
+  <div class="section-head" style="margin-left:auto;margin-right:auto;text-align:center;"><span class="eyebrow">The People Behind Cute Kids Academy</span><h2>Meet our team</h2></div>
+  <div class="grid-3" id="teamGrid"></div>
+</div></section>
+
+<section id="testimonials" class="testimonials"><div class="container">
+  <div class="section-head" style="margin-left:auto;margin-right:auto;text-align:center;"><span class="eyebrow blue">Parents Love Us</span><h2>What our families say</h2></div>
+  <div class="grid-3" id="testimonialsGrid"></div>
+  <div class="testimonials-more">
+    <button class="btn btn-outline-blue" id="seeMoreTestimonials" hidden>See More Reviews</button>
+  </div>
+  <div class="review-cta">
+    <p>Loved your time with us?</p>
+    <a href="#" id="writeReviewBtn" class="btn btn-pink" target="_blank" rel="noopener">Write a Review</a>
+  </div>
+</div></section>
+
+<section id="gallery"><div class="container">
+  <div class="section-head-row">
+    <div><span class="eyebrow">A Peek Inside</span><h2 style="font-size:clamp(1.5rem,3vw,2.1rem);">Life at Cute Kids Academy</h2></div>
+    <button class="btn btn-outline-blue" id="viewGalleryBtn">View Full Gallery</button>
+  </div>
+  <div class="gallery-filters" id="galleryFilters"></div>
+  <div class="gallery-strip" id="galleryStrip"></div>
+</div></section>
+
+<section id="events"><div class="container">
+  <div class="section-head"><span class="eyebrow">Save The Date</span><h2>Our Events</h2><p>From graduations to bazaars, here's what's been happening — including any upcoming event you can book a spot for.</p></div>
+  <div class="grid-3" id="eventsGrid"></div>
+</div></section>
+
+<section><div class="container">
+  <div class="cta-banner">
+    <div><h2>Ready to give your child the best start?</h2><p>Schedule a tour today and see the Cute Kids Academy difference for yourself.</p></div>
+    <button class="btn btn-white" data-open-modal="tour">Book a Tour →</button>
+  </div>
+</div></section>
+
+<footer id="contact">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-about">
+        <div class="footer-logo">
+          <img src="/images/logo.png" alt="Cute Kids Academy — Nursery &amp; Preschool" class="logo-img logo-img-footer">
+        </div>
+        <p>Nurturing curious minds and happy hearts, one giggle at a time.</p>
+        <div class="social-row">
+          <a href="#" id="socialInstagram" target="_blank" rel="noopener">IG</a>
+          <a href="#" id="socialFacebook" target="_blank" rel="noopener">FB</a>
+        </div>
+      </div>
+      <div><h4>Programs</h4><ul id="footerPrograms"></ul></div>
+      <div><h4>About</h4><ul><li><a href="#mission">Our Story</a></li><li><a href="#team">Our Team</a></li><li><a href="#events">Our Events</a></li><li><a href="#testimonials">Testimonials</a></li><li><a href="#ages">Age Groups</a></li></ul></div>
+      <div><h4>Contact Us</h4><ul>
+        <li>📍 <span id="footerLocation"></span></li>
+        <li>📞 <span id="footerPhone"></span></li>
+        <li>✉️ <span id="footerEmail"></span></li>
+        <li>🕐 <span id="footerHours"></span></li>
+      </ul></div>
+    </div>
+    <div class="bottom-bar">
+      <span>© 2026 Cute Kids Academy Nursery &amp; Preschool. All Rights Reserved.</span>
+      <a class="admin-link" href="/admin/">Site Admin</a>
+    </div>
+  </div>
+</footer>
+
+<!-- Enroll / Tour modal -->
+<div class="overlay" id="modalOverlay">
+  <div class="modal" id="modalEnroll">
+    <div class="modal-head"><h3>Enroll Your Child</h3><button class="modal-close" data-close-modal>✕</button></div>
+    <form name="enroll" method="POST" data-netlify="true" netlify-honeypot="bot-field" id="enrollForm">
+      <p class="honeypot-field"><label>Don't fill this out: <input name="bot-field"></label></p>
+      <div class="field"><label>Parent Name</label><input required name="parentName" placeholder="Your name"></div>
+      <div class="field"><label>Phone</label><input required name="phone" placeholder="01xxxxxxxxx"></div>
+      <div class="field"><label>Email</label><input type="email" name="email" placeholder="you@example.com"></div>
+      <div class="field"><label>Child's Name</label><input name="childName" placeholder="Child's name"></div>
+      <div class="field"><label>Child's Age</label><input name="childAge" placeholder="e.g. 2 years"></div>
+      <div class="field"><label>Program of Interest</label>
+        <select name="program" id="enrollProgramSelect"><option value="">Not sure yet</option></select>
+      </div>
+      <div class="field"><label>Message (optional)</label><textarea name="message" placeholder="Anything you'd like us to know"></textarea></div>
+      <button type="submit" class="btn btn-pink modal-submit">Submit Enrollment</button>
+    </form>
+  </div>
+  <div class="modal" id="modalTour" hidden>
+    <div class="modal-head"><h3>Book a Tour</h3><button class="modal-close" data-close-modal>✕</button></div>
+    <form name="tour" method="POST" data-netlify="true" netlify-honeypot="bot-field" id="tourForm">
+      <p class="honeypot-field"><label>Don't fill this out: <input name="bot-field"></label></p>
+      <div class="field"><label>Parent Name</label><input required name="parentName" placeholder="Your name"></div>
+      <div class="field"><label>Phone</label><input required name="phone" placeholder="01xxxxxxxxx"></div>
+      <div class="field"><label>Email</label><input type="email" name="email" placeholder="you@example.com"></div>
+      <div class="field"><label>Child's Name</label><input name="childName" placeholder="Child's name"></div>
+      <div class="field"><label>Child's Age</label><input name="childAge" placeholder="e.g. 2 years"></div>
+      <div class="field"><label>Program of Interest</label>
+        <select name="program" id="tourProgramSelect"><option value="">Not sure yet</option></select>
+      </div>
+      <div class="field"><label>Preferred Tour Date</label><input type="date" name="preferredDate" id="tourDateInput"></div>
+      <div class="field">
+        <label>Preferred Time</label>
+        <select name="preferredTime">
+          <option value="">No preference</option>
+          <option value="10:00 AM (Best Time)">10:00 AM (Best Time)</option>
+          <option value="11:00 AM (Best Time)">11:00 AM (Best Time)</option>
+          <option value="12:00 PM">12:00 PM</option>
+          <option value="1:00 PM">1:00 PM</option>
+          <option value="2:00 PM (Great for Working Moms)">2:00 PM (Great for Working Moms)</option>
+          <option value="3:00 PM (Great for Working Moms)">3:00 PM (Great for Working Moms)</option>
+        </select>
+      </div>
+      <div class="field"><label>Message (optional)</label><textarea name="message" placeholder="Anything you'd like us to know"></textarea></div>
+      <button type="submit" class="btn btn-pink modal-submit">Request Tour</button>
+      <p class="whatsapp-note">Need a different time? <a href="#" id="tourWhatsappLink" target="_blank" rel="noopener">Message us on WhatsApp</a> and we'll tailor it for you.</p>
+    </form>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox"><button class="lightbox-close" id="lightboxClose">✕</button><div class="lightbox-grid" id="lightboxGrid"></div></div>
+
+<div class="lightbox" id="eventLightbox">
+  <button class="lightbox-close" id="eventLightboxClose">✕</button>
+  <div class="event-lightbox-content">
+    <h3 id="eventLightboxTitle"></h3>
+    <p id="eventLightboxDesc"></p>
+    <video id="eventLightboxVideo" controls hidden></video>
+    <div class="lightbox-grid" id="eventLightboxGrid"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/js/main.js"></script>
+
+<!-- Netlify Identity: handles the invite/confirmation email link, which lands
+     here before redirecting into /admin/ -->
+<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+<script>
+  if (window.netlifyIdentity) {
+    window.netlifyIdentity.on("init", user => {
+      if (!user) {
+        window.netlifyIdentity.on("login", () => {
+          document.location.href = "/admin/";
+        });
+      }
+    });
+  }
+</script>
+</body>
+</html>

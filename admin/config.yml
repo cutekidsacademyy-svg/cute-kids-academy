@@ -1,0 +1,157 @@
+backend:
+  name: git-gateway
+  branch: main
+
+# Enables real image file uploads (not just pasted URLs).
+# Uploaded files are committed into images/uploads/ in the repo
+# and served from /images/uploads/... on the live site.
+media_folder: "images/uploads"
+public_folder: "/images/uploads"
+
+site_url: https://your-site-name.netlify.app
+
+collections:
+  - name: "settings"
+    label: "Site Settings"
+    files:
+      - file: "content/settings.json"
+        label: "General Settings"
+        name: "settings"
+        fields:
+          - { label: "Hero Badge (e.g. 'Ages 3 months – 4 years')", name: "heroEyebrow", widget: "string" }
+          - { label: "Hero Heading", name: "heroHeading", widget: "string" }
+          - { label: "Hero Subheading", name: "heroSubheading", widget: "text" }
+          - { label: "Mission Heading", name: "missionHeading", widget: "string" }
+          - { label: "Mission Text", name: "missionText", widget: "text" }
+          - label: "Mission Highlights (the 4 icon points under the mission text)"
+            name: "missionPoints"
+            widget: "list"
+            summary: "{{title}}"
+            fields:
+              - { label: "Icon (emoji)", name: "icon", widget: "string" }
+              - { label: "Title", name: "title", widget: "string" }
+              - { label: "Text", name: "text", widget: "text" }
+          - { label: "Established Year (the 'years serving' stat is calculated automatically from this — no need to update it yourself each year)", name: "establishedYear", widget: "number", value_type: "int" }
+          - { label: "Stat: Established Label", name: "statEstablishedLabel", widget: "string" }
+          - { label: "Stat: Differentiator Value (e.g. '1st')", name: "statDifferentiatorValue", widget: "string" }
+          - { label: "Stat: Differentiator Label", name: "statDifferentiatorLabel", widget: "string" }
+          - { label: "Location", name: "location", widget: "string" }
+          - { label: "Ages Served", name: "ages", widget: "string" }
+          - { label: "Phone Number", name: "phone", widget: "string" }
+          - { label: "Email", name: "email", widget: "string" }
+          - { label: "Hours", name: "hours", widget: "string" }
+          - { label: "Instagram URL", name: "instagram", widget: "string" }
+          - { label: "Facebook URL", name: "facebook", widget: "string" }
+          - { label: "\"Write a Review\" Link (Facebook/Google review page)", name: "reviewUrl", widget: "string" }
+
+  - name: "programs"
+    label: "Programs"
+    files:
+      - file: "content/programs.json"
+        label: "Programs List"
+        name: "programs"
+        fields:
+          - label: "Programs"
+            name: "items"
+            widget: "list"
+            summary: "{{title}} ({{age}})"
+            fields:
+              - { label: "Icon Image (optional — upload a real photo/icon)", name: "icon", widget: "image", required: false }
+              - { label: "Fallback Emoji (shown until an icon image is uploaded)", name: "emoji", widget: "string", required: false, default: "🙂" }
+              - { label: "Age Range", name: "age", widget: "string" }
+              - { label: "Title", name: "title", widget: "string" }
+              - { label: "Short Description", name: "desc", widget: "text" }
+              - { label: "Full Details (shown on 'Learn More')", name: "details", widget: "text" }
+
+  - name: "ageGroups"
+    label: "Age Groups"
+    files:
+      - file: "content/age-groups.json"
+        label: "Age Groups List"
+        name: "ageGroups"
+        fields:
+          - label: "Age Groups"
+            name: "items"
+            widget: "list"
+            summary: "{{title}} ({{badge}})"
+            fields:
+              - { label: "Age Badge (e.g. '1–2 Years')", name: "badge", widget: "string" }
+              - { label: "Title", name: "title", widget: "string" }
+              - { label: "Short Description", name: "desc", widget: "text" }
+              - { label: "Full Details", name: "details", widget: "text" }
+
+  - name: "team"
+    label: "Our Team"
+    files:
+      - file: "content/team.json"
+        label: "Team Members"
+        name: "team"
+        fields:
+          - label: "Team Members"
+            name: "items"
+            widget: "list"
+            summary: "{{name}} — {{role}}"
+            fields:
+              - { label: "Photo (optional — upload a real headshot)", name: "photo", widget: "image", required: false }
+              - { label: "Name", name: "name", widget: "string" }
+              - { label: "Role", name: "role", widget: "string" }
+              - { label: "Credentials / Bio", name: "credentials", widget: "text", required: false }
+
+  - name: "events"
+    label: "Our Events"
+    files:
+      - file: "content/events.json"
+        label: "Events List"
+        name: "events"
+        fields:
+          - label: "Events"
+            name: "items"
+            widget: "list"
+            summary: "{{title}}"
+            fields:
+              - { label: "Title", name: "title", widget: "string" }
+              - { label: "Short Description", name: "description", widget: "text" }
+              - { label: "Event Date (leave blank for a past/general event — a future date automatically shows an 'Upcoming' badge and a WhatsApp booking link)", name: "date", widget: "datetime", required: false, date_format: "YYYY-MM-DD", time_format: false }
+              - label: "Photos (add as many as you like)"
+                name: "photos"
+                widget: "list"
+                required: false
+                fields:
+                  - { label: "Photo", name: "image", widget: "image" }
+              - { label: "Video (optional)", name: "video", widget: "file", required: false }
+              - { label: "Fallback Emoji (shown until a cover photo is uploaded)", name: "emoji", widget: "string", required: false, default: "🎉" }
+              - { label: "Fallback Background Color", name: "color", widget: "string", required: false, default: "#FDE6F1" }
+
+  - name: "testimonials"
+    label: "Testimonials"
+    files:
+      - file: "content/testimonials.json"
+        label: "Testimonials List"
+        name: "testimonials"
+        fields:
+          - label: "Testimonials"
+            name: "items"
+            widget: "list"
+            summary: "{{name}} — {{role}}"
+            fields:
+              - { label: "Parent Name", name: "name", widget: "string", required: false }
+              - { label: "Role / Program", name: "role", widget: "string", required: false }
+              - { label: "Quote", name: "quote", widget: "text" }
+
+  - name: "gallery"
+    label: "Gallery"
+    files:
+      - file: "content/gallery.json"
+        label: "Gallery Photos"
+        name: "gallery"
+        fields:
+          - label: "Photos (add as many as you like)"
+            name: "items"
+            widget: "list"
+            summary: "{{category}} — {{alt}}"
+            fields:
+              - { label: "Photo (upload a real image)", name: "image", widget: "image", required: false }
+              - { label: "Category (e.g. Events, Classroom, Meals, Outdoor Play — type any name; matching photos group together automatically)", name: "category", widget: "string", default: "General" }
+              - { label: "Alt Text (describes the photo)", name: "alt", widget: "string", required: false }
+              - { label: "Fallback Emoji (shown until a photo is uploaded)", name: "emoji", widget: "string", required: false, default: "🙂" }
+              - { label: "Fallback Background Color", name: "color", widget: "string", required: false, default: "#FDE6F1" }

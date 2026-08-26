@@ -1,0 +1,10 @@
+{
+  "items": [
+    { "image": "", "alt": "School Me Event", "category": "Events", "emoji": "🎪", "color": "#FDE6F1" },
+    { "image": "", "alt": "Graduation Day", "category": "Events", "emoji": "🎓", "color": "#E4F7FC" },
+    { "image": "", "alt": "Bazaar Market Day", "category": "Events", "emoji": "🛍️", "color": "#FFF3D6" },
+    { "image": "", "alt": "Family Bonding Day", "category": "Events", "emoji": "👨‍👩‍👧‍👦", "color": "#E4F7FC" },
+    { "image": "", "alt": "Montessori & Circle Time", "category": "Classroom", "emoji": "🧩", "color": "#FDE6F1" },
+    { "image": "", "alt": "Healthy Daily Meals", "category": "Meals", "emoji": "🍎", "color": "#FFF3D6" }
+  ]
+}

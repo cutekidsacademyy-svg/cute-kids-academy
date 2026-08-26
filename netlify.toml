@@ -1,0 +1,10 @@
+[build]
+  publish = "."
+
+# No build command — this is a plain static HTML/CSS/JS site, deployed as-is.
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
