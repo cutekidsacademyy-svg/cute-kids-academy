@@ -59,8 +59,7 @@ header{position:sticky; top:0; z-index:100; background:rgba(255,251,246,.92); ba
 .grid-4{display:grid; grid-template-columns:repeat(4,1fr); gap:22px;}
 .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:24px;}
 
-.card{background:#fff; border-radius:var(--radius-md); padding:26px 22px; box-shadow:0 12px 28px -18px rgba(43,35,64,.25); border-top:6px solid var(--pink); position:relative;}
-.card.blue{border-top-color:var(--blue);}
+.card{position:relative;}
 .card .icon-circle{width:54px; height:54px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--pink-light); margin-bottom:16px; font-size:1.5rem; overflow:hidden;}
 .card.blue .icon-circle{background:var(--blue-light);}
 .card .icon-circle img{width:100%; height:100%; object-fit:cover;}
@@ -68,9 +67,18 @@ header{position:sticky; top:0; z-index:100; background:rgba(255,251,246,.92); ba
 .card .age{font-family:'Baloo 2',cursive; font-size:.75rem; font-weight:600; color:var(--pink-dark); text-transform:uppercase;}
 .card.blue .age{color:var(--blue-dark);}
 .card p{font-size:.9rem; color:#5b5470; margin:10px 0;}
-.card .details{display:none; font-size:.87rem; color:#453f57; background:var(--cream); padding:12px; border-radius:12px; margin-top:6px;}
-.card.expanded .details{display:block;}
 .card .learn{font-weight:700; font-size:.87rem; background:none; border:none; padding:0; color:var(--ink);}
+.card .flip-details{font-size:.87rem; color:#453f57; line-height:1.55; margin:10px 0;}
+
+/* Flip-card mechanics, shared by Program cards and Age Group cards */
+.flip-card{padding:0 !important; box-shadow:none !important; border-top:none !important; min-height:340px; perspective:1400px;}
+.flip-card-inner{position:relative; width:100%; height:100%; min-height:inherit; transition:transform .6s cubic-bezier(.4,.2,.2,1); transform-style:preserve-3d;}
+.flip-card.expanded .flip-card-inner{transform:rotateY(180deg);}
+.flip-card-front, .flip-card-back{position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; border-radius:var(--radius-md); padding:26px 22px; display:flex; flex-direction:column; overflow-y:auto;}
+.flip-card-back{transform:rotateY(180deg);}
+.flip-card-front .learn, .flip-card-back .learn{margin-top:auto; padding-top:14px;}
+.card.flip-card .flip-card-front, .card.flip-card .flip-card-back{background:#fff; box-shadow:0 12px 28px -18px rgba(43,35,64,.25); border-top:6px solid var(--pink);}
+.card.blue.flip-card .flip-card-front, .card.blue.flip-card .flip-card-back{border-top-color:var(--blue);}
 
 .ages{background:var(--pink); color:#fff; overflow:hidden;}
 .ages::before{content:''; position:absolute; width:320px; height:320px; border-radius:50%; background:rgba(255,255,255,.08); top:-140px; left:-100px;}
@@ -78,12 +86,12 @@ header{position:sticky; top:0; z-index:100; background:rgba(255,251,246,.92); ba
 .ages .section-head h2, .ages .section-head p{color:#fff;}
 .ages .section-head p{opacity:.85;}
 .ages .eyebrow{background:rgba(255,255,255,.18); color:#fff;}
-.age-card{background:rgba(255,255,255,.12); border:2px solid rgba(255,255,255,.35); border-radius:var(--radius-md); padding:24px 20px; position:relative;}
-.age-badge{display:inline-block; font-family:'Baloo 2',cursive; font-weight:700; font-size:.8rem; background:#fff; color:var(--pink-dark); padding:5px 14px; border-radius:999px; margin-bottom:12px;}
+.age-card{position:relative;}
+.age-card.flip-card .flip-card-front, .age-card.flip-card .flip-card-back{background:rgba(255,255,255,.12); border:2px solid rgba(255,255,255,.35);}
+.age-badge{display:inline-block; font-family:'Baloo 2',cursive; font-weight:700; font-size:.8rem; background:#fff; color:var(--pink-dark); padding:5px 14px; border-radius:999px; margin-bottom:12px; align-self:flex-start;}
 .age-card h3{font-size:1.05rem; margin-bottom:6px;}
 .age-card p{font-size:.88rem; opacity:.92; margin-bottom:10px;}
-.age-card .details{display:none; font-size:.85rem; background:rgba(255,255,255,.15); padding:10px; border-radius:10px; margin-top:6px;}
-.age-card.expanded .details{display:block;}
+.age-card .flip-details{font-size:.85rem; opacity:.95; line-height:1.55; margin:6px 0;}
 .age-card .learn{background:none; border:none; color:#fff; font-weight:700; text-decoration:underline; font-size:.82rem;}
 
 .mission{display:grid; grid-template-columns:.9fr 1.1fr; gap:56px; align-items:center;}

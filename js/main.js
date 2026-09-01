@@ -95,13 +95,21 @@ function renderPrograms() {
       ? `<img src="${escapeHTML(p.icon)}" alt="">`
       : escapeHTML(p.emoji || "🙂");
     return `
-    <div class="card ${i % 2 === 0 ? "" : "blue"}" id="program-card-${i}">
-      <div class="icon-circle">${iconInner}</div>
-      <div class="age">${escapeHTML(p.age)}</div>
-      <h3>${escapeHTML(p.title)}</h3>
-      <p>${escapeHTML(p.desc)}</p>
-      <div class="details">${escapeHTML(p.details)}</div>
-      <button class="learn" data-toggle="program-card-${i}">Learn More →</button>
+    <div class="card flip-card ${i % 2 === 0 ? "" : "blue"}" id="program-card-${i}">
+      <div class="flip-card-inner">
+        <div class="flip-card-front">
+          <div class="icon-circle">${iconInner}</div>
+          <div class="age">${escapeHTML(p.age)}</div>
+          <h3>${escapeHTML(p.title)}</h3>
+          <p>${escapeHTML(p.desc)}</p>
+          <button class="learn" data-toggle="program-card-${i}">Learn More →</button>
+        </div>
+        <div class="flip-card-back">
+          <h3>${escapeHTML(p.title)}</h3>
+          <p class="flip-details">${escapeHTML(p.details)}</p>
+          <button class="learn flip-back-btn" data-toggle="program-card-${i}">← Back</button>
+        </div>
+      </div>
     </div>`;
   }).join("");
 }
@@ -110,12 +118,21 @@ function renderPrograms() {
 function renderAgeGroups() {
   const grid = document.getElementById("ageGroupsGrid");
   grid.innerHTML = state.ageGroups.map((a, i) => `
-    <div class="age-card" id="age-card-${i}">
-      <span class="age-badge">${escapeHTML(a.badge)}</span>
-      <h3>${escapeHTML(a.title)}</h3>
-      <p>${escapeHTML(a.desc)}</p>
-      <div class="details">${escapeHTML(a.details)}</div>
-      <button class="learn" data-toggle="age-card-${i}">Learn More →</button>
+    <div class="age-card flip-card" id="age-card-${i}">
+      <div class="flip-card-inner">
+        <div class="flip-card-front">
+          <span class="age-badge">${escapeHTML(a.badge)}</span>
+          <h3>${escapeHTML(a.title)}</h3>
+          <p>${escapeHTML(a.desc)}</p>
+          <button class="learn" data-toggle="age-card-${i}">Learn More →</button>
+        </div>
+        <div class="flip-card-back">
+          <span class="age-badge">${escapeHTML(a.badge)}</span>
+          <h3>${escapeHTML(a.title)}</h3>
+          <p class="flip-details">${escapeHTML(a.details)}</p>
+          <button class="learn flip-back-btn" data-toggle="age-card-${i}">← Back</button>
+        </div>
+      </div>
     </div>`).join("");
 }
 
