@@ -1,10 +1,35 @@
 {
   "items": [
     {
-      "title": "Example Event",
-      "description": "Add a short description for this event via /admin → Our Events. Set a future date to automatically show it as an upcoming, bookable event.",
-      "date": "",
-      "photos": [],
+      "title": "Family Funday with Babyfit Academy at Amarai beach",
+      "description": "A vibrant family event hosted by BabyFit, bringing families together for a full day of fun, creativity, movement, and connection.\n\nCute Kids Academy brought the little ones a variety of hands-on crafts and creative activities, including drawing and creating with shells, while keeping toddlers engaged with age-appropriate games and challenges. 🎨🐚\n\nFrom creative corners to family challenges and playful moments by the beach, the event was all about creating quality family time and memories that last beyond the day. 💛🌊✨",
+      "date": "2026-08-28",
+      "photos": [
+        {
+          "image": "/images/uploads/WhatsApp Image 2026-09-01 at 9.30.33 PM.jpeg"
+        },
+        {
+          "image": "/images/uploads/WhatsApp Image 2026-08-30 at 5.15.42 PM.jpeg"
+        },
+        {
+          "image": "/images/uploads/WhatsApp Image 2026-09-01 at 9.31.15 PM (1).jpeg"
+        },
+        {
+          "image": "/images/uploads/WhatsApp Image 2026-09-01 at 9.31.15 PM.jpeg"
+        },
+        {
+          "image": "/images/uploads/ss.jpeg"
+        },
+        {
+          "image": "/images/uploads/WhatsApp Image 2026-08-30 at 5.45.45 PM.jpeg"
+        },
+        {
+          "image": "/images/uploads/WhatsApp Image 2026-09-01 at 9.32.13 PM.jpeg"
+        },
+        {
+          "image": "/images/uploads/WhatsApp Image 2026-08-30 at 5.42.31 PM.jpeg"
+        }
+      ],
       "video": "",
       "emoji": "🎉",
       "color": "#FDE6F1"
