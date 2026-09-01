@@ -358,30 +358,30 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove("show"), 3200);
 }
 
-/* ================= NETLIFY FORM SUBMISSION (AJAX) ================= */
-function encodeFormData(data) {
-  return Object.keys(data)
-    .map(key => encodeURIComponent(key) + "=" + encodeURIComponent(data[key]))
-    .join("&");
-}
-function wireNetlifyForm(formEl, successMessage) {
+/* ================= FORM SUBMISSION (Formspree AJAX) ================= */
+function wireForm(formEl, formType, successMessage) {
   formEl.addEventListener("submit", async e => {
     e.preventDefault();
+    const formId = state.settings.formspreeFormId;
+    if (!formId) {
+      showToast("Forms aren't connected yet — please call or WhatsApp us directly.");
+      return;
+    }
     const formData = new FormData(formEl);
-    const data = Object.fromEntries(formData.entries());
-    data["form-name"] = formEl.getAttribute("name");
+    formData.set("formType", formType);
     try {
-      await fetch("/", {
+      const res = await fetch(`https://formspree.io/f/${formId}`, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: encodeFormData(data)
+        headers: { Accept: "application/json" },
+        body: formData
       });
+      if (!res.ok) throw new Error("Formspree submission failed with status " + res.status);
       closeModal();
       formEl.reset();
       showToast(successMessage);
     } catch (err) {
       console.error("Form submission failed", err);
-      showToast("Something went wrong — please try again or call us directly.");
+      showToast("Something went wrong — please try again or message us on WhatsApp.");
     }
   });
 }
@@ -415,6 +415,6 @@ document.querySelectorAll("#navLinks a").forEach(a =>
   renderGalleryFilters();
   renderGallery();
   populateProgramSelects();
-  wireNetlifyForm(document.getElementById("enrollForm"), "Enrollment received! We'll contact you soon.");
-  wireNetlifyForm(document.getElementById("tourForm"), "Tour request received! We'll be in touch.");
+  wireForm(document.getElementById("enrollForm"), "enroll", "Enrollment received! We'll contact you soon.");
+  wireForm(document.getElementById("tourForm"), "tour", "Tour request received! We'll be in touch.");
 })();

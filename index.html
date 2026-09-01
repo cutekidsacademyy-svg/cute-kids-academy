@@ -12,13 +12,6 @@
 </head>
 <body>
 
-<!--
-  Hidden static forms so Netlify's build-time form detector can find them.
-  These are the SAME forms used by the visible modals below (same name +
-  field names) — see js/main.js. Netlify only needs one instance of each
-  form to exist in the deployed HTML to register it.
--->
-
 <header>
   <div class="container nav">
     <a href="#" class="logo-mark">
@@ -173,8 +166,8 @@
 <div class="overlay" id="modalOverlay">
   <div class="modal" id="modalEnroll">
     <div class="modal-head"><h3>Enroll Your Child</h3><button class="modal-close" data-close-modal>✕</button></div>
-    <form name="enroll" method="POST" data-netlify="true" netlify-honeypot="bot-field" id="enrollForm">
-      <p class="honeypot-field"><label>Don't fill this out: <input name="bot-field"></label></p>
+    <form name="enroll" id="enrollForm">
+      <p class="honeypot-field"><label>Don't fill this out: <input name="_gotcha"></label></p>
       <div class="field"><label>Parent Name</label><input required name="parentName" placeholder="Your name"></div>
       <div class="field"><label>Phone</label><input required name="phone" placeholder="01xxxxxxxxx"></div>
       <div class="field"><label>Email</label><input type="email" name="email" placeholder="you@example.com"></div>
@@ -189,8 +182,8 @@
   </div>
   <div class="modal" id="modalTour" hidden>
     <div class="modal-head"><h3>Book a Tour</h3><button class="modal-close" data-close-modal>✕</button></div>
-    <form name="tour" method="POST" data-netlify="true" netlify-honeypot="bot-field" id="tourForm">
-      <p class="honeypot-field"><label>Don't fill this out: <input name="bot-field"></label></p>
+    <form name="tour" id="tourForm">
+      <p class="honeypot-field"><label>Don't fill this out: <input name="_gotcha"></label></p>
       <div class="field"><label>Parent Name</label><input required name="parentName" placeholder="Your name"></div>
       <div class="field"><label>Phone</label><input required name="phone" placeholder="01xxxxxxxxx"></div>
       <div class="field"><label>Email</label><input type="email" name="email" placeholder="you@example.com"></div>
@@ -234,20 +227,5 @@
 <div class="toast" id="toast"></div>
 
 <script src="/js/main.js"></script>
-
-<!-- Netlify Identity: handles the invite/confirmation email link, which lands
-     here before redirecting into /admin/ -->
-<script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
-<script>
-  if (window.netlifyIdentity) {
-    window.netlifyIdentity.on("init", user => {
-      if (!user) {
-        window.netlifyIdentity.on("login", () => {
-          document.location.href = "/admin/";
-        });
-      }
-    });
-  }
-</script>
 </body>
 </html>
