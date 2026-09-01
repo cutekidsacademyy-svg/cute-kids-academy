@@ -5,7 +5,7 @@ backend:
   # Points at the OAuth proxy (two small serverless functions in /api) that
   # lets this CMS log in with GitHub without exposing any secret to the browser.
   # Replace with your real Vercel URL once the site is deployed there.
-  base_url: https://cute-kids-academy-theta.vercel.app
+  base_url: https://cutekidsacademy-eg.vercel.app
   auth_endpoint: api/auth
 
 # Enables real image file uploads (not just pasted URLs).
@@ -14,7 +14,7 @@ backend:
 media_folder: "images/uploads"
 public_folder: "/images/uploads"
 
-site_url: https://cute-kids-academy-theta.vercel.app
+site_url: https://cutekidsacademy-eg.vercel.app
 
 collections:
   - name: "settings"
