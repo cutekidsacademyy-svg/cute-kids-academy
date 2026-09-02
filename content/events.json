@@ -33,6 +33,25 @@
       "video": "",
       "emoji": "🎉",
       "color": "#FDE6F1"
+    },
+    {
+      "title": "School Me Event 2024",
+      "description": "School Me is an annual educational event designed to help parents make one of the most important decisions for their children: choosing the right school.\n\nThe event brings together a wide range of schools and educational institutions, giving parents the opportunity to explore different education systems, compare options, and discover what best suits their child’s needs, personality, and future goals.\n\nAt School Me, we’re here to make the school-selection journey easier, clearer, and more informed — helping every family find the right educational path for their child.",
+      "date": "",
+      "photos": [
+        {
+          "image": "/images/uploads/5839112170850337642.jpg"
+        },
+        {
+          "image": "/images/uploads/5839112170850337634.jpg"
+        },
+        {
+          "image": "/images/uploads/5839112170850337620.jpg"
+        }
+      ],
+      "video": "/images/uploads/reel 2024.mov",
+      "emoji": "🎉",
+      "color": "#FDE6F1"
     }
   ]
 }
