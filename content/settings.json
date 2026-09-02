@@ -4,6 +4,7 @@
   "heroSubheading": "Located in the heart of Sheikh Zayed, Cute Kids Academy has cared for infants, toddlers, and preschoolers since 2007 — with afterschool care and summer and winter camps too.",
   "missionHeading": "Why parents feel at home at Cute Kids Academy",
   "missionText": "We combine parenting consultation with child development expertise to personalize a plan for every child — backed by a team of psychologists, behavioral consultants, and licensed specialists who know early childhood inside and out.",
+  "aboutPhoto": "/images/uploads/about-team-photo.jpg",
   "missionPoints": [
     { "icon": "🛡️", "title": "Safety First", "text": "Constant staff supervision in every classroom corner, CCTV cameras, and a layout designed to prevent accidents — peace of mind for parents, protection for every child." },
     { "icon": "🩺", "title": "Expert-Led Team", "text": "Our team includes a PhD child psychologist, a licensed speech-language pathologist, and a certified parenting coach — real specialists behind every child's care." },

@@ -27,6 +27,7 @@ collections:
           - { label: "Hero Badge (e.g. 'Ages 3 months – 4 years')", name: "heroEyebrow", widget: "string" }
           - { label: "Hero Heading", name: "heroHeading", widget: "string" }
           - { label: "Hero Subheading", name: "heroSubheading", widget: "text" }
+          - { label: "About Us Photo", name: "aboutPhoto", widget: "image", required: false }
           - { label: "Mission Heading", name: "missionHeading", widget: "string" }
           - { label: "Mission Text", name: "missionText", widget: "text" }
           - label: "Mission Highlights (the 4 icon points under the mission text)"

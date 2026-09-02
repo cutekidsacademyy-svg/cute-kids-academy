@@ -52,6 +52,7 @@ function renderSettings() {
   document.getElementById("heroEyebrow").textContent = `Ages ${s.ages || ""}`;
   document.getElementById("heroHeading").textContent = s.heroHeading || "";
   document.getElementById("heroSubheading").textContent = s.heroSubheading || "";
+  if (s.aboutPhoto) document.getElementById("aboutPhoto").src = s.aboutPhoto;
   document.getElementById("missionHeading").textContent = s.missionHeading || "";
   document.getElementById("missionText").textContent = s.missionText || "";
   document.getElementById("missionPoints").innerHTML = (s.missionPoints || [])
