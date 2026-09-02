@@ -1,16 +1,108 @@
 {
   "items": [
-    { "emoji": "🍼", "icon": "", "age": "3 – 12 months", "title": "Infants", "desc": "Warm, attentive care for our youngest learners, in a space designed around safety and sensory growth.", "details": "Constant staff supervision, CCTV-monitored classrooms, and a daily rhythm built around each baby's own routine." },
-    { "emoji": "🧩", "icon": "", "age": "12 months – 3 years", "title": "Toddlers", "desc": "Guided play that builds language, coordination, and independence.", "details": "Circle time, Montessori-based activities, and both indoor and outdoor play every week." },
-    { "emoji": "✏️", "icon": "", "age": "3 – 4 years", "title": "Preschool", "desc": "A structured, play-based curriculum that prepares kids for the next step — including school entrance interviews.", "details": "Weekly English & Arabic and Math & Quran lessons, Montessori, circle time, outdoor play, and dedicated interview-readiness prep for school applications." },
-    { "emoji": "🧑‍🤝‍🧑", "icon": "", "age": "12 – 16 years", "title": "Teens Club", "desc": "A social and activity program built for teens.", "details": "A dedicated space for older kids to connect, play, and take part in age-appropriate activities and events." },
-    { "emoji": "🎒", "icon": "", "age": "School Age", "title": "Afterschool", "desc": "A safe, supervised place for school-age kids after the bell rings.", "details": "Afterschool care and enrichment activities for children already in primary school." },
-    { "emoji": "☀️", "icon": "", "age": "4 – 9 years", "title": "Summer Camp", "desc": "A summer full of trips, fundays, and hands-on themes.", "details": "Monthly trips, fundays, physical exercise, Zumba sessions, and educational themes running all summer." },
-    { "emoji": "❄️", "icon": "", "age": "4 – 9 years", "title": "Winter Camp", "desc": "The same trips-and-fundays energy, for the winter break.", "details": "Monthly trips, fundays, physical exercise, Zumba sessions, and educational themes running through winter break." },
-    { "emoji": "⏰", "icon": "", "age": "All Ages", "title": "Extra Hours", "desc": "Extended care until 6pm for working parents' schedules.", "details": "Flexible extra hours are available until 6pm. Coming soon: hours extended until 10pm and weekend rotations." },
-    { "emoji": "🤝", "icon": "", "age": "Special Needs", "title": "Inclusion Service", "desc": "Dedicated support for children with special needs.", "details": "We offer an inclusion service designed specifically to support children with special needs, including shadow teachers." },
-    { "emoji": "📖", "icon": "", "age": "All Ages", "title": "Quran Sessions", "desc": "Regular Quran sessions woven into our weekly curriculum.", "details": "Alongside Math & Quran class time, we offer dedicated Quran sessions as part of your child's weekly rhythm." },
-    { "emoji": "🗣️", "icon": "", "age": "All Ages", "title": "Speech Therapy", "desc": "One-on-one speech-language support from a licensed specialist.", "details": "Delivered by our licensed speech-language pathologist, supporting communication development for children who need extra help." },
-    { "emoji": "🧠", "icon": "", "age": "All Ages", "title": "Child Psychology", "desc": "Behavioral and developmental support from our child psychology team.", "details": "Our PhD child psychologist provides behavior modification support and developmental guidance for your child." }
+    {
+      "icon": "",
+      "emoji": "🍼",
+      "age": "3 – 12 months",
+      "title": "Infants",
+      "desc": "Warm, attentive care for our youngest learners, in a space designed around safety and sensory growth.",
+      "details": "Constant staff supervision, CCTV-monitored classrooms, and a daily rhythm built around each baby's own routine."
+    },
+    {
+      "icon": "",
+      "emoji": "🧩",
+      "age": "12 months – 3 years",
+      "title": "Toddlers",
+      "desc": "Guided play that builds language, coordination, and independence.",
+      "details": "Circle time, Montessori-based activities, and both indoor and outdoor play every week."
+    },
+    {
+      "icon": "",
+      "emoji": "✏️",
+      "age": "3 – 4 years",
+      "title": "Preschool",
+      "desc": "A structured, play-based curriculum that prepares kids for the next step — including school entrance interviews.",
+      "details": "Weekly English & Arabic and Math & Quran lessons, Montessori, circle time, outdoor play, and dedicated interview-readiness prep for school applications."
+    },
+    {
+      "icon": "",
+      "emoji": "🧑‍🤝‍🧑",
+      "age": "12 – 16 years",
+      "title": "Teens Club",
+      "desc": "A social and activity program built for teens.",
+      "details": "A dedicated space for older kids to connect, play, and take part in age-appropriate activities and events."
+    },
+    {
+      "icon": "",
+      "emoji": "🎒",
+      "age": "School Age",
+      "title": "Afterschool",
+      "desc": "A safe, supervised place for school-age kids after the bell rings.",
+      "details": "Afterschool care and enrichment activities for children already in primary school."
+    },
+    {
+      "icon": "",
+      "emoji": "☀️",
+      "age": "4 – 9 years",
+      "title": "Summer Camp",
+      "desc": "A summer full of trips, fundays, and hands-on themes.",
+      "details": "Monthly trips, fundays, physical exercise, Zumba sessions, and educational themes running all summer."
+    },
+    {
+      "icon": "",
+      "emoji": "❄️",
+      "age": "4 – 9 years",
+      "title": "Winter Camp",
+      "desc": "The same trips-and-fundays energy, for the winter break.",
+      "details": "Monthly trips, fundays, physical exercise, Zumba sessions, and educational themes running through winter break."
+    },
+    {
+      "icon": "",
+      "emoji": "⏰",
+      "age": "All Ages",
+      "title": "Extra Hours",
+      "desc": "Extended care until 6pm for working parents' schedules.",
+      "details": "Flexible extra hours are available until 6pm. Coming soon: hours extended until 10pm and weekend rotations."
+    },
+    {
+      "icon": "",
+      "emoji": "🤝",
+      "age": "Special Needs",
+      "title": "Inclusion Service",
+      "desc": "Dedicated support for children with special needs.",
+      "details": "We offer an inclusion service designed specifically to support children with special needs, including shadow teachers."
+    },
+    {
+      "icon": "",
+      "emoji": "📖",
+      "age": "All Ages",
+      "title": "Quran Sessions",
+      "desc": "Regular Quran sessions woven into our weekly curriculum.",
+      "details": "Alongside Math & Quran class time, we offer dedicated Quran sessions as part of your child's weekly rhythm."
+    },
+    {
+      "icon": "",
+      "emoji": "🗣️",
+      "age": "All Ages",
+      "title": "Speech Therapy",
+      "desc": "One-on-one speech-language support from a licensed specialist.",
+      "details": "Delivered by our licensed speech-language pathologist, supporting communication development for children who need extra help."
+    },
+    {
+      "icon": "",
+      "emoji": "🧠",
+      "age": "All Ages",
+      "title": "Child Psychology",
+      "desc": "Behavioral and developmental support from our child psychology team.",
+      "details": "Our PhD child psychologist provides behavior modification support and developmental guidance for your child."
+    },
+    {
+      "icon": "",
+      "emoji": "🙂",
+      "age": "12 - 18",
+      "title": "Internships",
+      "desc": "Our internship opportunities give young people the chance to gain real-life experience, develop practical skills, and discover their strengths** in a supportive and professional environment.",
+      "details": "we believe that learning goes beyond the classroom. Our internship opportunities give young people the chance to gain real-life experience, develop practical skills, and discover their strengths** in a supportive and professional environment.\n\nInterns get involved in day-to-day activities, assist our team, interact with children, and take part in creative projects and events. It’s an opportunity to **learn, contribute, build confidence, and gain valuable experience** while being part of a positive community."
+    }
   ]
 }
