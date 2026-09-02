@@ -1,8 +1,34 @@
 {
   "items": [
-    { "badge": "3–18 Months", "title": "Infant Care", "desc": "Sensory-rich care with constant, attentive supervision.", "details": "Every classroom corner is staffed, camera-monitored, and laid out to keep exploring babies safe." },
-    { "badge": "18 Months – 2 Years", "title": "Toddler", "desc": "Building language, independence, and first friendships.", "details": "Daily circle time and Montessori-based activities introduce structure through play." },
-    { "badge": "2 – 3 Years", "title": "Early Preschool", "desc": "Structured play that builds focus and cooperation.", "details": "Weekly English & Arabic and Math & Quran sessions build early academic foundations." },
-    { "badge": "3 – 4 Years", "title": "Preschool", "desc": "Getting ready for the next step, one lesson at a time.", "details": "A full weekly rhythm of academics, Montessori, and outdoor play prepares kids for what's next." }
+    {
+      "badge": "3–18 Months",
+      "title": "Infant Care",
+      "desc": "Sensory-rich care with constant, attentive supervision.",
+      "details": "Every classroom corner is staffed, camera-monitored, and laid out to keep exploring babies safe."
+    },
+    {
+      "badge": "18 Months – 2 Years",
+      "title": "Toddler",
+      "desc": "Building language, independence, and first friendships.",
+      "details": "Daily circle time and Montessori-based activities introduce structure through play."
+    },
+    {
+      "badge": "2 – 3 Years",
+      "title": "Early Preschool",
+      "desc": "Structured play that builds focus and cooperation.",
+      "details": "Weekly English & Arabic and Math & Quran sessions build early academic foundations."
+    },
+    {
+      "badge": "3 – 4 Years",
+      "title": "Preschool",
+      "desc": "Getting ready for the next step, one lesson at a time.",
+      "details": "A full weekly rhythm of academics, Montessori, and outdoor play prepares kids for what's next."
+    },
+    {
+      "badge": "4-9",
+      "title": "Campers and after schoolers",
+      "desc": "children aged 4–9 are typically part of our After-School Program or seasonal camps, where learning continues beyond the classroom in a fun, engaging, and supportive environment.",
+      "details": "Our program is designed to keep children active, curious, and socially engaged through a mix of creative activities, educational support, sports, arts & crafts, games, and hands-on experiences.\n\nFor after-schoolers, we provide a safe and welcoming space where children can unwind after school, complete their homework, build new skills, and enjoy meaningful activities with their friends.\n\nDuring our summer and winter camps, children enjoy a more dynamic program filled with themed activities, challenges, outdoor play, creative workshops, and exciting experiences designed around their age group.\n\nOur goal is simple: to give every child a place to learn, play, explore, and grow — even beyond their school day."
+    }
   ]
 }
