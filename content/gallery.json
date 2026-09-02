@@ -1,10 +1,24 @@
 {
   "items": [
     {
-      "image": "",
+      "image": "/images/uploads/2cf3d409-2de7-4c1d-9412-931406be4475.jpg",
       "category": "Classrooms",
       "alt": "Our Campus",
       "emoji": "🎪",
+      "color": "#FDE6F1"
+    },
+    {
+      "image": "/images/uploads/eedf5429-e787-408a-b6d7-56e6df61d945.jpg",
+      "category": "Classrooms",
+      "alt": "Toilets",
+      "emoji": "🚽",
+      "color": "#FDE6F1"
+    },
+    {
+      "image": "",
+      "category": "Classroom",
+      "alt": "Montessori & Circle Time",
+      "emoji": "🧩",
       "color": "#FDE6F1"
     },
     {
@@ -27,13 +41,6 @@
       "alt": "Family Bonding Day",
       "emoji": "👨‍👩‍👧‍👦",
       "color": "#E4F7FC"
-    },
-    {
-      "image": "",
-      "category": "Classroom",
-      "alt": "Montessori & Circle Time",
-      "emoji": "🧩",
-      "color": "#FDE6F1"
     },
     {
       "image": "",
