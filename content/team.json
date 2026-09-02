@@ -1,10 +1,52 @@
 {
   "items": [
-    { "photo": "", "name": "May Abdel Naby", "role": "Founder", "credentials": "Founder of Cute Kids Academy" },
-    { "photo": "", "name": "Nourhan Khaled", "role": "Owner & Financial Manager", "credentials": "Owner & Financial Manager" },
-    { "photo": "", "name": "Dr. Tahiya El Sherif", "role": "Owner & Educational Consultant", "credentials": "PhD in Mental Health · Psychologist · Educational & Behavioral Consultant · Certified Parenting Coach" },
-    { "photo": "", "name": "Heba Emam", "role": "Child Development Specialist", "credentials": "Child Development Specialist" },
-    { "photo": "", "name": "Dr. Mohamed Foad", "role": "Child Psychologist", "credentials": "PhD Child Psychology · Behavior Modification" },
-    { "photo": "", "name": "Dr. Shimaa Talaat", "role": "Speech-Language Pathologist", "credentials": "Licensed Speech-Language Pathologist" }
+    {
+      "photo": "",
+      "name": "May Abdel Naby",
+      "role": "Founder",
+      "credentials": "Founder of Cute Kids Academy"
+    },
+    {
+      "photo": "",
+      "name": "Dr. Tahiya El Sherif",
+      "role": "Owner & Educational Consultant",
+      "credentials": "PhD in Mental Health · Psychologist · Educational & Behavioral Consultant · Certified Parenting Coach"
+    },
+    {
+      "photo": "",
+      "name": "Nourhan Khaled",
+      "role": "Owner & Financial Manager",
+      "credentials": "Owner & Financial Manager"
+    },
+    {
+      "photo": "",
+      "name": "Heba Emam",
+      "role": "Child Development Specialist",
+      "credentials": "Child Development Specialist"
+    },
+    {
+      "photo": "",
+      "name": "Dr. Mohamed Foad",
+      "role": "Child Psychologist",
+      "credentials": "PhD Child Psychology · Behavior Modification"
+    },
+    {
+      "photo": "",
+      "name": "Dr. Shimaa Talaat",
+      "role": "Speech-Language Pathologist",
+      "credentials": "Licensed Speech-Language Pathologist"
+    },
+    {
+      "photo": "",
+      "name": "Dena Alaa",
+      "role": "Ethical Financial Manager",
+      "credentials": ""
+    },
+    {
+      "photo": "",
+      "name": "Radwa Wahby",
+      "role": "Assistant Manager",
+      "credentials": ""
+    }
   ]
 }
