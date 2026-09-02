@@ -35,25 +35,6 @@
       "color": "#FDE6F1"
     },
     {
-      "title": "School Me Event 2024",
-      "description": "School Me is an annual educational event designed to help parents make one of the most important decisions for their children: choosing the right school.\n\nThe event brings together a wide range of schools and educational institutions, giving parents the opportunity to explore different education systems, compare options, and discover what best suits their child’s needs, personality, and future goals.\n\nAt School Me, we’re here to make the school-selection journey easier, clearer, and more informed — helping every family find the right educational path for their child.",
-      "date": "2024-10-23",
-      "photos": [
-        {
-          "image": "/images/uploads/5839112170850337642.jpg"
-        },
-        {
-          "image": "/images/uploads/5839112170850337620.jpg"
-        },
-        {
-          "image": "/images/uploads/Black and White Music Festival Facebook Event Cover.png"
-        }
-      ],
-      "video": "",
-      "emoji": "🎉",
-      "color": "#FDE6F1"
-    },
-    {
       "title": "School Me Event 2025",
       "description": "School Me is an annual educational event designed to help parents make one of the most important decisions for their children: choosing the right school.\n\nThe event brings together a wide range of schools and educational institutions, giving parents the opportunity to explore different education systems, compare options, and discover what best suits their child’s needs, personality, and future goals.\n\nThis year the Event was the greater as we have collaberated with Baby fit academy, Fit hub and the access mall to make one of the best guidance for picking your school \n\nWe have also had some amazing speakers like Rasha Rahawnji and Radwa",
       "date": "",
@@ -78,6 +59,25 @@
         }
       ],
       "video": "",
+      "emoji": "🎉",
+      "color": "#FDE6F1"
+    },
+    {
+      "title": "School Me Event 2024",
+      "description": "School Me is an annual educational event designed to help parents make one of the most important decisions for their children: choosing the right school.\n\nThe event brings together a wide range of schools and educational institutions, giving parents the opportunity to explore different education systems, compare options, and discover what best suits their child’s needs, personality, and future goals.\n\nAt School Me, we’re here to make the school-selection journey easier, clearer, and more informed — helping every family find the right educational path for their child.",
+      "date": "2024-10-23",
+      "photos": [
+        {
+          "image": "/images/uploads/5839112170850337642.jpg"
+        },
+        {
+          "image": "/images/uploads/5839112170850337620.jpg"
+        },
+        {
+          "image": "/images/uploads/Black and White Music Festival Facebook Event Cover.png"
+        }
+      ],
+      "video": "/images/uploads/reel 2024.mov",
       "emoji": "🎉",
       "color": "#FDE6F1"
     }
