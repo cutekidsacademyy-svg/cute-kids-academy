@@ -48,6 +48,62 @@
       "alt": "Healthy Daily Meals",
       "emoji": "🍎",
       "color": "#FFF3D6"
+    },
+    {
+      "image": "/images/uploads/babies-classroom-overview.webp",
+      "category": "Babies Classroom",
+      "alt": "Babies classroom overview",
+      "emoji": "🍼",
+      "color": "#E4F7FC"
+    },
+    {
+      "image": "/images/uploads/babies-classroom-play-area.webp",
+      "category": "Babies Classroom",
+      "alt": "Babies classroom play area",
+      "emoji": "🍼",
+      "color": "#E4F7FC"
+    },
+    {
+      "image": "/images/uploads/babies-classroom-cribs.webp",
+      "category": "Babies Classroom",
+      "alt": "Babies classroom cribs",
+      "emoji": "🍼",
+      "color": "#E4F7FC"
+    },
+    {
+      "image": "/images/uploads/babies-classroom-toys.webp",
+      "category": "Babies Classroom",
+      "alt": "Babies classroom toys",
+      "emoji": "🍼",
+      "color": "#E4F7FC"
+    },
+    {
+      "image": "/images/uploads/playhouse-classroom-entrance.webp",
+      "category": "Playhouse Classroom",
+      "alt": "Playhouse classroom entrance",
+      "emoji": "🏰",
+      "color": "#FFF3D6"
+    },
+    {
+      "image": "/images/uploads/playhouse-classroom-market-library.webp",
+      "category": "Playhouse Classroom",
+      "alt": "Playhouse classroom market and library",
+      "emoji": "🏰",
+      "color": "#FFF3D6"
+    },
+    {
+      "image": "/images/uploads/playhouse-classroom-doctors-office.webp",
+      "category": "Playhouse Classroom",
+      "alt": "Playhouse classroom doctor's office",
+      "emoji": "🏰",
+      "color": "#FFF3D6"
+    },
+    {
+      "image": "/images/uploads/playhouse-classroom-space-corner.webp",
+      "category": "Playhouse Classroom",
+      "alt": "Playhouse classroom space corner",
+      "emoji": "🏰",
+      "color": "#FFF3D6"
     }
   ]
 }
