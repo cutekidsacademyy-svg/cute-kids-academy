@@ -3156,6 +3156,16 @@ language sql stable security definer set search_path = public as $$
    order by k.full_name
 $$;
 
+-- The parents' names and phone numbers, so the door staff can call them ("keep the child and call the parent").
+create function public.door_parents(p_child uuid)
+returns table (full_name text, phone text)
+language sql stable security definer set search_path = public as $$
+  select p.full_name, p.phone
+    from public.parent_children pc join public.profiles p on p.id = pc.parent_id and p.active
+   where pc.child_id = p_child and public.cka_door_allowed(p_child)
+   order by p.full_name
+$$;
+
 -- The door staff of the child's class may open the pickup ID photos (and nothing else in the child's files).
 create function public.cka_door_file(p_path text) returns boolean
 language sql stable security definer set search_path = public as $$
@@ -3359,12 +3369,12 @@ end $$;
 
 -- Grants: browsers may run the door, parent and report functions; only the server runs the 9:30 check.
 revoke all on function
-  public.cka_door_allowed(uuid), public.cka_door_file(text), public.cka_att_log(uuid, date, text, text), public.door_list(date), public.door_pickups(uuid), public.door_check_in(uuid),
+  public.cka_door_allowed(uuid), public.cka_door_file(text), public.cka_att_log(uuid, date, text, text), public.door_list(date), public.door_pickups(uuid), public.door_parents(uuid), public.door_check_in(uuid),
   public.door_check_out(uuid, uuid, text, text, text), public.door_undo(uuid, text), public.door_log_call(uuid, text),
   public.parent_report_attendance(uuid, date, text, text, time), public.parent_cancel_attendance_notice(uuid, date),
   public.cka_run_attendance_check(timestamptz), public.attendance_report(date, date)
 from public, anon, authenticated;
-grant execute on function public.cka_door_file(text), public.door_list(date), public.door_pickups(uuid), public.door_check_in(uuid), public.door_check_out(uuid, uuid, text, text, text), public.door_undo(uuid, text),
+grant execute on function public.cka_door_file(text), public.door_list(date), public.door_pickups(uuid), public.door_parents(uuid), public.door_check_in(uuid), public.door_check_out(uuid, uuid, text, text, text), public.door_undo(uuid, text),
   public.door_log_call(uuid, text), public.parent_report_attendance(uuid, date, text, text, time), public.parent_cancel_attendance_notice(uuid, date),
   public.attendance_report(date, date) to authenticated;
 grant execute on function public.cka_run_attendance_check(timestamptz) to service_role;
@@ -3405,7 +3415,7 @@ declare
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
     'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies',
     'parent_update_health', 'parent_save_pickup',
-    'cka_door_file', 'door_list', 'door_pickups', 'door_check_in', 'door_check_out', 'door_undo', 'door_log_call', 'parent_report_attendance',
+    'cka_door_file', 'door_list', 'door_pickups', 'door_parents', 'door_check_in', 'door_check_out', 'door_undo', 'door_log_call', 'parent_report_attendance',
     'parent_cancel_attendance_notice', 'attendance_report'
   ];
 begin

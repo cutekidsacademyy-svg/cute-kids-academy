@@ -12,7 +12,8 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 
 - [ ] In Supabase, open **SQL Editor > New query**, paste the whole of `supabase/catch-up-migrations.sql`, and run it.
       (The first nine migrations were already applied. This adds the email queue, reports, owner dashboard,
-      owner checklist and the **security hardening**, which is last on purpose.)
+      owner checklist, online registration, attendance and the **security hardening**, which is last on purpose.)
+      If you already ran an older version of that file, run `supabase/catch-up-2-attendance.sql` instead (attendance plus hardening only).
 - [ ] From the project folder run `node tests/live-check.mjs`. Every line must say PASS.
       It looks at your live project from the outside, as a stranger would, using only the public key.
 - [ ] **Important:** if you ever add or change a function in a future migration, run
@@ -70,6 +71,14 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 - [ ] As a parent: **My child** page: change the allergies and add a pickup person. The class teacher and the admins get a plain "something changed" email with no details in it.
 - [ ] The registration form keeps answers on the device for 7 days; the privacy notice says so (check the wording with whoever reviews it).
 
+### Attendance and pickup (Prompt 12)
+
+- [ ] On a tablet or phone, open **Door** as a teacher: check a pretend child in, then out, choosing a person from the pickup list (the ID photo shows). Then try **Someone else**: you should see the red STOP warning and the parents' phone numbers, and the hand-over button stays off until you write who approved it.
+- [ ] After 6:00 pm, check a child out and see the overtime minutes appear; open **Attendance reports** as admin, check the overtime table and the CSV download.
+- [ ] As a parent: **Attendance** page: report an absence for tomorrow, then for today after 8:00 am (it must tell you to call). Check the teacher sees the notice on the Door list.
+- [ ] Leave a pretend child unchecked at 9:30 on a school day: the admin gets one email with a count (no names) and the Door screen shows the child under "Not arrived and nobody told us".
+- [ ] The scheduler (step 3) must be running every 15 minutes with `check: true`: that is what flags the 9:30 children.
+
 ## 7. Staff first (one week)
 
 - [ ] Staff use the portal with a few pretend cases for a week, so they learn the screens before any family sees them.
@@ -105,5 +114,5 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 
 ### What is not built yet
 
-Attendance at the door, daily reports, announcements and events, photos and videos, the admin area,
+Daily reports, announcements and events, photos and videos, the admin area,
 the parent dashboard and calendar, absence follow-up, approval reminders, payments, transport and birthdays (Prompts 12 to 20 and the rest of Prompt 21).

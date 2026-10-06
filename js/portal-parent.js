@@ -460,7 +460,7 @@
   // Shared with the other parent pages (js/portal-child.js: "My child").
   window.CKAParent = {
     routes: {}, show: show, card: card, note: note, pill: pill, link: link, field: field, loadingView: loadingView, failView: failView,
-    profile: function () { return profile; }, children: function () { return children; }, prepareImage: prepareImage, fmt: fmt, setProfile: function (p) { profile = p; },
+    profile: function () { return profile; }, phone: function () { return phone; }, children: function () { return children; }, prepareImage: prepareImage, fmt: fmt, setProfile: function (p) { profile = p; },
   };
 
   // ------------------------------------------------------------------ Router

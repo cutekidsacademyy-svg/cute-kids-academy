@@ -145,7 +145,7 @@ console.log('\n== Security audit: structure ==');
     'investigation_name_warnings', 'staff_investigations', 'staff_investigation', 'staff_report', 'record_staff_attendance', 'staff_attendance_day', 'submit_staff_complaint',
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
     'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies', 'parent_update_health', 'parent_save_pickup',
-    'cka_door_file', 'door_list', 'door_pickups', 'door_check_in', 'door_check_out', 'door_undo', 'door_log_call', 'parent_report_attendance', 'parent_cancel_attendance_notice', 'attendance_report'].sort();
+    'cka_door_file', 'door_list', 'door_pickups', 'door_parents', 'door_check_in', 'door_check_out', 'door_undo', 'door_log_call', 'parent_report_attendance', 'parent_cancel_attendance_notice', 'attendance_report'].sort();
   const reach = definers.filter((f) => !f.is_trigger && f.auth).map((f) => f.name).sort();
   check('the ONLY security-definer functions a logged-in user can run are the intended screens/helpers (nothing new slipped in)',
     JSON.stringify(reach) === JSON.stringify(ALLOWED), JSON.stringify({ extra: reach.filter((x) => !ALLOWED.includes(x)), missing: ALLOWED.filter((x) => !reach.includes(x)) }));
@@ -1666,7 +1666,7 @@ console.log('\n== Attendance and pickup ==');
     [U.hana, `select public.door_check_out('${B}', null, 'Someone', 'friend', 'x')`],      // 16 never checked in
     [U.hana, `select public.door_check_in('${B}')`],                                       // 17
     [U.hana, `select public.door_check_out('${B}', (select id from public.child_pickups where full_name like 'Grandma%'))`], // 18 a person from another child's list
-    [U.admin, `select count(*)::int as n from public.attendance_events where child_id = '${A}' and att_date = '2026-10-11'`], // 19 audit trail
+    [U.admin, `select count(*)::int as n from public.attendance_events where child_id = '${A}' and att_date = '2026-10-11'`], // 19 (door_parents is checked just below) audit trail
     [U.hana, `select count(*)::int as n from public.attendance_events where att_date = '2026-10-11'`],                   // 20 teachers cannot read the log
     [U.parentA, `select count(*)::int as n from public.attendance_events where att_date = '2026-10-11'`],                // 21
   ]);
@@ -1674,6 +1674,8 @@ console.log('\n== Attendance and pickup ==');
   check('check-in works once per day and the time is recorded; the parent sees it, another parent does not', !res[4].error && !!res[5].error && res[6].rows[0].i === true && res[7].rows[0].n === 1 && res[8].rows[0].n === 0, JSON.stringify([res[4], res[5]]));
   check('the child\'s class teacher sees the authorised pickup list through the door function; other teachers and parents get nothing', res[9].rows.length === 1 && /Grandma Seed/.test(res[9].rows[0].full_name) && res[10].rows.length === 0 && res[11].rows.length === 0);
   check('check-out records who collected, once; a child never checked in, or a person from another child\'s list, is refused', !res[13].error && res[14].rows[0].o && /Grandma Seed/.test(res[14].rows[0].collector_name) && res[14].rows[0].off_list === false && res[14].rows[0].overtime_minutes === 0 && !!res[15].error && !!res[16].error && !res[17].error && !!res[18].error, JSON.stringify([res[13], res[14], res[18]]));
+  const dp = await flow([[U.hana, `select full_name, phone from public.door_parents('${A}') order by full_name`], [U.mariam, `select * from public.door_parents('${A}')`], [U.parentA, `select * from public.door_parents('${A}')`]]);
+  check('door staff of the class can look up the parent phone numbers to call them; other classes and parents get nothing', dp[0].rows.length === 2 && dp[0].rows.every((x) => x.phone) && dp[1].rows.length === 0 && dp[2].rows.length === 0, JSON.stringify(dp));
   check('every door action is logged for management; teachers and parents cannot read the log', res[19].rows[0].n === 2 && res[20].rows[0].n === 0 && res[21].rows[0].n === 0, JSON.stringify(res[19].rows));
 
   // overtime: closing time is 18:00 Cairo

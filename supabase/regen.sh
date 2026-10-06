@@ -10,3 +10,8 @@ cd "$(dirname "$0")"
   echo "-- Generated from supabase/migrations/*.sql: do not edit; run  bash regen.sh"
   for f in $(ls migrations/*.sql | sort | awk -F/ '$2 >= "20261006120900"'); do echo; echo "-- ============================================================"; echo "-- $f"; echo "-- ============================================================"; cat "$f"; done; } > catch-up-migrations.sql
 echo "regenerated: $(ls migrations | wc -l) migrations"
+# CATCH-UP 2: only what came after the first catch-up file (attendance and later), hardening last. For a project that already ran catch-up-migrations.sql from before attendance existed.
+{ echo "-- CATCH-UP 2: attendance and pickup (Prompt 12) plus the security hardening. Paste into the Supabase SQL editor and run ONCE."
+  echo "-- Only for a project that already ran an earlier catch-up-migrations.sql (one that did NOT include 20261006121500_attendance.sql)."
+  echo "-- Generated from supabase/migrations/*.sql: do not edit; run  bash regen.sh"
+  for f in $(ls migrations/*.sql | sort | awk -F/ '$2 >= "20261006121500"'); do echo; echo "-- ============================================================"; echo "-- $f"; echo "-- ============================================================"; cat "$f"; done; } > catch-up-2-attendance.sql

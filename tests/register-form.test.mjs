@@ -84,3 +84,33 @@ test("only admin, manager and owner reach the Applications screens", () => {
   assert.match(src, /S\.routes\.applications = function \(\) \{ return S\.isMgmt\(\)/);
   assert.match(src, /S\.routes\.application = function \(p\) \{ return S\.isMgmt\(\)/);
 });
+
+test("door screen, attendance report and parent attendance wording: same keys in both languages, and every key used exists", () => {
+  for (const [strings, scripts, prefixes] of [["js/staff-door-strings.js", ["js/door.js"], ["dr", "ar"]], ["js/portal-attendance-strings.js", ["js/portal-attendance.js"], ["pa"]]]) {
+    const c = { CKA: { STR: { en: {}, ar: {} } } };
+    vm.runInNewContext(read(strings), c);
+    const { en, ar } = c.CKA.STR;
+    assert.deepEqual(Object.keys(ar).sort(), Object.keys(en).sort(), strings);
+    for (const k of Object.keys(en)) assert.ok(String(ar[k]).trim() && String(en[k]).trim(), k);
+    const used = new Set();
+    for (const f of scripts) for (const m of read(f).matchAll(new RegExp('\bt\("((?:' + prefixes.join("|") + ')\.[A-Za-z0-9_.]+)"\)', "g"))) used.add(m[1]);
+    for (const s of ["absence", "late"]) { used.add("pa.n." + s); }
+    assert.deepEqual([...used].filter((k) => !(k in en) && !(k === "pa.n.absence" && !strings.includes("portal-attendance")) && !(k === "pa.n.late" && !strings.includes("portal-attendance"))), [], strings);
+  }
+});
+
+test("the door and the attendance report are wired into the staff page; the parent page into the portal; reports are management only", () => {
+  const staff = read("staff/index.html"), portal = read("portal/index.html"), door = read("js/door.js");
+  for (const f of ["staff-door-strings.js", "door.js"]) assert.match(staff, new RegExp(f.replace(".", "\.")));
+  for (const f of ["portal-attendance-strings.js", "portal-attendance.js"]) assert.match(portal, new RegExp(f.replace(".", "\.")));
+  assert.match(door, /if \(!S\.isMgmt\(\)\) return S\.routes\[""\]\(\)/);
+  assert.match(read("js/staff.js"), /data-route="attreport"/);
+});
+
+test("the parent form states the 8 am rule and the child-safety wording is never skipped at the door", () => {
+  const door = read("js/door.js"), pa = read("js/portal-attendance.js");
+  assert.match(pa, /cairoMinutes\(\) < 480/);
+  assert.match(door, /door_pickups/);
+  assert.match(door, /dr\.warn/);
+  assert.match(door, /off_list_needs_parent_approval/);
+});

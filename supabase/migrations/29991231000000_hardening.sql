@@ -31,7 +31,7 @@ declare
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
     'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies',
     'parent_update_health', 'parent_save_pickup',
-    'cka_door_file', 'door_list', 'door_pickups', 'door_check_in', 'door_check_out', 'door_undo', 'door_log_call', 'parent_report_attendance',
+    'cka_door_file', 'door_list', 'door_pickups', 'door_parents', 'door_check_in', 'door_check_out', 'door_undo', 'door_log_call', 'parent_report_attendance',
     'parent_cancel_attendance_notice', 'attendance_report'
   ];
 begin
