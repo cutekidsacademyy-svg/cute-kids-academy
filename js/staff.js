@@ -664,6 +664,7 @@
     document.querySelector('#nav [data-route="investigations"]').hidden = !isTop();
     document.querySelector('#nav [data-route="people"]').hidden = !isMgmt();
     document.querySelector('#nav [data-route="owner"]').hidden = me.role !== "owner";
+    document.querySelector('#nav [data-route="routine"]').hidden = me.role !== "owner";
     document.querySelector('#nav [data-route="attendance"]').hidden = !isMgmt();
     document.getElementById("who").textContent = me.full_name + " · " + t("role." + me.role);
     document.getElementById("app").hidden = false;

@@ -12,13 +12,13 @@ const SITE = "https://site.test";
 const NOW = Date.parse("2026-10-11T07:00:00Z");           // Sunday 10:00 in Cairo
 const CASE = {
   id: "11111111-1111-4111-8111-111111111111", ref_no: 7, title: "Lunch concern", urgency: "urgent", old_urgency: "can_wait",
-  level: 2, step: "parent_called", kind: "ack", reason: "Child was hungry two days running",
+  level: 2, done: 2, total: 6, late_tasks: 3, step: "parent_called", kind: "ack", reason: "Child was hungry two days running",
   acknowledge_by: "2026-10-11T09:00:00Z", resolve_by: "2026-10-12T07:00:00Z", deadline: "2026-10-11T08:00:00Z",
 };
 
 // ------------------------------ wording ------------------------------
 test("every template renders in English and Arabic with a subject, a link and no 'undefined'", () => {
-  assert.ok(TEMPLATES.length >= 13);
+  assert.ok(TEMPLATES.length >= 17);
   for (const t of TEMPLATES) for (const lang of ["en", "ar"]) {
     const m = render(t, CASE, lang, { site: SITE, now: NOW });
     assert.ok(m.subject.length > 3, `${t}/${lang} subject`);
@@ -88,6 +88,7 @@ function world({ resendOk = true, claimRace = false, rows } = {}) {
       state.resend.push({ headers: opts.headers, body: JSON.parse(opts.body) });
       return resendOk ? json(200, { id: "re_1" }) : json(422, { message: "domain not verified" });
     }
+    if (u.pathname === "/rest/v1/rpc/cka_run_owner_reminders") return json(200, { sent: 1, working_day: true, late_tasks: 2 });
     if (u.pathname === "/rest/v1/rpc/cka_run_deadline_check") return json(200, { warned: 1, escalated: 0, overdue_at_top: 0, requeued: 0, in_working_hours: true });
     if (u.pathname === "/rest/v1/email_outbox" && opts.method === "GET") return json(200, state.outbox.filter((r) => r.status === "pending"));
     if (u.pathname === "/rest/v1/email_outbox" && opts.method === "PATCH") {
@@ -167,7 +168,18 @@ test("sender: with check=true it runs the deadline clock first and reports it", 
   const w = world();
   const r = await call({ w, body: { check: true } });
   assert.equal(r.deadlines.warned, 1);
+  assert.equal(r.owner_reminders.sent, 1);
   assert.ok(w.state.calls.findIndex((c) => c.path.includes("cka_run_deadline_check")) < w.state.calls.findIndex((c) => c.path.startsWith("/rest/v1/email_outbox")));
   const plain = await call({ w: world(), body: {} });
   assert.equal(plain.deadlines, undefined);
+  assert.equal(plain.owner_reminders, undefined);
+});
+
+test("owner reminder emails state the numbers and link to the checklist or dashboard", () => {
+  const am = render("checklist_morning", CASE, "en", { site: SITE });
+  assert.match(am.subject, /Morning walk: 2 of 6 checks done/);
+  assert.match(am.text, new RegExp(SITE + "/staff/#/routine"));
+  assert.match(render("checklist_afternoon", CASE, "ar", { site: SITE }).subject, /أُنجز 2 من 6/);
+  assert.match(render("review_thursday", CASE, "en", { site: SITE }).text, /Late tasks: 3/);
+  assert.match(render("review_monthly", CASE, "en", { site: SITE }).text, new RegExp(SITE + "/staff/#/owner"));
 });

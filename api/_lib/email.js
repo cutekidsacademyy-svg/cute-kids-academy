@@ -62,6 +62,19 @@ const T = {
   overdue_top: (p, l) => l === "ar"
     ? { subject: `طلب متأخر في أعلى مستوى (${ref(p)})`, lines: [`${p.title}`, "فات موعد هذا الطلب وهو الآن في أعلى مستوى تصعيد."], button: ["فتح الطلب", `/staff/#/case/${p.id}`] }
     : { subject: `Overdue at the highest level (${ref(p)})`, lines: [`${p.title}`, "The deadline on this case was missed and it is already at the highest escalation level."], button: ["Open the case", `/staff/#/case/${p.id}`] },
+  // ---- owner routine reminders
+  checklist_morning: (p, l) => l === "ar"
+    ? { subject: `جولة الصباح: أُنجز ${p.done} من ${p.total} بنود`, lines: ["لم تكتمل قائمة جولة الصباح اليوم بعد. يُرجى إكمالها."], button: ["فتح القائمة", "/staff/#/routine"] }
+    : { subject: `Morning walk: ${p.done} of ${p.total} checks done`, lines: ["Today's morning-walk checklist is not finished yet. Please complete it."], button: ["Open the checklist", "/staff/#/routine"] },
+  checklist_afternoon: (p, l) => l === "ar"
+    ? { subject: `فحص بعد الظهر: أُنجز ${p.done} من ${p.total} بنود`, lines: ["لم تكتمل قائمة فحص بعد الظهر اليوم بعد. يُرجى إكمالها."], button: ["فتح القائمة", "/staff/#/routine"] }
+    : { subject: `Afternoon check: ${p.done} of ${p.total} checks done`, lines: ["Today's afternoon checklist is not finished yet. Please complete it."], button: ["Open the checklist", "/staff/#/routine"] },
+  review_thursday: (p, l) => l === "ar"
+    ? { subject: "مراجعة الخميس اليوم", lines: ["حان وقت مراجعة الخميس الأسبوعية.", `المهام المتأخرة: ${p.late_tasks}.`], button: ["فتح المهام", "/staff/#/routine"] }
+    : { subject: "Thursday review today", lines: ["It is time for the weekly Thursday review.", `Late tasks: ${p.late_tasks}.`], button: ["Open the tasks", "/staff/#/routine"] },
+  review_monthly: (p, l) => l === "ar"
+    ? { subject: "مراجعة الشهر", lines: ["بدأ شهر جديد وحان وقت المراجعة الشهرية.", `المهام المتأخرة: ${p.late_tasks}.`], button: ["فتح لوحة المالك", "/staff/#/owner"] }
+    : { subject: "Monthly review", lines: ["A new month has started: time for the monthly review.", `Late tasks: ${p.late_tasks}.`], button: ["Open the owner dashboard", "/staff/#/owner"] },
   serious_accident: (p, l) => l === "ar"
     ? { subject: "تم تسجيل حادث خطير", lines: ["سُجّل حادث خطير وفُتحت مراجعة سلامة."], button: ["فتح المراجعات", "/staff/#/investigations"] }
     : { subject: "A serious accident was logged", lines: ["A serious accident was logged and a safety investigation was opened."], button: ["Open investigations", "/staff/#/investigations"] },

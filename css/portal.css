@@ -184,3 +184,17 @@ tr.row-watch td{background:#fff8ee}
 .att-msg{font-weight:700}.att-msg.ok{color:var(--ok)}.att-msg.bad{color:var(--bad)}
 .action[open] .f-row select,.action[open] .f-row input[type=date],.action[open] .f-row input[type=number]{width:100%;padding:10px 12px;border:2px solid var(--line);border-radius:12px;background:#fff;font-size:1rem}
 .f-row input[type=date],.f-row input[type=number]{width:100%;padding:12px 14px;border:2px solid var(--line);border-radius:12px;background:#fff;font-size:1rem}
+
+/* ---- Owner checklist and tasks ---- */
+.progress{position:relative;height:26px;border:2px solid var(--ink);border-radius:999px;background:#fff;overflow:hidden;margin:6px 0 12px}
+.progress span{position:absolute;inset-block:0;inset-inline-start:0;background:repeating-linear-gradient(45deg,#009E73 0 6px,#00785a 6px 12px)}
+.progress small{position:relative;display:block;text-align:center;font-weight:700;line-height:22px}
+.check-row{border:2px solid var(--line);border-radius:14px;padding:10px 12px;margin-bottom:8px;background:#fff}
+.check-row.ok{border-color:var(--ok);background:#f4fbf6}
+.check-row.bad{border-color:var(--bad);background:#fdf1ef}
+.check-label{font-weight:700;margin-bottom:6px}
+.check-btn{font:inherit;font-weight:700;padding:8px 14px;border-radius:999px;border:2px solid var(--line);background:#fff;cursor:pointer}
+.check-btn.on-ok{background:var(--ok);color:#fff;border-color:var(--ok)}
+.check-btn.on-bad{background:var(--bad);color:#fff;border-color:var(--bad)}
+.note-row{margin:8px 0}
+.note-row input{width:100%;padding:10px 12px;border:2px solid var(--line);border-radius:12px;font-size:1rem}

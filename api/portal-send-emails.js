@@ -67,7 +67,10 @@ module.exports = async function handler(req, res, env = process.env, fetchImpl =
     const client = makeClient(env, fetchImpl);
     const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
     const out = { ok: true };
-    if (body.check === true) out.deadlines = await client.call("/rest/v1/rpc/cka_run_deadline_check", { method: "POST", body: {} });
+    if (body.check === true) {
+      out.deadlines = await client.call("/rest/v1/rpc/cka_run_deadline_check", { method: "POST", body: {} });
+      out.owner_reminders = await client.call("/rest/v1/rpc/cka_run_owner_reminders", { method: "POST", body: {} });
+    }
     out.emails = await sendEmails(client, env, fetchImpl, now);
     send(200, out);
   } catch (e) {
