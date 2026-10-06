@@ -117,6 +117,74 @@
     });
   }
 
+  // ----- Reports -----
+  // Periods are whole days in Cairo time. The academy week starts on Sunday.
+  function periodFor(kind, nowMs) {
+    var today = cairoDay(new Date(nowMs));
+    if (kind === "month") return { from: today.slice(0, 8) + "01", to: today };
+    var wd = new Intl.DateTimeFormat("en-US", { timeZone: TZ, weekday: "short" }).format(new Date(nowMs));
+    var back = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[wd];
+    var p = today.split("-").map(Number);
+    return { from: new Date(Date.UTC(p[0], p[1] - 1, p[2] - back)).toISOString().slice(0, 10), to: today };
+  }
+  function pct(n, d) { return d ? Math.round((n / d) * 100) : null; }
+  function change(now, before) {
+    if (now == null || before == null) return "";
+    return Math.round((Number(now) - Number(before)) * 100) / 100;
+  }
+
+  // The report as plain tables, used for BOTH the screen and the CSV so they can never disagree.
+  // t(key) returns the wording (English or Arabic); with identity t the keys come back.
+  function reportSections(r, t) {
+    var ack = r.on_time.acknowledged, res = r.on_time.resolved, tot = r.totals;
+    function onTime(x) { var p = pct(x.on_time, x.due); return x.on_time + " / " + x.due + (p === null ? "" : " (" + p + "%)"); }
+    var sections = [];
+    sections.push({ id: "summary", title: t("rp.summary"), header: [t("rp.metric"), t("rp.value")], rows: [
+      [t("rp.received"), tot.received], [t("rp.open_now"), tot.open_now], [t("rp.overdue_now"), tot.overdue_now],
+      [t("rp.ack_on_time"), onTime(ack)], [t("rp.res_on_time"), onTime(res)],
+      [t("rp.avg_resolve"), r.avg_resolve_hours == null ? "" : r.avg_resolve_hours],
+      [t("rp.esc_cases"), r.escalations.cases], [t("rp.esc_moves"), r.escalations.moves],
+      [t("rp.sat_yes"), r.satisfaction.yes], [t("rp.sat_no"), r.satisfaction.no], [t("rp.sat_waiting"), r.satisfaction.waiting],
+      [t("rp.acc_total"), r.incidents.total], [t("rp.open_inv"), r.incidents.open_investigations],
+    ] });
+    sections.push({ id: "types", title: t("rp.by_type_urgency"), header: [t("rp.type"), t("rp.urgency"), t("rp.count")],
+      rows: r.by_type_urgency.map(function (x) { return [t("rp.type." + x.type), t("rp.urg." + x.urgency), x.count]; }) });
+    sections.push({ id: "levels", title: t("rp.esc_by_level"), header: [t("rp.level"), t("rp.count")],
+      rows: r.escalations.by_level.map(function (x) { return [t("rp.level") + " " + x.level, x.count]; }) });
+    sections.push({ id: "acc_class", title: t("rp.acc_by_class"), header: [t("rp.class"), t("rp.count")], rows: r.incidents.by_class.map(function (x) { return [x.name, x.count]; }) });
+    sections.push({ id: "acc_loc", title: t("rp.acc_by_location"), header: [t("rp.location"), t("rp.count")], rows: r.incidents.by_location.map(function (x) { return [x.name, x.count]; }) });
+    sections.push({ id: "acc_sev", title: t("rp.acc_by_severity"), header: [t("rp.severity"), t("rp.count")], rows: r.incidents.by_severity.map(function (x) { return [t("rp.sev." + x.name), x.count]; }) });
+    sections.push({ id: "ratings", title: t("rp.ratings") + " (" + r.ratings.month.slice(0, 7) + " vs " + r.ratings.previous_month.slice(0, 7) + ")",
+      header: [t("rp.class"), t("rp.n"), t("rp.care"), t("rp.comm"), t("rp.daily"), t("rp.prev_n"), t("rp.prev_care"), t("rp.prev_comm"), t("rp.prev_daily"), t("rp.chg_care"), t("rp.chg_comm"), t("rp.chg_daily")],
+      rows: r.ratings.classes.map(function (c) {
+        return [c.name, c.count, c.care, c.communication, c.daily, c.prev_count, c.prev_care == null ? "" : c.prev_care, c.prev_communication == null ? "" : c.prev_communication, c.prev_daily == null ? "" : c.prev_daily,
+          change(c.care, c.prev_care), change(c.communication, c.prev_communication), change(c.daily, c.prev_daily)];
+      }) });
+    sections.push({ id: "compliments", title: t("rp.compliments"), header: [t("rp.staff"), t("rp.count"), t("rp.messages")],
+      rows: r.ratings.compliments.map(function (c) { return [c.staff, c.count, c.items.map(function (i) { return i.text; }).filter(Boolean).join(" | ")]; }) });
+    return sections;
+  }
+
+  // CSV that opens correctly in Excel. Text that starts with = + - @ is defused so a spreadsheet
+  // can never run it as a formula (parents and staff type some of this text).
+  function csvCell(v) {
+    if (v == null) return "";
+    if (typeof v === "number") return String(v);
+    var x = String(v);
+    if (/^[=+\-@\t\r]/.test(x) && !/^-?\d+(\.\d+)?$/.test(x)) x = "'" + x;
+    return /[",\n\r]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x;
+  }
+  function toCsv(sections) {
+    var lines = [];
+    sections.forEach(function (sec) {
+      lines.push(csvCell(sec.title));
+      lines.push(sec.header.map(csvCell).join(","));
+      sec.rows.forEach(function (row) { lines.push(row.map(csvCell).join(",")); });
+      lines.push("");
+    });
+    return lines.join("\r\n");
+  }
+
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -125,5 +193,6 @@
     areaFor, homePath, guard, isExpired,
     canInviteParents, canManageStaff, staffRolesCallerCanCreate, canChangeActive,
     whenText, refLabel, monthKey, dueState, overview, filterQueue,
+    periodFor, pct, change, reportSections, csvCell, toCsv,
   };
 });

@@ -152,3 +152,10 @@ table.tbl{width:100%;border-collapse:collapse;min-width:480px}
 .steps small{display:block;color:var(--muted)}
 .steps .btn{margin-top:8px}
 .internal-box{background:#fff8e1;border:2px solid #f3d77a;border-radius:14px;padding:12px;margin:12px 0}
+
+/* ---- Reports ---- */
+.p-sub.small{font-size:.85rem}
+.tbl td{overflow-wrap:anywhere}
+.tbl thead th{white-space:nowrap}
+.filter-pill{font-family:'Baloo 2',cursive;font-weight:600;font-size:.9rem;padding:8px 18px;border-radius:999px;border:2px solid var(--pink-light);background:#fff;color:var(--pink-dark);cursor:pointer}
+.filter-pill.active{background:var(--pink);color:#fff;border-color:var(--pink)}

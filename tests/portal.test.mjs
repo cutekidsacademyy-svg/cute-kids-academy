@@ -179,6 +179,75 @@ test("queue filters", () => {
   assert.deepEqual(ids({ mine: true, status: "all" }), [1]);
 });
 
+test("report periods: this week starts on Sunday, this month on the 1st, in Cairo time", () => {
+  assert.deepEqual(L.periodFor("week", Date.parse("2026-10-14T10:00:00Z")), { from: "2026-10-11", to: "2026-10-14" });   // Wednesday
+  assert.deepEqual(L.periodFor("week", Date.parse("2026-10-11T10:00:00Z")), { from: "2026-10-11", to: "2026-10-11" });   // Sunday itself
+  assert.deepEqual(L.periodFor("week", Date.parse("2026-10-16T10:00:00Z")), { from: "2026-10-11", to: "2026-10-16" });   // Friday
+  assert.deepEqual(L.periodFor("month", Date.parse("2026-10-14T10:00:00Z")), { from: "2026-10-01", to: "2026-10-14" });
+  // 22:30 UTC on Saturday is already Sunday in Cairo
+  assert.deepEqual(L.periodFor("week", Date.parse("2026-10-17T22:30:00Z")), { from: "2026-10-18", to: "2026-10-18" });
+  assert.deepEqual(L.periodFor("week", Date.parse("2026-01-01T10:00:00Z")), { from: "2025-12-28", to: "2026-01-01" });   // across a year end
+});
+
+test("percentages and changes", () => {
+  assert.equal(L.pct(2, 5), 40); assert.equal(L.pct(1, 3), 33); assert.equal(L.pct(0, 0), null);
+  assert.equal(L.change(4, 2), 2); assert.equal(L.change(3.5, 4), -0.5); assert.equal(L.change(4, null), ""); assert.equal(L.change(null, 2), "");
+});
+
+test("CSV cells are quoted when needed and can never run as spreadsheet formulas", () => {
+  assert.equal(L.csvCell("plain"), "plain");
+  assert.equal(L.csvCell('say "hi", ok'), '"say ""hi"", ok"');
+  assert.equal(L.csvCell("line1\nline2"), '"line1\nline2"');
+  assert.equal(L.csvCell(7), "7");
+  assert.equal(L.csvCell(null), "");
+  assert.equal(L.csvCell("=HYPERLINK(\"http://evil\")"), '"\'=HYPERLINK(""http://evil"")"');
+  assert.equal(L.csvCell("+1 555"), "'+1 555");
+  assert.equal(L.csvCell("@SUM(A1)"), "'@SUM(A1)");
+  assert.equal(L.csvCell("-2.5"), "-2.5");                       // a plain negative number stays a number
+  assert.equal(L.csvCell("يوسف، علي"), "يوسف، علي");
+});
+
+const SAMPLE_REPORT = {
+  period: { from: "2025-03-01", to: "2025-03-31" },
+  totals: { received: 5, open_now: 4, overdue_now: 3 },
+  by_type_urgency: [{ type: "complaint", urgency: "urgent", count: 2 }, { type: "safety_concern", urgency: "critical", count: 1 }],
+  on_time: { acknowledged: { due: 5, on_time: 2 }, resolved: { due: 0, on_time: 0 } },
+  avg_resolve_hours: 43.5,
+  escalations: { cases: 3, moves: 3, by_level: [{ level: 2, count: 2 }, { level: 4, count: 1 }] },
+  satisfaction: { yes: 1, no: 1, waiting: 0 },
+  incidents: { total: 3, open_investigations: 2, by_class: [{ name: "Butterflies", count: 2 }], by_location: [{ name: "Garden", count: 2 }], by_severity: [{ name: "minor", count: 2 }] },
+  ratings: { month: "2025-03-01", previous_month: "2025-02-01",
+    classes: [{ name: "Butterflies", count: 2, care: 4, communication: 4, daily: 4, prev_count: 1, prev_care: 2, prev_communication: 2, prev_daily: 2 },
+              { name: "Ducklings", count: 1, care: 2, communication: 2, daily: 2, prev_count: 0, prev_care: null, prev_communication: null, prev_daily: null }],
+    compliments: [{ staff: "Hana", count: 1, items: [{ month: "2025-03-01", text: "=SUM(1)" }] }] },
+};
+
+test("report sections hold every number the plan asks for", () => {
+  const sec = L.reportSections(SAMPLE_REPORT, (k) => k);
+  const byId = Object.fromEntries(sec.map((x) => [x.id, x]));
+  const summary = Object.fromEntries(byId.summary.rows);
+  assert.equal(summary["rp.ack_on_time"], "2 / 5 (40%)");
+  assert.equal(summary["rp.res_on_time"], "0 / 0");
+  assert.equal(summary["rp.overdue_now"], 3);
+  assert.equal(summary["rp.avg_resolve"], 43.5);
+  assert.equal(summary["rp.open_inv"], 2);
+  assert.deepEqual(byId.types.rows[0], ["rp.type.complaint", "rp.urg.urgent", 2]);
+  assert.deepEqual(byId.levels.rows, [["rp.level 2", 2], ["rp.level 4", 1]]);
+  assert.deepEqual(byId.ratings.rows[0].slice(0, 5), ["Butterflies", 2, 4, 4, 4]);
+  assert.deepEqual(byId.ratings.rows[0].slice(9), [2, 2, 2]);                      // improved by 2 on each score
+  assert.deepEqual(byId.ratings.rows[1].slice(9), ["", "", ""]);                   // nothing to compare with
+  assert.match(byId.ratings.title, /2025-03 vs 2025-02/);
+});
+
+test("the CSV holds the same sections, and defuses formulas in compliments", () => {
+  const csv = L.toCsv(L.reportSections(SAMPLE_REPORT, (k) => k));
+  assert.match(csv, /^rp\.summary\r\nrp\.metric,rp\.value\r\n/);
+  assert.match(csv, /rp\.ack_on_time,2 \/ 5 \(40%\)/);
+  assert.match(csv, /Hana,1,'=SUM\(1\)/);
+  assert.ok(csv.includes("Butterflies,2,4,4,4,1,2,2,2,2,2,2"));
+  assert.equal(csv.split("\r\n").filter((l) => l === "").length, 8);              // a blank line after each of the 8 sections
+});
+
 // ------------------------------ invite parent ------------------------------
 test("invite parent: needs a login token", async () => {
   const r = await run(inviteParent, { body: parentBody });

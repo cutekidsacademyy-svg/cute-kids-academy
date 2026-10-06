@@ -541,8 +541,73 @@
     show(nodes);
   }
 
+  // ------------------------------------------------------------------ Reports (manager / owner)
+  var reportState = { kind: "week", from: "", to: "" };
+
+  function reportTable(sec) {
+    var head = el("tr", {}, sec.header.map(function (h) { return el("th", { text: h }); }));
+    var body = sec.rows.length
+      ? sec.rows.map(function (row) { return el("tr", {}, row.map(function (c) { return el("td", { text: c === null || c === undefined || c === "" ? "" : String(c) }); })); })
+      : [el("tr", {}, [el("td", { colspan: String(sec.header.length), class: "p-sub", text: t("s.rp.none") })])];
+    return card([el("h2", { text: sec.title }), el("div", { class: "tbl-wrap" }, [el("table", { class: "tbl" }, [el("thead", {}, [head]), el("tbody", {}, body)])])]);
+  }
+
+  async function reportsPage() {
+    var period = reportState.kind === "custom" ? { from: reportState.from, to: reportState.to } : L.periodFor(reportState.kind, Date.now());
+    if (reportState.kind === "custom" && !reportState.from) {
+      var m = L.periodFor("month", Date.now()); reportState.from = m.from; reportState.to = m.to; period = m;
+    }
+    loadingView();
+
+    // Controls
+    var bar = el("div", { class: "actions" });
+    [["week", "s.rp.week"], ["month", "s.rp.month"], ["custom", "s.rp.custom"]].forEach(function (o) {
+      var b = el("button", { type: "button", class: "filter-pill" + (reportState.kind === o[0] ? " active" : ""), text: t(o[1]) });
+      b.addEventListener("click", function () { reportState.kind = o[0]; reportsPage(); });
+      bar.appendChild(b);
+    });
+    var from = el("input", { type: "date" }), to = el("input", { type: "date" });
+    from.value = period.from; to.value = period.to;
+    var custom = el("div", { class: "f-grid" }, [field(t("s.rp.from"), from), field(t("s.rp.to"), to)]);
+    var go = el("button", { type: "button", class: "btn btn-outline btn-small", text: t("s.rp.show") });
+    var msg = el("div", {});
+    go.addEventListener("click", function () {
+      if (!from.value || !to.value || to.value < from.value) { msg.textContent = ""; msg.appendChild(note("err", t("s.rp.badperiod"))); return; }
+      reportState.from = from.value; reportState.to = to.value; reportsPage();
+    });
+    var controls = card([el("h1", { text: t("s.rp.title") }), el("p", { class: "p-sub", text: t("s.rp.privacy") }), bar,
+      reportState.kind === "custom" ? custom : null, reportState.kind === "custom" ? go : null, msg,
+      el("p", { class: "p-sub", text: t("s.rp.period") + ": " + period.from + " → " + period.to }),
+      el("p", { class: "p-sub small", text: t("s.rp.note") })].filter(Boolean));
+
+    var r;
+    try { r = await rpc("staff_report", { p_from: period.from, p_to: period.to }); } catch (e) { show([controls, note("err", msgFromError(e))]); return; }
+    var sections = L.reportSections(r, function (k) { return CKA.t(k); });
+
+    var csv = el("button", { type: "button", class: "btn btn-pink btn-small", text: "⬇ " + t("s.rp.csv") });
+    csv.addEventListener("click", function () {
+      var blob = new Blob(["﻿" + L.toCsv(sections)], { type: "text/csv;charset=utf-8" });
+      var a = el("a", { href: URL.createObjectURL(blob), download: "cka-report-" + period.from + "_" + period.to + ".csv" });
+      document.body.appendChild(a); a.click(); a.remove();
+    });
+    controls.appendChild(csv);
+
+    // Headline tiles
+    var ack = r.on_time.acknowledged, res = r.on_time.resolved;
+    function tile(num, label, cls) { return el("div", { class: "tile " + (cls || "") }, [el("strong", { text: String(num) }), el("span", { text: label })]); }
+    function pctText(x) { var p = L.pct(x.on_time, x.due); return p === null ? "—" : p + "%"; }
+    var tiles = card([el("div", { class: "tiles" }, [
+      tile(r.totals.received, t("rp.received")), tile(pctText(ack), t("rp.ack_on_time"), ack.due && ack.on_time / ack.due < 0.8 ? "bad" : "good"),
+      tile(pctText(res), t("rp.res_on_time"), res.due && res.on_time / res.due < 0.8 ? "bad" : "good"),
+      tile(r.totals.overdue_now, t("rp.overdue_now"), r.totals.overdue_now ? "bad" : "good"),
+      tile(r.avg_resolve_hours == null ? "—" : r.avg_resolve_hours, t("rp.avg_resolve")), tile(r.incidents.open_investigations, t("rp.open_inv"))])], "blue");
+
+    show([controls, tiles].concat(sections.map(reportTable)));
+  }
+
   // ------------------------------------------------------------------ Router
   var routes = {
+    reports: function () { return isTop() ? reportsPage() : queue(); },
     investigations: function () { return isTop() ? investigations() : queue(); },
     investigation: function (p) { return isTop() ? investigationPage(p[1]) : queue(); },
     "": queue, "case": function (p) { return casePage(p[1]); }, incident: incidentForm, accidents: accidents,
@@ -565,6 +630,7 @@
     me = res.profile;
     if (me.language && !localStorage.getItem("cka_portal_lang")) CKA.setLang(me.language);
     document.querySelector('#nav [data-route="ratings"]').hidden = !isTop();
+    document.querySelector('#nav [data-route="reports"]').hidden = !isTop();
     document.querySelector('#nav [data-route="investigations"]').hidden = !isTop();
     document.querySelector('#nav [data-route="people"]').hidden = !isMgmt();
     document.getElementById("who").textContent = me.full_name + " · " + t("role." + me.role);
