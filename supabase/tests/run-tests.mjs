@@ -814,6 +814,83 @@ console.log('\n== Notifications and the deadline clock ==');
 }
 
 // ---------------------------------------------------------------------------
+console.log('\n== Manager and owner reports ==');
+{
+  const R = (n) => ID(480 + n);
+  const rep = (who) => [who, `select public.staff_report('2025-03-01', '2025-03-31') as r`];
+  const ins = (n, parent, child, type, urg) => [null, `insert into public.submissions (id, parent_id, child_id, type, title, description, urgency)
+      values ('${R(n)}', '${parent}', '${child}', '${type}', 'Report case ${n}', 'd', '${urg}')`];
+  const setc = (n, cols) => [null, `update public.submissions set ${cols} where id='${R(n)}'`];
+  const ev = (n, oldv, newv, at) => [null, `insert into public.submission_events (submission_id, event_type, message, old_value, new_value, created_at)
+      values ('${R(n)}', 'escalated', 'x', '${oldv}', '${newv}', '${at}')`];
+  const inc = (n, child, loc, sev, at) => [U.hana === null ? null : null, `insert into public.incidents (id, child_id, occurred_at, location, what_happened, severity, parent_called_at, reported_by)
+      values ('${ID(560 + n)}', '${child}', '${at}', '${loc}', 'x', '${sev}', ${sev === 'minor' ? 'null' : `'${at}'`}, '${U.hana}')`];
+  const rating = (parent, child, cls, month, c, m, d, extra = '') => [null, `insert into public.ratings (parent_id, child_id, class_id, month, care_score, communication_score, daily_reports_score, created_at ${extra ? ', compliment_staff_id, compliment_text' : ''})
+      values ('${parent}', '${child}', '${cls}', '${month}', ${c}, ${m}, ${d}, '${month.slice(0, 7)}-15T10:00:00Z' ${extra ? ', ' + extra : ''})`];
+
+  let res = await flow([
+    rep(U.manager),                                                                                              // 0 baseline
+    [null, `alter table public.submissions disable trigger submissions_before_update`],                         // 1
+    [null, `alter table public.submission_events disable trigger submission_events_before_insert`],             // 2
+    [null, `alter table public.ratings disable trigger ratings_before_insert`],                                 // 3
+    ins(1, U.parentA, alpha, 'complaint', 'urgent'), ins(2, U.parentB, beta, 'complaint', 'can_wait'),          // 4, 5
+    ins(3, U.parentC, delta, 'safety_concern', 'critical'), ins(4, U.parentA, alpha, 'complaint', 'urgent'),    // 6, 7
+    ins(5, U.parentB, beta, 'complaint', 'can_wait'), ins(6, U.parentB, beta, 'complaint', 'urgent'),           // 8, 9
+    setc(1, `created_at='2025-03-03T08:00Z', acknowledge_by='2025-03-03T10:00Z', acknowledged_at='2025-03-03T09:00Z', resolve_by='2025-03-04T08:00Z', resolved_at='2025-03-03T18:00Z', status='closed', parent_satisfied=true`),
+    setc(2, `created_at='2025-03-05T08:00Z', acknowledge_by='2025-03-06T08:00Z', acknowledged_at='2025-03-06T09:00Z', resolve_by='2025-03-08T08:00Z', resolved_at='2025-03-08T13:00Z', status='closed', parent_satisfied=false`),
+    setc(3, `created_at='2025-03-10T08:00Z', acknowledge_by='2025-03-10T09:00Z', acknowledged_at='2025-03-10T08:30Z', resolve_by='2025-03-10T16:00Z', status='in_progress'`),
+    setc(4, `created_at='2025-03-12T08:00Z', acknowledge_by='2025-03-12T10:00Z', resolve_by='2025-03-13T08:00Z', status='received'`),
+    setc(5, `created_at='2025-02-28T22:30Z', acknowledge_by='2025-03-02T08:00Z', resolve_by='2025-03-04T08:00Z', status='received'`),   // Cairo: 1 March 00:30 -> inside
+    setc(6, `created_at='2025-03-31T22:30Z', acknowledge_by='2025-04-01T08:00Z', resolve_by='2025-04-02T08:00Z', status='received'`),   // Cairo: 1 April 00:30 -> outside
+    ev(2, 1, 2, '2025-03-06T10:00Z'), ev(4, 1, 2, '2025-03-13T10:00Z'), ev(3, 3, 4, '2025-03-10T12:00Z'),
+    inc(1, alpha, 'Garden', 'minor', '2025-03-04T08:00Z'), inc(2, alpha, 'garden ', 'minor', '2025-03-06T08:00Z'), inc(3, gamma, 'Classroom', 'serious', '2025-03-09T08:00Z'),
+    rating(U.parentA, alpha, ID(201), '2025-03-01', 5, 4, 3, `'${U.hana}', 'Thank you Hana'`),
+    rating(U.parentB, beta, ID(201), '2025-03-01', 3, 4, 5),
+    rating(U.parentB, gamma, ID(202), '2025-03-01', 2, 2, 2),
+    rating(U.parentA, alpha, ID(201), '2025-02-01', 2, 2, 2),
+    rep(U.manager),                                                                                              // after
+    rep(U.owner),
+  ]);
+  const idx = res.length - 2;
+  const b = res[0].rows[0].r, a = res[idx].rows[0].r;
+  const firstErr = res.slice(1, idx).findIndex((x) => x.error);
+  check('the test dataset loads cleanly', firstErr === -1, firstErr >= 0 ? `step ${firstErr + 1}: ${res[firstErr + 1].error}` : '');
+  const tu = a.by_type_urgency.map((x) => `${x.type}/${x.urgency}=${x.count}`).join(',');
+  check('cases are counted by the Cairo day they arrived (midnight boundary respected)', a.totals.received === 5, JSON.stringify(a.totals));
+  check('cases by type and urgency', tu === 'complaint/can_wait=2,complaint/urgent=2,safety_concern/critical=1', tu);
+  check('acknowledged on time: 2 of 5', a.on_time.acknowledged.due === 5 && a.on_time.acknowledged.on_time === 2, JSON.stringify(a.on_time.acknowledged));
+  check('resolved on time: 1 of 5', a.on_time.resolved.due === 5 && a.on_time.resolved.on_time === 1, JSON.stringify(a.on_time.resolved));
+  check('average time to resolve is in hours (10h and 77h -> 43.5h)', Number(a.avg_resolve_hours) === 43.5, String(a.avg_resolve_hours));
+  check('overdue and open items now are counted globally', a.totals.overdue_now - b.totals.overdue_now === 4 && a.totals.open_now - b.totals.open_now === 4, `${b.totals.overdue_now}->${a.totals.overdue_now}`);
+  check('escalations: 3 moves on 3 cases, two to level 2 and one to level 4', a.escalations.moves === 3 && a.escalations.cases === 3 && a.escalations.by_level.map((x) => x.level + ":" + x.count).join() === "2:2,4:1", JSON.stringify(a.escalations));
+  check('parent satisfied: 1 yes, 1 no', a.satisfaction.yes === 1 && a.satisfaction.no === 1 && a.satisfaction.waiting === 0, JSON.stringify(a.satisfaction));
+  check('accidents by class', JSON.stringify(a.incidents.by_class) === JSON.stringify([{ name: 'Butterflies (seed)', count: 2 }, { name: 'Ducklings (seed)', count: 1 }]), JSON.stringify(a.incidents.by_class));
+  check('accidents by location (spelling and case are merged)', a.incidents.by_location.length === 2 && a.incidents.by_location[0].count === 2 && a.incidents.by_location[1].name === 'Classroom', JSON.stringify(a.incidents.by_location));
+  check('accidents by severity', JSON.stringify(a.incidents.by_severity) === JSON.stringify([{ name: 'minor', count: 2 }, { name: 'serious', count: 1 }]), JSON.stringify(a.incidents.by_severity));
+  check('investigations still open (now): the safety concern and the serious accident each opened one', a.incidents.open_investigations - b.incidents.open_investigations === 2, `${b.incidents.open_investigations}->${a.incidents.open_investigations}`);
+  const bf = a.ratings.classes.find((x) => x.name === 'Butterflies (seed)'), dk = a.ratings.classes.find((x) => x.name === 'Ducklings (seed)');
+  check('ratings use the month of the period end, compared with the month before', a.ratings.month === '2025-03-01' && a.ratings.previous_month === '2025-02-01');
+  check('monthly average per class, with last month beside it', bf.count === 2 && Number(bf.care) === 4 && Number(bf.communication) === 4 && Number(bf.daily) === 4 && bf.prev_count === 1 && Number(bf.prev_care) === 2, JSON.stringify(bf));
+  check('a class with no ratings last month shows nothing to compare', dk.count === 1 && Number(dk.care) === 2 && dk.prev_count === 0 && dk.prev_care === null, JSON.stringify(dk));
+  check('compliments are listed by staff member', a.ratings.compliments.length === 1 && a.ratings.compliments[0].staff === 'Teacher Hana (seed)' && a.ratings.compliments[0].count === 1 && a.ratings.compliments[0].items[0].text === 'Thank you Hana', JSON.stringify(a.ratings.compliments));
+  check('the owner gets the same report as the manager', JSON.stringify(res[idx + 1].rows[0].r) === JSON.stringify(a));
+
+  // who may open it, and bad periods
+  res = await flow([
+    [U.admin, `select public.staff_report('2025-03-01', '2025-03-31')`],
+    [U.hana, `select public.staff_report('2025-03-01', '2025-03-31')`],
+    [U.parentA, `select public.staff_report('2025-03-01', '2025-03-31')`],
+    [null, `select public.staff_report('2025-03-01', '2025-03-31')`],
+    [U.manager, `select public.staff_report('2025-03-31', '2025-03-01')`],
+    [U.manager, `select public.staff_report('2020-01-01', '2025-03-31')`],
+    [U.manager, `select public.staff_report('2025-03-01', '2025-03-01') as r`],
+  ]);
+  check('only the manager and owner can open the report (not admin, teachers, parents, or visitors)', res.slice(0, 4).every((x) => !!x.error), res.slice(0, 4).map((x) => x.error).join('|'));
+  check('a backwards or huge period is refused', !!res[4].error && !!res[5].error);
+  check('a single-day period works and is empty for an empty day', !res[6].error && res[6].rows[0].r.totals.received === 0);
+}
+
+// ---------------------------------------------------------------------------
 console.log('\n== Removing the seed data before launch ==');
 {
   // Add a real (non-seed) family first: the clean-up must leave it alone.
