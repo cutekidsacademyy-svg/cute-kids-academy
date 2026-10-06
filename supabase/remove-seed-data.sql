@@ -26,6 +26,8 @@ create temporary table seed_invs on commit drop as
 alter table public.submission_events   disable trigger submission_events_no_update;
 alter table public.investigation_steps disable trigger investigation_steps_no_change;
 
+delete from public.deadline_events        where submission_id in (select id from seed_subs);
+delete from public.email_outbox           where user_id in (select id from seed_users);
 delete from public.attachments            where submission_id in (select id from seed_subs);
 delete from public.ratings                where parent_id in (select id from seed_users) or child_id in (select id from seed_children);
 delete from public.investigation_steps    where investigation_id in (select id from seed_invs);

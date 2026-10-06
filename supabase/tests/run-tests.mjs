@@ -674,6 +674,146 @@ console.log('\n== Investigations: workflow, hidden drafts and name warnings ==')
 }
 
 // ---------------------------------------------------------------------------
+console.log('\n== Notifications and the deadline clock ==');
+{
+  const C = ID(470);
+  const mk = (who, id, type = 'complaint', urg = 'urgent', child = alpha) => [who, `insert into public.submissions (id, parent_id, child_id, type, title, description, urgency)
+      values ('${id}', '${who}', '${child}', '${type}', 'Title for ${id.slice(-3)}', 'SECRET DESCRIPTION', '${urg}')`];
+  const mail = (id) => [null, `select user_id, template, language, payload from public.email_outbox where payload->>'id' = '${id}' order by created_at, template`];
+  const tpl = (rows, t, user) => rows.filter((x) => x.template === t && (!user || x.user_id === user));
+  // Keep the seeded cases out of the clock tests by pushing their deadlines far away.
+  const calm = (except) => [null, `update public.submissions set acknowledge_by='2031-01-01', resolve_by='2031-01-01' where id <> '${except}'`];
+  const tick = (iso) => [null, `select public.cka_run_deadline_check('${iso}') as r`];
+
+  // ---- lifecycle emails
+  let res = await flow([
+    mk(U.parentA, C),                                                                                  // 0
+    [U.hana, `select public.staff_acknowledge('${C}', 'Thanks, we have seen this. PRIVATE MESSAGE')`], // 1
+    [U.hana, `insert into public.submission_events (submission_id, actor_id, event_type, message, visible_to_parent) values ('${C}', '${U.hana}', 'update', 'PRIVATE UPDATE TEXT', true)`], // 2
+    [U.admin, `select public.change_urgency('${C}', 'can_wait', 'Not time critical any more')`],        // 3
+    [U.admin, `select public.staff_assign('${C}', '${U.hana}')`],                                       // 4
+    [U.hana, `select public.staff_assign('${C}', '${U.hana}')`],                                        // 5 self-assign: no email
+    [U.admin, `select public.staff_resolve('${C}', 'Resolved with a PRIVATE RESOLUTION')`],            // 6
+    mail(C),                                                                                            // 7
+  ]);
+  const rows = res[7].rows;
+  check('a new case emails the parent in their own language', tpl(rows, 'received', U.parentA).length === 1 && tpl(rows, 'received')[0].language === 'en');
+  check('...the "received" email carries the deadlines', !!tpl(rows, 'received')[0].payload.acknowledge_by && !!tpl(rows, 'received')[0].payload.resolve_by);
+  check('acknowledging emails the parent', tpl(rows, 'acknowledged', U.parentA).length === 1);
+  check('a staff update emails the parent', tpl(rows, 'update_added', U.parentA).length === 1);
+  const urg = tpl(rows, 'urgency_changed', U.parentA);
+  check('a change of urgency emails the parent with the reason', urg.length === 1 && urg[0].payload.reason === 'Not time critical any more' && urg[0].payload.old_urgency === 'urgent');
+  check('assigning emails the new person, but not when you assign yourself', tpl(rows, 'assigned', U.hana).length === 1);
+  check('resolving emails the parent', tpl(rows, 'resolved', U.parentA).length === 1);
+  const all = JSON.stringify(rows.map((x) => x.payload));
+  check("emails never contain what the parent wrote or what staff replied", !/SECRET DESCRIPTION|PRIVATE MESSAGE|PRIVATE UPDATE|PRIVATE RESOLUTION/.test(all));
+
+  res = await flow([mk(U.parentB, ID(471), 'complaint', 'urgent', beta), mail(ID(471))]);
+  check('an Arabic-speaking parent gets an Arabic email', tpl(res[1].rows, 'received', U.parentB)[0].language === 'ar');
+
+  // ---- critical alerts
+  res = await flow([mk(U.parentA, ID(472), 'safety_concern', 'urgent'), mail(ID(472))]);
+  const crit = res[1].rows;
+  check('a safety concern alerts the manager and the owner at once', tpl(crit, 'critical_alert', U.manager).length === 1 && tpl(crit, 'critical_alert', U.owner).length === 1);
+  check('...and tells the manager it is assigned to them', tpl(crit, 'assigned', U.manager).length === 1);
+  check('...and admin is not alerted', crit.filter((x) => x.user_id === U.admin).length === 0);
+
+  // ---- deactivated staff are not emailed
+  res = await flow([
+    mk(U.parentA, C),
+    [null, `update public.profiles set active=false where id='${U.hana}'`],
+    [U.admin, `select public.staff_assign('${C}', '${U.manager}')`],
+    mail(C),
+  ]);
+  check('assignment emails go to the right person', tpl(res[3].rows, 'assigned', U.manager).length === 1);
+
+  // ---- accident and investigation emails
+  res = await flow([
+    [U.hana, `insert into public.incidents (id, child_id, occurred_at, location, what_happened, severity, parent_called_at, reported_by)
+              values ('${ID(540)}', '${alpha}', now(), 'Classroom', 'PRIVATE ACCIDENT DETAIL', 'serious', now(), '${U.hana}')`],
+    [null, `select user_id, template, payload from public.email_outbox where payload->>'incident_id' = '${ID(540)}'`],
+  ]);
+  const acc = res[1].rows;
+  check('an accident emails both parents of the child', tpl(acc, 'accident_report', U.parentA).length === 1 && tpl(acc, 'accident_report', U.parentC).length === 1 && tpl(acc, 'accident_report', U.parentB).length === 0);
+  check('a serious accident also alerts the manager and the owner', tpl(acc, 'serious_accident', U.manager).length === 1 && tpl(acc, 'serious_accident', U.owner).length === 1);
+  check('accident emails carry no details', !/PRIVATE ACCIDENT DETAIL|Classroom/.test(JSON.stringify(acc)));
+
+  res = await flow([
+    mk(U.parentA, C, 'safety_concern'),
+    [U.manager, `insert into public.investigation_steps (investigation_id, step) values ((select id from public.investigations where submission_id='${C}'), 'parent_called')`],
+    mail(C),
+  ]);
+  const st = tpl(res[2].rows, 'investigation_step', U.parentA);
+  check('completing an investigation step emails the parent, but opening it does not', st.length === 1 && st[0].payload.step === 'parent_called');
+
+  // ---- the deadline clock
+  const SUN = '2026-10-11T07:00:00Z';     // Sunday 10:00 in Cairo
+  res = await flow([
+    mk(U.parentA, C), calm(C),
+    [null, `update public.submissions set acknowledge_by='2026-10-11T07:30:00Z', resolve_by='2026-10-12T07:30:00Z' where id='${C}'`],
+    tick(SUN),                                                                                         // 3 warn
+    tick(SUN),                                                                                         // 4 again: nothing new
+    [null, `select user_id, template from public.email_outbox where template='deadline_warning' and payload->>'id'='${C}'`], // 5
+    tick('2026-10-11T07:35:00Z'),                                                                      // 6 deadline missed: escalate to level 2
+    [null, `select escalation_level, assigned_to from public.submissions where id='${C}'`],           // 7
+    [U.parentA, `select event_type, message from public.submission_events where submission_id='${C}' and event_type='escalated'`], // 8 hidden
+    [null, `select message, visible_to_parent from public.submission_events where submission_id='${C}' and event_type='escalated'`], // 9
+    [null, `select user_id, template from public.email_outbox where payload->>'id'='${C}' and template in ('escalated','assigned')`], // 10
+    tick('2026-10-11T07:40:00Z'),                                                                      // 11 still inside the window: nothing
+    tick('2026-10-11T09:36:00Z'),                                                                      // 12 next window: level 3
+    [null, `select escalation_level, assigned_to from public.submissions where id='${C}'`],           // 13
+    tick('2026-10-11T11:40:00Z'),                                                                      // 14 level 4
+    [null, `select escalation_level, assigned_to from public.submissions where id='${C}'`],           // 15
+    tick('2026-10-11T13:41:00Z'),                                                                      // 16 at the top: tell the owner once
+    tick('2026-10-11T13:56:00Z'),                                                                      // 17 not again
+    [null, `select user_id, template from public.email_outbox where template='overdue_top' and payload->>'id'='${C}'`], // 18
+  ]);
+  check('one hour before a deadline the person handling it gets one warning (admin, for an unassigned case)', res[3].rows[0].r.warned === 1 && res[5].rows.length === 1 && res[5].rows[0].user_id === U.admin, JSON.stringify([res[3].rows[0], res[5].rows]));
+  check('running the checker again does not repeat the warning', res[4].rows[0].r.warned === 0 && res[5].rows.length === 1);
+  check('a missed deadline moves the case up one level, to the class head teacher', res[6].rows[0].r.escalated === 1 && res[7].rows[0].escalation_level === 2 && res[7].rows[0].assigned_to === U.hana, JSON.stringify(res[6].rows[0]));
+  check('the timeline says "escalated automatically: deadline missed", internally', res[9].rows.length === 1 && res[9].rows[0].message === 'escalated automatically: deadline missed' && res[9].rows[0].visible_to_parent === false);
+  check('...and the parent cannot see the escalation', res[8].rows.length === 0);
+  check('the new handler gets one "escalated" email and no duplicate "assigned" one', res[10].rows.filter((x) => x.template === 'escalated' && x.user_id === U.hana).length === 1 && res[10].rows.filter((x) => x.template === 'assigned' && x.user_id === U.hana).length === 0);
+  check('no second escalation inside the same window', res[11].rows[0].r.escalated === 0);
+  check('the next window moves it to level 3 (manager)', res[12].rows[0].r.escalated === 1 && res[13].rows[0].escalation_level === 3 && res[13].rows[0].assigned_to === U.manager);
+  check('then to level 4 (owner)', res[14].rows[0].r.escalated === 1 && res[15].rows[0].escalation_level === 4 && res[15].rows[0].assigned_to === U.owner);
+  check('at the top the owner is told once that it is overdue', res[16].rows[0].r.overdue_at_top === 1 && res[17].rows[0].r.overdue_at_top === 0 && res[18].rows.length === 1 && res[18].rows[0].user_id === U.owner);
+
+  // ---- working hours: paused at night/weekends, except for critical cases
+  const FRI = '2026-10-16T09:00:00Z';     // Friday 12:00 in Cairo
+  res = await flow([
+    mk(U.parentA, C), calm(C),
+    [null, `update public.submissions set acknowledge_by='2026-10-14T05:00:00Z', resolve_by='2026-10-14T07:00:00Z' where id='${C}'`],
+    tick(FRI),                                                                                         // 3
+    [null, `select escalation_level from public.submissions where id='${C}'`],                         // 4
+    mk(U.parentA, ID(473), 'safety_concern'),                                                           // 5
+    [null, `update public.submissions set acknowledge_by='2026-10-16T08:00:00Z' where id='${ID(473)}'`], // 6
+    tick(FRI),                                                                                         // 7
+    [null, `select escalation_level, assigned_to from public.submissions where id='${ID(473)}'`],     // 8
+    tick('2026-10-14T16:00:00Z'),                                                                      // 9 Wednesday 19:00 Cairo: after hours
+    [null, `select escalation_level from public.submissions where id='${C}'`],                         // 10
+    tick('2026-10-15T07:00:00Z'),                                                                      // 11 Thursday 10:00: in hours
+    [null, `select escalation_level from public.submissions where id='${C}'`],                         // 12
+  ]);
+  check('on a Friday an ordinary case does not escalate (deadlines pause)', res[3].rows[0].r.in_working_hours === false && res[4].rows[0].escalation_level === 1, JSON.stringify(res[3].rows[0]));
+  check('...but a critical case still escalates on a Friday (manager to owner)', res[7].rows[0].r.escalated === 1 && res[8].rows[0].escalation_level === 4 && res[8].rows[0].assigned_to === U.owner, JSON.stringify(res[7].rows[0]));
+  check('after 18:00 an ordinary case still waits', res[10].rows[0].escalation_level === 1);
+  check('the next working morning it escalates', res[11].rows[0].r.in_working_hours === true && res[12].rows[0].escalation_level === 2);
+
+  // ---- who may use what
+  let r = await as(U.parentA, 'select * from public.email_outbox');
+  check('parents cannot read the email queue', !!r.error && /permission denied/.test(r.error), r.error);
+  r = await as(U.owner, 'select * from public.email_outbox');
+  check('not even the owner can read the queue from the browser', !!r.error);
+  r = await as(U.owner, `select public.cka_run_deadline_check('2026-10-11T07:00:00Z')`);
+  check('nobody can run the deadline checker from the browser', !!r.error && /permission denied/.test(r.error), r.error);
+  const priv = (await db.query(`select has_function_privilege('authenticated','public.cka_run_deadline_check(timestamptz)','execute') as a,
+                                      has_function_privilege('anon','public.cka_run_deadline_check(timestamptz)','execute') as n,
+                                      has_function_privilege('service_role','public.cka_run_deadline_check(timestamptz)','execute') as s`)).rows[0];
+  check('only the server key may run the deadline checker', priv.a === false && priv.n === false && priv.s === true, JSON.stringify(priv));
+}
+
+// ---------------------------------------------------------------------------
 console.log('\n== Removing the seed data before launch ==');
 {
   // Add a real (non-seed) family first: the clean-up must leave it alone.
