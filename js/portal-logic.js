@@ -70,10 +70,10 @@
     var weekday = new Intl.DateTimeFormat(loc, { timeZone: TZ, weekday: "long" }).format(d);
     var date = new Intl.DateTimeFormat(loc, { timeZone: TZ, day: "numeric", month: "long" }).format(d);
     if (lang === "ar") {
-      var dayAr = diff <= 0 ? "اليوم" : diff === 1 ? "غداً" : diff <= 6 ? weekday : date;
+      var dayAr = diff === 0 ? "اليوم" : diff === 1 ? "غداً" : diff === -1 ? "أمس" : Math.abs(diff) <= 6 ? weekday : date;
       return dayAr + " الساعة " + time;
     }
-    var day = diff <= 0 ? "today" : diff === 1 ? "tomorrow" : diff <= 6 ? weekday : date;
+    var day = diff === 0 ? "today" : diff === 1 ? "tomorrow" : diff === -1 ? "yesterday" : Math.abs(diff) <= 6 ? weekday : date;
     return day + " at " + time;
   }
   const refLabel = (n) => "CKA-" + String(n).padStart(4, "0");

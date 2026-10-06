@@ -13,6 +13,7 @@ automatically; it takes effect only when you run it in a Supabase project.
 | `migrations/..._rules_and_triggers.sql` | Automatic rules: urgency, deadlines, timeline logging, investigation step order, parent actions |
 | `migrations/..._row_level_security.sql` | The privacy rules (row-level security on every table) |
 | `migrations/..._storage.sql` | Private photo bucket (images only, 5 MB) |
+| `migrations/..._staff_tools.sql` | Staff queue, case details, case actions (acknowledge, assign, escalate, resolve), auto-assign to the manager at level 3, serious accident opens an investigation |
 | `migrations/..._parent_views.sql` | Parent-safe lookups: own cases with handler name, own accident reports, staff names for "about a staff member" |
 | `seed.sql` | FAKE test data: 2 classes, 4 children, 3 parents, 5 staff logins |
 | `remove-seed-data.sql` | Deletes all seed data before launch |
