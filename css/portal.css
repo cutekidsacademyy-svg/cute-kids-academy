@@ -1,0 +1,66 @@
+/* Parent portal + staff area. Mobile-first, works left-to-right and right-to-left. */
+:root{
+  --pink:#E6197F; --pink-dark:#C21169; --pink-light:#FDE6F1;
+  --blue:#1CADE4; --blue-dark:#0F8FC0; --blue-light:#E4F7FC;
+  --ink:#2B2340; --muted:#6b647c; --cream:#FFFBF5; --line:#eadfe8;
+  --ok:#17803d; --bad:#b3261e;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Quicksand',sans-serif;color:var(--ink);background:var(--cream);line-height:1.6;min-height:100vh}
+h1,h2,h3{font-family:'Baloo 2',cursive;font-weight:700;line-height:1.2}
+[dir="rtl"] body{font-family:'Quicksand','Segoe UI',Tahoma,sans-serif}
+button,input,select{font:inherit;color:inherit}
+
+.p-header{background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.p-bar{max-width:980px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.p-logo{height:46px;width:auto;display:block}
+.p-spacer{flex:1}
+.p-link{background:none;border:0;color:var(--blue-dark);font-weight:700;cursor:pointer;text-decoration:none;padding:8px 4px;font-size:.95rem}
+.p-link:hover{text-decoration:underline}
+
+.p-main{max-width:980px;margin:0 auto;padding:22px 16px 60px}
+.p-card{background:#fff;border-radius:18px;padding:22px 20px;box-shadow:0 12px 28px -20px rgba(43,35,64,.3);border-top:6px solid var(--pink);margin-bottom:20px}
+.p-card.blue{border-top-color:var(--blue)}
+.p-card h2{font-size:1.3rem;margin-bottom:6px}
+.p-card h3{font-size:1.05rem;margin:18px 0 8px}
+.p-sub{color:var(--muted);margin-bottom:14px}
+
+.p-auth{max-width:440px;margin:28px auto}
+.p-auth .p-logo-big{display:block;height:72px;margin:0 auto 18px}
+
+.f-row{margin-bottom:14px}
+.f-row label{display:block;font-weight:700;font-size:.92rem;margin-bottom:4px}
+.f-row input[type=text],.f-row input[type=email],.f-row input[type=password],.f-row input[type=tel],.f-row select{
+  width:100%;padding:12px 14px;border:2px solid var(--line);border-radius:12px;background:#fff;font-size:1rem}
+.f-row input:focus,.f-row select:focus{outline:none;border-color:var(--blue)}
+.f-grid{display:grid;gap:0 14px;grid-template-columns:1fr}
+@media(min-width:640px){.f-grid{grid-template-columns:1fr 1fr}}
+.checks{display:grid;gap:6px;max-height:190px;overflow:auto;border:2px solid var(--line);border-radius:12px;padding:10px 12px}
+.checks label{display:flex;gap:8px;align-items:center;font-weight:600;margin:0}
+.checks input{width:18px;height:18px;accent-color:var(--pink)}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:'Baloo 2',cursive;font-weight:600;font-size:1rem;padding:12px 26px;border-radius:999px;border:3px solid transparent;cursor:pointer;min-height:46px}
+.btn-pink{background:var(--pink);color:#fff;box-shadow:0 10px 24px -10px rgba(230,25,127,.6)}
+.btn-pink:hover{background:var(--pink-dark)}
+.btn-outline{background:transparent;border-color:var(--blue);color:var(--blue-dark)}
+.btn-small{padding:6px 16px;min-height:36px;font-size:.88rem}
+.btn[disabled]{opacity:.6;cursor:wait}
+.btn-block{width:100%}
+
+.note{padding:11px 14px;border-radius:12px;margin-bottom:14px;font-weight:600}
+.note.err{background:#fdecea;color:var(--bad)}
+.note.ok{background:#e8f6ec;color:var(--ok)}
+.note.info{background:var(--blue-light);color:var(--blue-dark)}
+.hidden{display:none!important}
+
+.kid{display:flex;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.kid:last-child{border-bottom:0}
+.kid .dot{width:42px;height:42px;border-radius:50%;background:var(--pink-light);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex:none}
+.kid small{color:var(--muted);display:block}
+
+.tbl-wrap{overflow-x:auto}
+table.tbl{width:100%;border-collapse:collapse;min-width:480px}
+.tbl th,.tbl td{text-align:start;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl th{font-size:.82rem;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:.78rem;font-weight:700;background:var(--blue-light);color:var(--blue-dark)}
+.pill.off{background:#eee;color:#666}
