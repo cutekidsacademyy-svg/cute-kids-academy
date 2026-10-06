@@ -1,5 +1,5 @@
 // Tests for the email wording and the email sender, against fake Supabase and Resend servers.
-// Run from the project root:  node --test tests
+// Run from the project root:  node --test tests/*.test.mjs
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
@@ -182,4 +182,15 @@ test("owner reminder emails state the numbers and link to the checklist or dashb
   assert.match(render("checklist_afternoon", CASE, "ar", { site: SITE }).subject, /أُنجز 2 من 6/);
   assert.match(render("review_thursday", CASE, "en", { site: SITE }).text, /Late tasks: 3/);
   assert.match(render("review_monthly", CASE, "en", { site: SITE }).text, new RegExp(SITE + "/staff/#/owner"));
+});
+
+test("sender: running it again right after sends nothing a second time", async () => {
+  const w = world();
+  const first = await call({ w });
+  assert.equal(first.emails.sent, 2);
+  const again = await call({ w });
+  assert.equal(again.emails.sent, 0);
+  assert.equal(again.emails.waiting, 0);
+  assert.equal(w.state.resend.length, 2, "Resend was called exactly twice in total");
+  assert.ok(w.state.outbox.every((x) => x.status === "sent" && x.attempts === 1));
 });

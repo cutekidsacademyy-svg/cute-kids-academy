@@ -198,3 +198,10 @@ tr.row-watch td{background:#fff8ee}
 .check-btn.on-bad{background:var(--bad);color:#fff;border-color:var(--bad)}
 .note-row{margin:8px 0}
 .note-row input{width:100%;padding:10px 12px;border:2px solid var(--line);border-radius:12px;font-size:1rem}
+
+.p-foot{max-width:980px;margin:0 auto;padding:10px 16px 40px;text-align:center}
+.p-foot a{color:var(--muted);font-weight:700;font-size:.9rem}
+
+/* every drop-down is thumb-sized, including the ones inside table rows and cards */
+.p-main select{min-height:42px;padding:8px 12px;border:2px solid var(--line);border-radius:12px;background:#fff;font-size:1rem;max-width:100%}
+.p-main select:focus{outline:none;border-color:var(--blue)}

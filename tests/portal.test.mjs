@@ -1,5 +1,5 @@
 // Tests for the portal's shared rules and server functions, against a fake Supabase.
-// Run from the project root:  node --test tests
+// Run from the project root:  node --test tests/*.test.mjs
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";

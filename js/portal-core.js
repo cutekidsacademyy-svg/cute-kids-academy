@@ -12,7 +12,7 @@
   var STR = {
     en: {
       brand: "Cute Kids Academy",
-      "nav.site": "Back to website", "nav.signout": "Sign out", "nav.lang": "العربية",
+      "nav.site": "Back to website", "nav.signout": "Sign out", "nav.lang": "العربية", "nav.privacy": "Privacy notice",
       "login.title": "Parent & staff login", "login.welcome": "Welcome back",
       "login.sub": "Sign in to see your child's updates.",
       "field.email": "Email", "field.password": "Password", "field.newpassword": "New password",
@@ -48,7 +48,7 @@
     },
     ar: {
       brand: "كيوت كيدز أكاديمي",
-      "nav.site": "العودة إلى الموقع", "nav.signout": "تسجيل الخروج", "nav.lang": "English",
+      "nav.site": "العودة إلى الموقع", "nav.signout": "تسجيل الخروج", "nav.lang": "English", "nav.privacy": "إشعار الخصوصية",
       "login.title": "تسجيل دخول أولياء الأمور والموظفين", "login.welcome": "أهلاً بعودتك",
       "login.sub": "سجّل الدخول لمتابعة أخبار طفلك.",
       "field.email": "البريد الإلكتروني", "field.password": "كلمة المرور", "field.newpassword": "كلمة المرور الجديدة",

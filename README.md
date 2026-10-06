@@ -74,3 +74,8 @@ npx serve .
 ```
 
 Note: content fetching (`fetch('/content/...')`) requires serving over `http://`, not opening `index.html` directly as a `file://` URL. The `/admin` CMS and the OAuth functions in `/api` won't work in this simple local preview — they need to run on Vercel (or via `vercel dev`, if you have the Vercel CLI installed) since the OAuth handshake depends on a real, publicly reachable callback URL.
+
+
+## Parent portal
+
+A private, login-only parent portal and staff area is being built on the `portal` branch (login at `/login/`, parents at `/portal/`, staff at `/staff/`). It does not change the public pages. See `supabase/README.md` for the database and `LAUNCH-CHECKLIST.md` for what to do before it goes live.

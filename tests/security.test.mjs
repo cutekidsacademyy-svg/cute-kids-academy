@@ -2,7 +2,7 @@
 //   * no secret keys in any file or anywhere in the git history (this repository is PUBLIC)
 //   * the browser code never builds HTML from data, never uses public photo links, never holds the service key
 //   * every server function checks who is calling
-// Run from the project root:  node --test tests
+// Run from the project root:  node --test tests/*.test.mjs
 import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";

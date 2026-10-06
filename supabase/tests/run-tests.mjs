@@ -1377,6 +1377,37 @@ console.log('\n== Owner routine: checklist, task tracker and reminders ==');
 }
 
 // ---------------------------------------------------------------------------
+console.log('\n== Launch test: overdue cases escalate and email exactly once ==');
+{
+  const A = ID(700), B = ID(701), Cc = ID(702);
+  const mk = (id, who, child, type, urg) => [who, `insert into public.submissions (id, parent_id, child_id, type, title, description, urgency) values ('${id}', '${who}', '${child}', '${type}', 'Overdue ${id.slice(-2)}', 'd', '${urg}')`];
+  const tick = (iso) => [null, `select public.cka_run_deadline_check('${iso}') as r`];
+  const counts = `select count(*)::int as n, count(distinct dedupe_key)::int as uniq from public.email_outbox where template in ('escalated','deadline_warning','overdue_top') and payload->>'id' in ('${A}','${B}','${Cc}')`;
+  const NOW = '2026-10-11T07:35:00Z';                     // Sunday 10:35 in Cairo, inside working hours
+  const res = await flow([
+    mk(A, U.parentA, alpha, 'complaint', 'urgent'), mk(B, U.parentB, beta, 'complaint', 'can_wait'), mk(Cc, U.parentC, delta, 'safety_concern', 'urgent'),
+    [null, `update public.submissions set acknowledge_by='2026-10-10T07:00:00Z', resolve_by='2026-10-12T07:00:00Z' where id in ('${A}','${B}')`],   // a day overdue
+    [null, `update public.submissions set acknowledge_by='2026-10-11T06:00:00Z', resolve_by='2026-10-11T15:00:00Z' where id = '${Cc}'`],           // critical, an hour and a half overdue
+    [null, `update public.submissions set acknowledge_by='2031-01-01', resolve_by='2031-01-01' where id not in ('${A}','${B}','${Cc}')`],            // keep the seed cases out of it
+    tick(NOW), tick(NOW), tick(NOW),                                                                                                                 // 6,7,8: three runs at the same moment
+    [null, counts],                                                                                                                                  // 9
+    [null, `select id, escalation_level, assigned_to from public.submissions where id in ('${A}','${B}','${Cc}') order by id`],                     // 10
+    [null, `select count(*)::int as n from public.submission_events where event_type='escalated' and message='escalated automatically: deadline missed' and submission_id in ('${A}','${B}','${Cc}')`], // 11
+    tick('2026-10-11T07:50:00Z'), tick('2026-10-11T08:05:00Z'),                                                                                     // 12,13: later runs inside the same window
+    [null, counts],                                                                                                                                  // 14
+    [null, `select id, escalation_level from public.submissions where id in ('${A}','${B}','${Cc}') order by id`],                                  // 15
+  ]);
+  const r1 = res[6].rows[0].r, r2 = res[7].rows[0].r, r3 = res[8].rows[0].r;
+  check('the first run escalates every overdue case once (two ordinary, one safety concern)', r1.escalated === 3, JSON.stringify(r1));
+  check('running the checker again straight away escalates nothing more', r2.escalated === 0 && r3.escalated === 0 && r2.warned === 0, JSON.stringify([r2, r3]));
+  const lv = Object.fromEntries(res[10].rows.map((x) => [x.id, x.escalation_level]));
+  check('ordinary cases moved from level 1 to 2; the safety concern from level 3 to 4', lv[A] === 2 && lv[B] === 2 && lv[Cc] === 4, JSON.stringify(lv));
+  check('each escalation is written to the timeline exactly once', res[11].rows[0].n === 3);
+  check('each escalation emailed its recipient exactly once, with no duplicate alerts', res[9].rows[0].n === res[9].rows[0].uniq && res[9].rows[0].n >= 3, JSON.stringify(res[9].rows[0]));
+  check('later runs inside the same window change nothing', res[12].rows[0].r.escalated === 0 && res[13].rows[0].r.escalated === 0 && res[14].rows[0].n === res[9].rows[0].n && JSON.stringify(res[15].rows) === JSON.stringify(res[10].rows.map((x) => ({ id: x.id, escalation_level: x.escalation_level }))));
+}
+
+// ---------------------------------------------------------------------------
 console.log('\n== Removing the seed data before launch ==');
 {
   // Add a real (non-seed) family first: the clean-up must leave it alone.
