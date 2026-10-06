@@ -128,6 +128,7 @@
       !finished ? kv(c.status === "received" ? t("s.due.by") + " (1)" : t("s.due.by") + " (2)", when(c.status === "received" ? c.acknowledge_by : c.resolve_by)) : null,
       c.parent_satisfied === null ? null : kv(t("s.c.satisfied"), c.parent_satisfied ? t("s.c.yes") : t("s.c.no")),
       c.has_investigation ? note("info", t("s.c.investigation")) : null,
+      c.investigation_id ? link("#/investigation/" + c.investigation_id, t("s.v.open.link") + " →", "btn btn-outline btn-small") : null,
     ].filter(Boolean), st === "overdue" ? "overdue" : ""));
 
     var story = [el("h2", { text: t("s.c.desc") }), el("p", { class: "preline", text: c.description })];
@@ -421,14 +422,136 @@
     show(nodes);
   }
 
+  // ------------------------------------------------------------------ Investigations (manager / owner)
+  var STEPS = ["opened", "parent_called", "facts_gathered", "findings", "actions_taken", "parent_informed", "closed"];
+  function duration(hours) {
+    var h = Number(hours);
+    return h < 48 ? Math.round(h * 10) / 10 + " " + t("s.v.hours") : Math.round(h / 24 * 10) / 10 + " " + t("s.v.days");
+  }
+  function responseNote(resp) {
+    if (resp === "disagreed") return note("err", "⚠ " + t("s.v.disagrees"));
+    if (resp === "acknowledged") return note("ok", t("s.v.acked"));
+    return el("small", { class: "promise", text: t("s.v.noresponse") });
+  }
+
+  async function investigations() {
+    loadingView();
+    var rows = await rpc("staff_investigations");
+    var nodes = [card([el("h1", { text: t("s.v.title") })].concat(rows.length ? [] : [el("p", { class: "p-sub", text: t("s.v.none") })]))];
+    rows.forEach(function (r) {
+      nodes.push(el("a", { class: "case-item " + (r.parent_response === "disagreed" ? "due-overdue" : r.status === "open" ? "due-soon" : "due-done"), href: "#/investigation/" + r.id }, [
+        el("div", { class: "case-top" }, [pill(t("s.v.kind." + r.kind), r.kind === "accident" ? "sev-needs_attention" : "urg-critical"),
+          pill(t(r.status === "open" ? "s.v.open" : "s.v.closed")), r.ref_no ? el("strong", { text: L.refLabel(r.ref_no) }) : null,
+          r.severity ? pill(t("s.i." + r.severity), "sev-" + r.severity) : null]),
+        el("div", { class: "case-title", text: r.headline }),
+        el("small", { text: r.child_name + " · " + t("s.v.step") + " " + r.steps_done + "/7 · " + t("s.step." + r.current_step) }),
+        el("small", { text: (r.assigned_name ? t("s.v.assigned") + ": " + r.assigned_name + " · " : "") + (r.status === "open" ? t("s.v.running") : t("s.v.took")) + " " + duration(r.hours_taken) }),
+        r.parent_response ? el("small", { class: r.parent_response === "disagreed" ? "due-text" : "", text: r.parent_response === "disagreed" ? "⚠ " + t("s.v.disagrees") : t("s.v.acked") }) : null,
+      ]));
+    });
+    show(nodes);
+  }
+
+  async function investigationPage(id) {
+    loadingView();
+    var res = await Promise.all([
+      client.rpc("staff_investigation", { p_id: id }),
+      client.from("investigation_steps").select("step, completed_at, profiles(full_name)").eq("investigation_id", id),
+    ]);
+    var v = res[0].data && res[0].data[0];
+    if (res[0].error || !v) return failView();
+    var done = {}; (res[1].data || []).forEach(function (s) { done[s.step] = s; });
+    var closed = v.status === "closed";
+    var nodes = [link("#/investigations", t("s.v.back"))];
+    if (flash) { nodes.push(note("ok", flash)); flash = null; }
+    var reload = function (m) { flash = m || null; investigationPage(id); };
+
+    nodes.push(card([
+      el("div", { class: "case-top" }, [pill(t("s.v.kind." + v.kind), v.kind === "accident" ? "sev-needs_attention" : "urg-critical"), pill(t(closed ? "s.v.closed" : "s.v.open")),
+        v.ref_no ? el("strong", { text: L.refLabel(v.ref_no) }) : null, v.severity ? pill(t("s.i." + v.severity), "sev-" + v.severity) : null]),
+      el("h1", { text: v.headline }),
+      kv(t("s.v.child"), v.child_name),
+      v.occurred_at ? kv(t("s.v.where"), fmt(v.occurred_at) + " · " + v.location) : null,
+      v.submission_id ? el("div", { class: "kv" }, [link("#/case/" + v.submission_id, t("s.nav.queue") + " →")]) : null,
+      kv(t("s.v.what"), v.description),
+      kv(t("s.v.assigned"), v.assigned_name || "—"),
+      kv(closed ? t("s.v.took") : t("s.v.running"), duration(v.hours_taken)),
+      responseNote(v.parent_response),
+    ].filter(Boolean), v.parent_response === "disagreed" ? "overdue" : ""));
+
+    // Notes (findings for the parent + the internal ones)
+    var f = textarea(5), internal = textarea(4), statements = textarea(4), actions = textarea(3);
+    f.value = (done.findings ? v.findings_for_parent : v.findings_draft) || v.findings_for_parent || "";
+    internal.value = v.internal_findings || ""; statements.value = v.staff_statements || ""; actions.value = v.actions_taken || "";
+    [f, internal, statements, actions].forEach(function (x) { x.disabled = closed; });
+    var msg = el("div", {}), save = el("button", { class: "btn btn-pink btn-small", type: "submit", text: t("s.v.save") });
+    save.hidden = closed;
+
+    // Warn when the text names another child (parents must never see that).
+    async function confirmNames() {
+      var r = await client.rpc("investigation_name_warnings", { p_id: id, p_text: f.value });
+      var found = (r.data || []).map(function (x) { return typeof x === "string" ? x : x.investigation_name_warnings; });
+      if (!found.length) return true;
+      return window.confirm(t("s.v.warn") + "\n\n• " + found.join("\n• ") + "\n\n" + t("s.v.warn2"));
+    }
+    async function saveNotes() {
+      await rpc("save_investigation", { p_id: id, p_findings: f.value.trim() || null, p_internal: internal.value.trim() || null, p_statements: statements.value.trim() || null, p_actions: actions.value.trim() || null });
+    }
+    var notesForm = el("form", { novalidate: "novalidate" }, [
+      el("h3", { text: t("s.v.findings") }), el("p", { class: "p-sub", text: t("s.v.findings.hint") }), f,
+      el("div", { class: "internal-box" }, [
+        el("p", { class: "internal-hint", text: "🔒 " + t("s.v.private") }),
+        field(t("s.v.internal"), internal), field(t("s.v.statements"), statements), field(t("s.v.actions"), actions)]),
+      msg, save,
+    ]);
+    notesForm.addEventListener("submit", async function (e) {
+      e.preventDefault(); msg.textContent = ""; save.disabled = true;
+      try { if (!(await confirmNames())) { save.disabled = false; return; } await saveNotes(); reload(t("s.v.saved")); }
+      catch (err) { msg.appendChild(note("err", msgFromError(err))); save.disabled = false; }
+    });
+
+    // Steps, in order
+    var nextStep = STEPS.filter(function (s) { return !done[s]; })[0];
+    var list = el("ol", { class: "steps" });
+    var stepMsg = el("div", {});
+    STEPS.forEach(function (s) {
+      var d = done[s], isNext = s === nextStep && !closed, kids = [el("strong", { text: t("s.step." + s) })];
+      if (d) kids.push(el("small", { text: t("s.v.done") + " · " + fmt(d.completed_at) + " · " + t("s.v.by") + " " + (d.profiles && d.profiles.full_name ? d.profiles.full_name : t("s.v.system")) }));
+      else if (!isNext) kids.push(el("small", { text: t("s.v.locked") }));
+      if (isNext) {
+        var b = el("button", { class: "btn btn-pink btn-small", type: "button", text: t("s.v.markdone") });
+        b.addEventListener("click", async function () {
+          stepMsg.textContent = ""; b.disabled = true;
+          try {
+            if ((s === "findings" || s === "closed") && !f.value.trim()) throw new Error(t("s.v.needfindings"));
+            if (s === "closed" && !actions.value.trim()) throw new Error(t("s.v.needactions"));
+            if (s === "findings" || s === "closed") { if (!(await confirmNames())) { b.disabled = false; return; } }
+            await saveNotes();
+            var r = await client.from("investigation_steps").insert({ investigation_id: id, step: s });
+            if (r.error) throw new Error(r.error.message);
+            reload(t("s.v.saved"));
+          } catch (err) { stepMsg.appendChild(note("err", msgFromError(err))); b.disabled = false; }
+        });
+        kids.push(b);
+      }
+      list.appendChild(el("li", { class: d ? "done" : isNext ? "next" : "locked" }, kids));
+    });
+    nodes.push(card([el("h2", { text: t("s.v.steps") }), el("p", { class: "p-sub", text: t("s.v.stepsnote") }), list, stepMsg]));
+    nodes.push(card([el("h2", { text: t("s.v.notes") }), closed ? note("info", t("s.v.closedlock")) : null, notesForm], "blue"));
+    show(nodes);
+  }
+
   // ------------------------------------------------------------------ Router
   var routes = {
+    investigations: function () { return isTop() ? investigations() : queue(); },
+    investigation: function (p) { return isTop() ? investigationPage(p[1]) : queue(); },
     "": queue, "case": function (p) { return casePage(p[1]); }, incident: incidentForm, accidents: accidents,
     ratings: function () { return isTop() ? ratings() : queue(); }, people: function () { return isMgmt() ? people() : queue(); },
   };
   function go() {
     var parts = location.hash.replace(/^#\/?/, "").split("/"), name = parts[0] === "" ? "" : parts[0];
-    document.querySelectorAll("#nav a").forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-route") === (name || "queue")); });
+    var tab = name === "case" ? "queue" : name === "investigation" ? "investigations" : (name || "queue");
+    document.querySelectorAll("#nav a").forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-route") === tab); });
     window.scrollTo(0, 0);
     Promise.resolve((routes[name] || queue)(parts)).catch(function () { failView(); });
   }
@@ -442,6 +565,7 @@
     me = res.profile;
     if (me.language && !localStorage.getItem("cka_portal_lang")) CKA.setLang(me.language);
     document.querySelector('#nav [data-route="ratings"]').hidden = !isTop();
+    document.querySelector('#nav [data-route="investigations"]').hidden = !isTop();
     document.querySelector('#nav [data-route="people"]').hidden = !isMgmt();
     document.getElementById("who").textContent = me.full_name + " · " + t("role." + me.role);
     document.getElementById("app").hidden = false;

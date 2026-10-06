@@ -138,3 +138,17 @@ table.tbl{width:100%;border-collapse:collapse;min-width:480px}
 .timeline li.internal .tl-what{background:#fff8e1;border-radius:10px;padding:6px 10px}
 .pill.see{background:#e8f6ec;color:var(--ok)}
 .hidden{display:none!important}
+
+/* ---- Investigations ---- */
+.steps{list-style:none;counter-reset:step;margin-top:8px}
+.steps li{counter-increment:step;position:relative;padding:10px 12px 10px 52px;border:2px solid var(--line);border-radius:14px;margin-bottom:8px;background:#fff}
+[dir="rtl"] .steps li{padding:10px 52px 10px 12px}
+.steps li::before{content:counter(step);position:absolute;inset-inline-start:12px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--line);color:var(--ink);display:flex;align-items:center;justify-content:center;font-weight:700}
+.steps li.done{border-color:#bfe3c9;background:#f4fbf6}
+.steps li.done::before{background:var(--ok);color:#fff;content:"✓"}
+.steps li.next{border-color:var(--pink)}
+.steps li.next::before{background:var(--pink);color:#fff}
+.steps li.locked{opacity:.65}
+.steps small{display:block;color:var(--muted)}
+.steps .btn{margin-top:8px}
+.internal-box{background:#fff8e1;border:2px solid #f3d77a;border-radius:14px;padding:12px;margin:12px 0}

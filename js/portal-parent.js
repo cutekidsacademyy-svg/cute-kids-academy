@@ -284,7 +284,10 @@
     }
     nodes.push(card(mine, "blue"));
 
-    if (inv) nodes.push(investigationCard(inv, function () { casePage(id); }));
+    if (inv) {
+      var st = await client.from("investigation_steps").select("investigation_id, step, completed_at").eq("investigation_id", inv.id);
+      nodes.push(investigationCard(inv, function () { casePage(id); }, st.data || []));
+    }
 
     if (c.status === "resolved") {
       var ask = el("div", { class: "actions" });
@@ -335,8 +338,15 @@
   }
 
   // What the academy found, written for the parent (never other children's names or internal notes).
-  function investigationCard(inv, reload) {
+  function investigationCard(inv, reload, steps) {
     var kids = [el("h2", { text: t("p.case.investigation") })];
+    if (steps && steps.length) {
+      var ol = el("ol", { class: "timeline" });
+      steps.slice().sort(function (x, y) { return new Date(x.completed_at) - new Date(y.completed_at); }).forEach(function (st) {
+        ol.appendChild(el("li", {}, [el("div", { class: "tl-when", text: fmt(st.completed_at) }), el("div", { class: "tl-what" }, [el("strong", { text: t("p.step." + st.step) })])]));
+      });
+      kids.push(ol);
+    }
     if (!inv.findings_for_parent) { kids.push(el("p", { class: "p-sub", text: t("p.case.nofindings") })); return card(kids, "blue"); }
     kids.push(el("h3", { text: t("p.case.findings") }), el("p", { class: "preline", text: inv.findings_for_parent }));
     if (inv.parent_response === "acknowledged") kids.push(note("ok", t("p.case.acked")));
@@ -364,7 +374,10 @@
     var res = await Promise.all([
       client.rpc("parent_incidents"),
       client.from("investigations").select("id, incident_id, status, findings_for_parent, parent_response").not("incident_id", "is", null),
+      client.from("investigation_steps").select("investigation_id, step, completed_at"),
     ]);
+    var stepsBy = {};
+    (res[2] && res[2].data || []).forEach(function (x) { (stepsBy[x.investigation_id] = stepsBy[x.investigation_id] || []).push(x); });
     if (res[0].error) return failView();
     var list = res[0].data || [], invs = {};
     (res[1].data || []).forEach(function (i) { invs[i.incident_id] = i; });
@@ -389,7 +402,7 @@
         });
         kids.push(b);
       }
-      if (invs[i.id]) kids.push(investigationCard(invs[i.id], reports));
+      if (invs[i.id]) kids.push(investigationCard(invs[i.id], reports, stepsBy[invs[i.id].id]));
       nodes.push(card(kids));
     });
     show(nodes);
