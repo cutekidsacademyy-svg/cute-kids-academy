@@ -457,13 +457,20 @@
     show(nodes);
   }
 
+  // Shared with the other parent pages (js/portal-child.js: "My child").
+  window.CKAParent = {
+    routes: {}, show: show, card: card, note: note, pill: pill, link: link, field: field, loadingView: loadingView, failView: failView,
+    profile: function () { return profile; }, children: function () { return children; }, prepareImage: prepareImage, fmt: fmt, setProfile: function (p) { profile = p; },
+  };
+
   // ------------------------------------------------------------------ Router
   function go() {
     var parts = location.hash.replace(/^#\/?/, "").split("/");
     route = parts[0] || "home";
     document.querySelectorAll("#nav a").forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-route") === route || (route === "home" && a.getAttribute("data-route") === "home")); });
     window.scrollTo(0, 0);
-    var run = { home: home, new: newConcern, done: function () { return done(parts[1]); }, "case": function () { return casePage(parts[1]); }, reports: reports, rate: rate }[route] || home;
+    var run = { home: home, new: newConcern, done: function () { return done(parts[1]); }, "case": function () { return casePage(parts[1]); }, reports: reports, rate: rate }[route]
+      || (window.CKAParent.routes[route] ? function () { return window.CKAParent.routes[route](parts); } : home);
     Promise.resolve(run()).catch(failView);
   }
 

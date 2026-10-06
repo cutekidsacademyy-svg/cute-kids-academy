@@ -63,6 +63,13 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 - [ ] As the owner: open the dashboard, the reports (download the CSV), the checklist.
 - [ ] Check that a parent **cannot** open `/staff/` and that a logged-out visitor is sent to the login page.
 
+### Online registration (Prompt 11)
+
+- [ ] Open `/register/` on a real phone (English, then Arabic) and send a pretend application with a photo, a pickup person with an ID photo, and a PDF. You should get the confirmation email (needs the email setup in step 3).
+- [ ] As admin: open **Applications**, open the pretend one, look at the files, ask for a missing paper, then **Approve** it into a class. Both parents get an invitation email (use two email addresses you control). Then delete the pretend child and parents with the clean-up script.
+- [ ] As a parent: **My child** page: change the allergies and add a pickup person. The class teacher and the admins get a plain "something changed" email with no details in it.
+- [ ] The registration form keeps answers on the device for 7 days; the privacy notice says so (check the wording with whoever reviews it).
+
 ## 7. Staff first (one week)
 
 - [ ] Staff use the portal with a few pretend cases for a week, so they learn the screens before any family sees them.
@@ -98,5 +105,5 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 
 ### What is not built yet
 
-Online registration, attendance at the door, daily reports, announcements and events, photos and videos, the admin area,
-the parent dashboard and calendar, absence follow-up, approval reminders, payments, transport and birthdays (Prompts 11 to 20 and the rest of Prompt 21).
+Attendance at the door, daily reports, announcements and events, photos and videos, the admin area,
+the parent dashboard and calendar, absence follow-up, approval reminders, payments, transport and birthdays (Prompts 12 to 20 and the rest of Prompt 21).
