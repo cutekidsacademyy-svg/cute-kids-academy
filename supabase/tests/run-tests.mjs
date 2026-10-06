@@ -1116,6 +1116,119 @@ console.log('\n== Owner dashboard: the numbers ==');
 }
 
 // ---------------------------------------------------------------------------
+console.log('\n== Owner routine: checklist, task tracker and reminders ==');
+{
+  const TABLES = ['checklist_items', 'checklist_checks', 'owner_tasks'];
+  const item = (list, n = 0) => `(select id from public.checklist_items where list='${list}' and active order by position limit 1 offset ${n})`;
+  const fill = [
+    [null, `insert into public.checklist_checks (item_id, check_date, ok) values (${item('morning')}, current_date, true)`],
+    [null, `insert into public.owner_tasks (what, due_date) values ('SECRET TASK', current_date)`],
+  ];
+  for (const [who, label] of [[U.owner, 'the owner'], [U.manager, 'the manager'], [U.admin, 'admin'], [U.hana, 'a teacher'], [U.parentA, 'a parent']]) {
+    const res = await flow(fill.concat(TABLES.map((t) => [who, `select count(*)::int as n from public.${t}`])));
+    const counts = res.slice(fill.length).map((x) => (x.error ? 0 : x.rows[0].n));
+    if (who === U.owner) check('the owner can read the checklist and the task tracker', counts.every((n) => n >= 1), JSON.stringify(counts));
+    else check(label + ' cannot read the checklist or the task tracker', counts.every((n) => n === 0), JSON.stringify(counts));
+  }
+
+  // placeholders and the owner-only functions
+  let r = await as(U.owner, `select list, count(*)::int as n from public.checklist_items where active group by list order by list`);
+  check('the checklist starts with 6 morning and 4 afternoon placeholder checks', r.rows.length === 2 && r.rows[0].list === 'afternoon' && r.rows[0].n === 4 && r.rows[1].n === 6, JSON.stringify(r.rows));
+  for (const [who, name] of [[U.manager, 'manager'], [U.admin, 'admin'], [U.hana, 'a teacher'], [U.parentA, 'a parent'], [null, 'a visitor']]) {
+    r = await as(who, `select public.owner_routine()`);
+    const r2 = await as(who, `select public.owner_set_check(${item('morning')}, current_date, true, null)`);
+    check(name + ' cannot open or tick the owner checklist', !!r.error && !!r2.error, `${r.error}|${r2.error}`);
+  }
+
+  // ticking checks
+  let res = await flow([
+    [U.owner, `select public.owner_set_check(${item('morning', 0)}, (now() at time zone 'Africa/Cairo')::date, true, null)`],            // 0
+    [U.owner, `select public.owner_set_check(${item('morning', 1)}, (now() at time zone 'Africa/Cairo')::date, false, null)`],           // 1 needs a note
+    [U.owner, `select public.owner_set_check(${item('morning', 1)}, (now() at time zone 'Africa/Cairo')::date, false, 'Cot broken in the nap room')`], // 2
+    [U.owner, `select public.owner_routine() as r`],                                                                                       // 3
+    [U.owner, `select public.owner_set_check(${item('morning', 1)}, (now() at time zone 'Africa/Cairo')::date, true, null)`],            // 4 change of mind
+    [U.owner, `select public.owner_routine() as r`],                                                                                       // 5
+    [U.owner, `select public.owner_set_check(${item('morning', 0)}, (now() at time zone 'Africa/Cairo')::date + 1, true, null)`],        // 6 tomorrow
+    [U.owner, `select public.owner_set_check(${item('morning', 0)}, (now() at time zone 'Africa/Cairo')::date - 9, true, null)`],        // 7 too old
+    [null, `update public.checklist_items set active=false where id=${item('morning', 2)}`],                                             // 8 switch one off
+    [U.owner, `select public.owner_set_check((select id from public.checklist_items where active=false limit 1), (now() at time zone 'Africa/Cairo')::date, true, null)`], // 9
+    [U.owner, `select public.owner_routine() as r`],                                                                                       // 10
+  ]);
+  check('the owner can tick a check', !res[0].error, res[0].error);
+  check('"needs attention" requires a note', !!res[1].error && /what needs attention/.test(res[1].error), res[1].error);
+  const m1 = res[3].rows[0].r.lists.morning;
+  check('progress is counted: 2 of 6 done, 1 needing attention', !res[2].error && m1.total === 6 && m1.done === 2 && m1.attention === 1, JSON.stringify([m1.total, m1.done, m1.attention]));
+  check('the note is kept with the check', m1.items.find((x) => x.note === 'Cot broken in the nap room') && m1.items[1].ok === false);
+  check('ticking again changes the earlier answer', !res[4].error && res[5].rows[0].r.lists.morning.attention === 0 && res[5].rows[0].r.lists.morning.done === 2);
+  check('only today or the last 7 days can be ticked', !!res[6].error && !!res[7].error);
+  check('a switched-off check cannot be ticked and is not counted', !!res[9].error && res[10].rows[0].r.lists.morning.total === 5);
+  const hist = res[10].rows[0].r.history;
+  check('seven days of history, newest first', hist.length === 7 && hist[0].date === res[10].rows[0].r.today && hist[0].morning === 2 && hist[0].morning_total === 5, JSON.stringify(hist[0]));
+
+  // tasks
+  res = await flow([
+    [U.owner, `insert into public.owner_tasks (what, assigned_to, due_date) values ('Order new cots', '${U.admin}', (now() at time zone 'Africa/Cairo')::date - 3)`],    // 0 late
+    [U.owner, `insert into public.owner_tasks (what, assigned_to, due_date, status) values ('Update fee policy', '${U.manager}', (now() at time zone 'Africa/Cairo')::date + 5, 'in_progress')`], // 1
+    [U.owner, `insert into public.owner_tasks (what, due_date) values ('Renew licence', (now() at time zone 'Africa/Cairo')::date)`],                                             // 2 due today: not late
+    [U.owner, `select public.owner_routine() as r`],                                                                                                                                 // 3
+    [U.owner, `update public.owner_tasks set status='done' where what='Order new cots' returning done_at`],                                                                          // 4
+    [U.owner, `select public.owner_routine() as r`],                                                                                                                                 // 5
+    [U.owner, `update public.owner_tasks set status='in_progress' where what='Order new cots' returning done_at`],                                                                  // 6 reopen
+    [U.manager, `insert into public.owner_tasks (what, due_date) values ('Sneaky', current_date)`],                                                                                  // 7
+    [U.owner, `insert into public.owner_tasks (what, due_date) values ('   ', current_date)`],                                                                                       // 8
+    [U.owner, `select created_by from public.owner_tasks where what='Renew licence'`],                                                                                              // 9
+  ]);
+  const t1 = res[3].rows[0].r;
+  const byWhat = Object.fromEntries(t1.tasks.map((x) => [x.what, x]));
+  check('a task past its due date and not done is LATE; one due today is not', byWhat['Order new cots'].late === true && byWhat['Renew licence'].late === false && byWhat['Update fee policy'].late === false, JSON.stringify(t1.tasks.map((x) => [x.what, x.late])));
+  check('tasks show who they are for', byWhat['Order new cots'].who === 'Admin Sara (seed)');
+  check('tasks are ordered by due date, late ones first', t1.tasks[0].what === 'Order new cots' && t1.late_tasks === 1, JSON.stringify(t1.tasks.map((x) => x.what)));
+  check('marking a task done records when, and it stops being late', !res[4].error && res[4].rows[0].done_at !== null && res[5].rows[0].r.late_tasks === 0 && res[5].rows[0].r.tasks.find((x) => x.what === 'Order new cots').status === 'done');
+  check('done tasks sort after open ones', res[5].rows[0].r.tasks[res[5].rows[0].r.tasks.length - 1].what === 'Order new cots');
+  check('reopening a task clears the done time', !res[6].error && res[6].rows[0].done_at === null);
+  check('only the owner can add tasks, and an empty task is refused', !!res[7].error && !!res[8].error);
+  check('the database records who created a task', res[9].rows[0].created_by === U.owner);
+
+  // reminders (Cairo time: Sunday 2026-10-11 is a working day, Thursday 2026-10-15, Friday 2026-10-16)
+  const rem = (iso) => [null, `select public.cka_run_owner_reminders('${iso}') as r`];
+  const mail = (tplName) => [null, `select to_email, language, template, payload from public.email_outbox where template='${tplName}' and user_id='${U.owner}' order by created_at`];
+  res = await flow([
+    rem('2026-10-11T05:30:00Z'),                       // 0  Sunday 08:30 Cairo: too early
+    rem('2026-10-11T06:05:00Z'),                       // 1  Sunday 09:05: morning reminder
+    rem('2026-10-11T06:20:00Z'),                       // 2  same morning again: not repeated
+    mail('checklist_morning'),                         // 3
+    rem('2026-10-11T13:35:00Z'),                       // 4  Sunday 16:35: afternoon reminder
+    rem('2026-10-11T13:50:00Z'),                       // 5  not repeated
+    mail('checklist_afternoon'),                       // 6
+    rem('2026-10-11T06:10:00Z'),                       // 7  (re-run morning: still once)
+    rem('2026-10-16T06:05:00Z'),                       // 8  Friday 09:05: nothing at all
+    rem('2026-10-15T06:05:00Z'),                       // 9  Thursday 09:05: morning + Thursday review
+    mail('review_thursday'),                           // 10
+    rem('2026-10-01T06:05:00Z'),                       // 11 Thursday 1 Oct 09:05: first working day of October too
+    rem('2026-10-04T06:05:00Z'),                       // 12 Sunday 4 Oct (not the first working day)
+    mail('review_monthly'),                            // 13
+  ]);
+  check('no reminder before 09:00', res[0].rows[0].r.sent === 0);
+  check('09:05 sends the morning-walk reminder once, with progress', res[1].rows[0].r.sent === 1 && res[2].rows[0].r.sent === 0 && res[3].rows.length === 1 && res[3].rows[0].payload.total === 6 && res[3].rows[0].payload.done === 0, JSON.stringify(res[1].rows[0]));
+  check('16:35 sends the afternoon reminder once', res[4].rows[0].r.sent === 1 && res[5].rows[0].r.sent === 0 && res[6].rows.length === 1 && res[6].rows[0].payload.total === 4);
+  check('nothing is sent on a Friday', res[8].rows[0].r.sent === 0 && res[8].rows[0].r.working_day === false);
+  check('Thursday sends the weekly review reminder (and still the morning one)', res[9].rows[0].r.sent === 2 && res[10].rows.length === 1 && typeof res[10].rows[0].payload.late_tasks === 'number', JSON.stringify(res[9].rows[0]));
+  check('the monthly review goes out on the first working day of the month only', res[13].rows.length === 1 && res[13].rows[0].payload.date === '2026-10-01', JSON.stringify(res[13].rows));
+
+  // finished lists are not nagged, and only active owners are emailed
+  res = await flow([
+    [null, `insert into public.checklist_checks (item_id, check_date, ok) select id, '2026-10-11', true from public.checklist_items where list='morning' and active`],
+    rem('2026-10-11T06:05:00Z'),
+    [null, `update public.profiles set active=false where id='${U.owner}'`],
+    rem('2026-10-11T13:35:00Z'),
+  ]);
+  check('a finished morning walk gets no reminder', res[1].rows[0].r.sent === 0, JSON.stringify(res[1].rows[0]));
+  check('an inactive owner is not emailed', res[3].rows[0].r.sent === 0);
+  const priv = (await db.query(`select has_function_privilege('authenticated','public.cka_run_owner_reminders(timestamptz)','execute') as a, has_function_privilege('service_role','public.cka_run_owner_reminders(timestamptz)','execute') as s`)).rows[0];
+  check('only the server key may run the owner reminders', priv.a === false && priv.s === true);
+}
+
+// ---------------------------------------------------------------------------
 console.log('\n== Removing the seed data before launch ==');
 {
   // Add a real (non-seed) family first: the clean-up must leave it alone.
