@@ -160,7 +160,8 @@ test("every server function checks who is calling", () => {
     if (f.startsWith("_") || !f.endsWith(".js")) continue;
     const text = readFileSync(join(dir, f), "utf8");
     const oauth = f === "auth.js" || f === "callback.js";        // the CMS login handshake (no secrets exposed)
-    if (!oauth && !/endpoint\(/.test(text) && !/CRON_SECRET/.test(text)) unchecked.push(f);
+    if (/publicEndpoint\(/.test(text)) continue;                  // public forms are held to a stricter test below
+    if (!oauth && !/\bendpoint\(/.test(text) && !/CRON_SECRET/.test(text)) unchecked.push(f);
   }
   assert.deepEqual(unchecked, []);
 });
@@ -175,4 +176,27 @@ test("server functions never print secrets or stack traces to the caller", () =>
     assert.ok(!/res\.end\([^)]*\.stack/.test(text), f);
     assert.ok(!/console\.(log|error)\([^)]*(KEY|SECRET|token)/i.test(text), f);
   }
+});
+
+test("public endpoints (the registration form) are rate-limited, size-limited and never show database text", () => {
+  const dir = join(root, "api");
+  const publics = readdirSync(dir).filter((f) => f.endsWith(".js") && !f.startsWith("_") && /publicEndpoint\(/.test(readFileSync(join(dir, f), "utf8")));
+  assert.deepEqual(publics.sort(), ["portal-register-upload.js", "portal-register.js"], "a new public function must be added here on purpose");
+  for (const f of publics) {
+    const text = readFileSync(join(dir, f), "utf8");
+    assert.match(text, /registration_rate_hit/, f + " must count and limit requests");
+    assert.match(text, /visitorKey\(/, f + " must count visitors without storing their address");
+    assert.ok(!/res\.end\(/.test(text), f + " must only answer through publicEndpoint (which hides database errors)");
+  }
+  const lib = readFileSync(join(dir, "_lib", "portal.js"), "utf8");
+  assert.match(lib, /upstream/, "database error text must be flagged so it never reaches a stranger");
+  assert.match(lib, /maxBytes/, "public bodies are size-limited");
+});
+
+test("the registration page never builds HTML from text and holds no secret", () => {
+  const f = join(root, "js", "register.js");
+  if (!existsSync(f)) return;
+  const text = readFileSync(f, "utf8");
+  for (const re of [/\.innerHTML\b/, /\.outerHTML\b/, /insertAdjacentHTML/, /document\.write\(/, /\beval\(/, /new Function\(/]) assert.ok(!re.test(text), String(re));
+  assert.ok(!/service_role|SERVICE_ROLE/i.test(text));
 });
