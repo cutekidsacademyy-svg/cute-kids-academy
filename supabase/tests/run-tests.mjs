@@ -99,6 +99,154 @@ const ids = (r) => (r.rows || []).map((x) => x.id);
 const count = (r) => (r.rows || []).length;
 
 // ---------------------------------------------------------------------------
+// SECURITY AUDIT. Runs first, on the freshly seeded database (known data), mimicking Supabase's
+// automatic grants. If a future migration forgets to lock something down, these fail.
+console.log('\n== Security audit: structure ==');
+{
+  const q = async (sql, p = []) => (await db.query(sql, p)).rows;
+
+  // 1. every table has row-level security switched on
+  const noRls = (await q(`select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+                           where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity order by 1`)).map((x) => x.relname);
+  check('row-level security is ON for every table in the public schema', noRls.length === 0, noRls.join(', '));
+
+  // 2. anonymous visitors have no table privileges at all
+  const anonTables = await q(`select table_name, string_agg(privilege_type, ',') as p from information_schema.role_table_grants
+                              where table_schema = 'public' and grantee = 'anon' group by 1 order by 1`);
+  check('anonymous visitors have NO privileges on any table', anonTables.length === 0, JSON.stringify(anonTables));
+
+  // 3. logged-in users: never DELETE/TRUNCATE; INSERT/UPDATE only where intended (snapshot)
+  const grants = await q(`select table_name, privilege_type from information_schema.role_table_grants where table_schema = 'public' and grantee = 'authenticated'`);
+  const dangerous = grants.filter((g) => ['DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'].includes(g.privilege_type));
+  check('logged-in users can never DELETE, TRUNCATE or alter any table', dangerous.length === 0, JSON.stringify(dangerous));
+  const setOf = (p) => grants.filter((g) => g.privilege_type === p).map((g) => g.table_name).sort().join(',');
+  check('tables logged-in users may INSERT into (each also guarded by a policy)',
+    setOf('INSERT') === 'attachments,checklist_items,children,classes,hr_log,incidents,investigation_steps,investigations,mistake_categories,mistakes,owner_settings,owner_tasks,parent_children,ratings,staff_classes,submission_events,submissions', setOf('INSERT'));
+  check('tables logged-in users may UPDATE (each also guarded by a policy)',
+    setOf('UPDATE') === 'checklist_items,children,classes,hr_log,incidents,mistake_categories,mistakes,owner_settings,owner_tasks,submissions', setOf('UPDATE'));
+  const colOnly = (await q(`select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r'
+                            and has_any_column_privilege('authenticated', c.oid, 'UPDATE') and not has_table_privilege('authenticated', c.oid, 'UPDATE') order by 1`)).map((x) => x.relname).join(',');
+  check('only these tables allow column-level updates (own name/phone/language, assignee, concern status)', colOnly === 'investigations,profiles,staff_complaints', colOnly);
+  const noSel = (await q(`select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r'
+                          and not has_table_privilege('authenticated', c.oid, 'SELECT') order by 1`)).map((x) => x.relname).join(',');
+  check('server-only tables cannot be read from the browser at all', noSel === 'deadline_events,email_outbox', noSel);
+
+  // 4. functions: nothing internal is reachable by the wrong person
+  const fns = await q(`select p.proname as name, p.prosecdef as definer, p.prorettype = 'trigger'::regtype as is_trigger, coalesce(p.proconfig::text, '') as cfg,
+      has_function_privilege('anon', p.oid, 'execute') as anon, has_function_privilege('authenticated', p.oid, 'execute') as auth
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public'`);
+  const definers = fns.filter((f) => f.definer);
+  check('every security-definer function has a fixed search_path (blocks a classic hijack)', definers.every((f) => f.cfg.includes('search_path')), definers.filter((f) => !f.cfg.includes('search_path')).map((f) => f.name).join());
+  check('anonymous visitors can run NO security-definer or trigger function', fns.filter((f) => (f.definer || f.is_trigger) && f.anon).length === 0, fns.filter((f) => (f.definer || f.is_trigger) && f.anon).map((f) => f.name).join());
+  check('logged-in users cannot run trigger functions directly', fns.filter((f) => f.is_trigger && f.auth).length === 0, fns.filter((f) => f.is_trigger && f.auth).map((f) => f.name).join());
+  const ALLOWED = ['auth_role', 'is_management', 'is_manager_or_owner', 'is_owner', 'teaches_class', 'can_see_child', 'owns_submission', 'staff_can_see_submission', 'parent_owns_investigation', 'teacher_sees_parent',
+    'cka_actor_name', 'change_urgency', 'respond_to_resolution', 'mark_incident_read', 'respond_to_investigation', 'submission_handler_name', 'parent_cases', 'parent_incidents', 'list_staff_names',
+    'staff_queue', 'staff_case', 'staff_list', 'staff_ratings', 'staff_acknowledge', 'staff_mark_in_progress', 'staff_assign', 'staff_escalate', 'staff_resolve', 'save_investigation',
+    'investigation_name_warnings', 'staff_investigations', 'staff_investigation', 'staff_report', 'record_staff_attendance', 'staff_attendance_day', 'submit_staff_complaint',
+    'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine'].sort();
+  const reach = definers.filter((f) => !f.is_trigger && f.auth).map((f) => f.name).sort();
+  check('the ONLY security-definer functions a logged-in user can run are the intended screens/helpers (nothing new slipped in)',
+    JSON.stringify(reach) === JSON.stringify(ALLOWED), JSON.stringify({ extra: reach.filter((x) => !ALLOWED.includes(x)), missing: ALLOWED.filter((x) => !reach.includes(x)) }));
+  const svc = await q(`select has_function_privilege('service_role', 'public.cka_run_deadline_check(timestamptz)', 'execute') as a, has_function_privilege('service_role', 'public.cka_run_owner_reminders(timestamptz)', 'execute') as b,
+      has_function_privilege('authenticated', 'public.cka_enqueue_email(uuid,text,jsonb,text)', 'execute') as c, has_function_privilege('anon', 'public.cka_enqueue_email(uuid,text,jsonb,text)', 'execute') as d,
+      has_function_privilege('authenticated', 'public.cka_person_name(uuid)', 'execute') as e`);
+  check('the server key can run the scheduled jobs; nobody else can queue emails or look up names', svc[0].a && svc[0].b && !svc[0].c && !svc[0].d && !svc[0].e, JSON.stringify(svc[0]));
+  const pure = fns.filter((f) => !f.definer && !f.is_trigger && f.anon).map((f) => f.name).sort().join(',');
+  check('the only functions anonymous visitors can run are pure date and arithmetic helpers (they read no data)',
+    pure === 'cka_add_business_days,cka_add_working_hours,cka_case_payload,cka_deadlines,cka_in_working_hours,cka_is_happy,cka_is_work_day,cka_next_work_day,cka_threshold,cka_working_start', pure);
+
+  // 5. storage: the photo bucket is private with a 5 MB / images-only limit
+  const b = (await q(`select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'attachments'`))[0];
+  check('the photo bucket is private, limited to 5 MB and to images only', b.public === false && Number(b.file_size_limit) === 5242880 && b.allowed_mime_types.every((m) => m.startsWith('image/')), JSON.stringify(b));
+}
+
+console.log('\n== Security audit: who can read what (seed data) ==');
+{
+  const roles = { anon: null, parentA: U.parentA, parentB: U.parentB, parentC: U.parentC, hana: U.hana, mariam: U.mariam, admin: U.admin, manager: U.manager, owner: U.owner };
+  const D = 'denied';
+  // columns: anon, parentA, parentB, parentC, hana, mariam, admin, manager, owner
+  const EXPECT = {
+    attachments:            [D, 1, 0, 0, 1, 0, 1, 1, 1],
+    checklist_checks:       [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    checklist_items:        [D, 0, 0, 0, 0, 0, 0, 0, 10],
+    children:               [D, 1, 2, 2, 2, 2, 4, 4, 4],
+    classes:                [D, 1, 2, 2, 1, 1, 2, 2, 2],
+    deadline_events:        [D, D, D, D, D, D, D, D, D],
+    email_outbox:           [D, D, D, D, D, D, D, D, D],
+    hr_log:                 [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    incidents:              [D, 0, 1, 0, 0, 1, 1, 1, 1],
+    investigation_faults:   [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    investigation_internal: [D, 0, 0, 0, 0, 0, 0, 1, 1],
+    investigation_steps:    [D, 0, 0, 1, 0, 0, 1, 1, 1],
+    investigations:         [D, 0, 0, 1, 0, 0, 1, 1, 1],
+    mistake_categories:     [D, 0, 0, 0, 0, 0, 0, 0, 4],
+    mistakes:               [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    owner_settings:         [D, 0, 0, 0, 0, 0, 0, 0, 1],
+    owner_tasks:            [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    parent_children:        [D, 1, 2, 2, 0, 0, 5, 5, 5],
+    profiles:               [D, 1, 1, 1, 4, 3, 8, 8, 8],
+    ratings:                [D, 0, 1, 0, 0, 0, 0, 1, 1],
+    staff_attendance:       [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    staff_classes:          [D, 0, 0, 0, 1, 1, 2, 2, 2],
+    staff_complaints:       [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    submission_events:      [D, 2, 2, 3, 3, 3, 8, 8, 8],
+    submissions:            [D, 1, 1, 1, 1, 1, 3, 3, 3],
+  };
+  const tables = (await db.query(`select tablename from pg_tables where schemaname = 'public' order by 1`)).rows.map((r) => r.tablename);
+  check('the audit covers every table (a new table must be added to the matrix on purpose)', JSON.stringify(tables) === JSON.stringify(Object.keys(EXPECT).sort()), JSON.stringify(tables.filter((t) => !EXPECT[t])));
+  const names = Object.keys(roles);
+  const actual = {};
+  for (const t of tables) {
+    actual[t] = [];
+    for (const r of names) {
+      const res = await as(roles[r], `select count(*)::int as n from public.${t}`);
+      actual[t].push(res.error ? D : res.rows[0].n);
+    }
+  }
+  const drift = tables.filter((t) => JSON.stringify(actual[t]) !== JSON.stringify(EXPECT[t])).map((t) => `${t}: got ${JSON.stringify(actual[t])} want ${JSON.stringify(EXPECT[t])}`);
+  check('the role-by-table visibility matrix is exactly as designed (' + tables.length + ' tables x ' + names.length + ' roles)', drift.length === 0, drift.join(' | '));
+
+  // Everything a person can read, searched for things they must never see.
+  async function everythingFor(who) {
+    const parts = [];
+    for (const t of tables) {
+      const r = await as(who, `select coalesce(string_agg(to_jsonb(x)::text, ' '), '') as s from public.${t} x`);
+      if (!r.error) parts.push(r.rows[0].s);
+    }
+    for (const fn of ['parent_cases', 'parent_incidents', 'list_staff_names', 'staff_queue', 'staff_list', 'staff_ratings']) {
+      const r = await as(who, `select coalesce(string_agg(to_jsonb(x)::text, ' '), '') as s from public.${fn}() x`);
+      if (!r.error) parts.push(r.rows[0].s);
+    }
+    const so = await as(who, `select coalesce(string_agg(name, ' '), '') as s from storage.objects`);
+    if (!so.error) parts.push(so.rows[0].s);
+    return parts.join(' ');
+  }
+  await db.exec(`insert into storage.objects (bucket_id, name) values ('attachments', '${sub1}/seed-photo.jpg'), ('attachments', '${sub2}/other.jpg')`);
+  const scan = async (who, label, mustNot, must) => {
+    const text = await everythingFor(who);
+    const leaked = mustNot.filter((c) => text.includes(c));
+    const missing = must.filter((c) => !text.includes(c));
+    check(label + ' can read NONE of the forbidden data', leaked.length === 0, 'LEAKED: ' + leaked.join(' | '));
+    check(label + ' can still read their own data (the scan is not simply empty)', missing.length === 0, 'MISSING: ' + missing.join(' | '));
+  };
+  const staffPhones = ['+20 100 000 0001', '+20 100 000 0002', '+20 100 000 0003', '+20 100 000 0004', '+20 100 000 0005'];
+  const INTERNAL = ['SEED INTERNAL NOTE', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT'];
+  await scan(U.parentA, 'Parent A', ['Salma Testson', 'Youssef Testson', 'Mariam Testson', 'Parent B (seed)', 'Parent C (seed)', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'Seed rating comment', 'other.jpg', '+20 100 000 0102', '+20 100 000 0103'].concat(INTERNAL, staffPhones),
+    ['Omar Testson', 'lunch concern', 'seed-photo.jpg']);
+  await scan(U.parentB, 'Parent B', ['Omar Testson', 'Mariam Testson', 'lunch concern', 'Parent A (seed)', 'Parent C (seed)', 'mark on arm', 'Seed findings', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
+    ['Salma Testson', 'Youssef Testson', 'tripped on the path', 'Seed rating comment']);
+  await scan(U.parentC, 'Parent C', ['Salma Testson', 'Youssef Testson', 'lunch concern', 'Parent A (seed)', 'Parent B (seed)', 'tripped on the path', 'Seed rating comment', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
+    ['Omar Testson', 'Mariam Testson', 'mark on arm', 'Seed findings']);
+  await scan(U.hana, 'Teacher Hana', ['Youssef Testson', 'Mariam Testson', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'],
+    ['Omar Testson', 'lunch concern', 'SEED INTERNAL NOTE']);
+  await scan(U.mariam, 'Teacher Mariam', ['Omar Testson', 'Salma Testson', 'lunch concern', 'concern about Teacher Hana', 'SEED INTERNAL NOTE', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed findings', 'Seed rating comment'],
+    ['Youssef Testson', 'Mariam Testson', 'mark on arm', 'tripped on the path']);
+  await scan(U.admin, 'Admin', ['SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'], ['SEED INTERNAL NOTE', 'Seed findings', 'concern about Teacher Hana']);
+  await scan(U.manager, 'The manager', [], ['SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment', 'SEED INTERNAL NOTE']);
+  await db.exec(`delete from storage.objects`);
+}
+
+// ---------------------------------------------------------------------------
 console.log('\n== Working-hours deadlines (Cairo time, Sun-Thu 08:00-18:00) ==');
 async function dl(urgency, cairoLocal) {
   const r = await db.query(
@@ -940,8 +1088,8 @@ console.log('\n== Owner dashboard: privacy ==');
     [U.owner, `select status, minutes_late, reason from public.staff_attendance where staff_id='${U.hana}'`],     // 3
     [U.hana, `select public.record_staff_attendance('${U.mariam}', current_date, 'present', 0, null)`],           // 4
     [U.parentA, `select public.record_staff_attendance('${U.mariam}', current_date, 'present', 0, null)`],        // 5
-    [U.admin, `select public.record_staff_attendance('${U.hana}', current_date + 1, 'present', 0, null)`],        // 6 future
-    [U.admin, `select public.record_staff_attendance('${U.hana}', current_date - 90, 'present', 0, null)`],       // 7 too old
+    [U.admin, `select public.record_staff_attendance('${U.hana}', (now() at time zone 'Africa/Cairo')::date + 1, 'present', 0, null)`],        // 6 future
+    [U.admin, `select public.record_staff_attendance('${U.hana}', (now() at time zone 'Africa/Cairo')::date - 90, 'present', 0, null)`],       // 7 too old
     [U.admin, `select public.record_staff_attendance('${U.hana}', current_date, 'maybe', 0, null)`],              // 8
     [U.admin, `select public.record_staff_attendance('${U.parentA}', current_date, 'present', 0, null)`],         // 9 not staff
     [U.admin, `select * from public.staff_attendance_day(current_date)`],                                         // 10

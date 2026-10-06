@@ -5,6 +5,12 @@ create role anon nologin;
 create role authenticated nologin;
 create role service_role nologin bypassrls;
 
+-- Supabase gives every NEW table, sequence and function in the public schema to anon, authenticated and
+-- service_role automatically. Copy that, so the tests catch anything a migration forgets to lock down.
+alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+alter default privileges in schema public grant execute on functions to anon, authenticated, service_role;
+
 create schema auth;
 create schema storage;
 grant usage on schema public, auth, storage to anon, authenticated, service_role;
