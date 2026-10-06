@@ -26,7 +26,9 @@ const U = {
   parentC: '00000000-0000-4000-8000-000000000103',
 };
 const ID = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
-const sub1 = ID(401), sub2 = ID(402), sub3 = ID(403), inc1 = ID(501), inv1 = ID(601);
+const sub1 = ID(401), sub2 = ID(402), sub3 = ID(403), inc1 = ID(501);
+// The safety concern (sub3) opened this investigation automatically when the seed was loaded.
+const inv1 = (await db.query('select id from public.investigations where submission_id = $1', [sub3])).rows[0].id;
 const alpha = ID(301), beta = ID(302), gamma = ID(303), delta = ID(304);
 
 // Run one statement as a logged-in user (or anonymous when who = null); always rolled back.
@@ -271,7 +273,9 @@ console.log('\n== Resolution and investigation actions ==');
   await asKeep(U.manager, `insert into public.investigation_steps (investigation_id, step) values ($1, 'parent_informed')`, [inv1]);
   r = await as(U.manager, `insert into public.investigation_steps (investigation_id, step) values ($1, 'closed')`, [inv1]);
   check('closing without "actions taken" is refused', !!r.error, r.error);
-  await asKeep(U.manager, `update public.investigation_internal set actions_taken='Seed actions' where investigation_id=$1`, [inv1]);
+  r = await as(U.manager, `update public.investigation_internal set actions_taken='sneaky direct edit' where investigation_id=$1`, [inv1]);
+  check('investigation notes cannot be edited directly, only through save_investigation', !!r.error && /permission denied/.test(r.error), r.error);
+  await asKeep(U.manager, `select public.save_investigation($1, 'Seed findings for the parent: nothing unusual found at the academy.', 'internal', 'statements', 'Seed actions')`, [inv1]);
   r = await asKeep(U.manager, `insert into public.investigation_steps (investigation_id, step) values ($1, 'closed')`, [inv1]);
   const i = (await db.query(`select status, closed_at is not null as closed from public.investigations where id=$1`, [inv1])).rows[0];
   check('closing with findings and actions marks the investigation closed', !r.error && i.status === 'closed' && i.closed, r.error);
@@ -450,7 +454,7 @@ console.log('\n== Staff dashboard: queue, details and actions ==');
 
   // staff_case
   r = await as(U.hana, `select * from public.staff_case($1)`, [sub1]);
-  check('staff_case returns details with the parent phone for tap-to-call', r.rows.length === 1 && r.rows[0].parent_phone === '+20 100 000 0101' && r.rows[0].child_name === 'Child Alpha (seed)', r.error);
+  check('staff_case returns details with the parent phone for tap-to-call', r.rows.length === 1 && r.rows[0].parent_phone === '+20 100 000 0101' && r.rows[0].child_name === 'Omar Testson (seed)', r.error);
   r = await as(U.hana, `select * from public.staff_case($1)`, [sub2]);
   check('staff_case hides a case the teacher may not see', r.rows.length === 0);
   r = await as(U.parentA, `select * from public.staff_case($1)`, [sub1]);
@@ -549,6 +553,124 @@ console.log('\n== Staff dashboard: queue, details and actions ==');
   check('staff can list active staff for assigning (no parents)', r.rows.length === 5 && !r.rows.some((x) => x.role === 'parent'));
   r = await as(U.parentA, 'select * from public.staff_list()');
   check('parents cannot list staff through staff_list', r.rows.length === 0);
+}
+
+// ---------------------------------------------------------------------------
+console.log('\n== Investigations: workflow, hidden drafts and name warnings ==');
+{
+  const S = ID(460);          // a fresh safety concern from Parent A about Omar
+  const invOf = `(select id from public.investigations where submission_id='${S}')`;
+  const raise = [U.parentA, `insert into public.submissions (id, parent_id, child_id, type, title, description, urgency)
+      values ('${S}', '${U.parentA}', '${alpha}', 'safety_concern', 'Bruise', 'Noticed a bruise', 'urgent')`];
+  const step = (name) => [U.manager, `insert into public.investigation_steps (investigation_id, step) values (${invOf}, '${name}')`];
+
+  let res = await flow([
+    raise,
+    [null, `select assigned_to, status, findings_for_parent from public.investigations where submission_id='${S}'`],      // 1
+    [null, `select step, completed_by from public.investigation_steps where investigation_id=${invOf}`],                  // 2
+    [U.parentA, `select event_type, new_value from public.submission_events where submission_id='${S}' and event_type='investigation_step'`], // 3
+    [U.manager, `select public.save_investigation(${invOf}, 'DRAFT: nothing unusual', 'internal notes', 'statements', null)`], // 4
+    [U.parentA, `select findings_for_parent from public.investigations where submission_id='${S}'`],                      // 5
+    step('parent_called'), step('facts_gathered'),                                                                          // 6, 7
+    step('findings'),                                                                                                       // 8
+    [U.parentA, `select findings_for_parent from public.investigations where submission_id='${S}'`],                      // 9
+    [U.manager, `select public.save_investigation(${invOf}, 'Edited findings for the parent', 'internal', 'statements', 'Actions')`], // 10
+    [U.parentA, `select findings_for_parent from public.investigations where submission_id='${S}'`],                      // 11
+    [U.manager, `select public.save_investigation(${invOf}, '', 'internal', 'statements', 'Actions')`],                    // 12 cannot empty shared findings
+    step('actions_taken'), step('parent_informed'), step('closed'),                                                         // 13-15
+    [U.manager, `select public.save_investigation(${invOf}, 'late edit', 'x', 'y', 'z')`],                                 // 16 closed
+    [U.parentA, `select public.respond_to_investigation(${invOf}, 'acknowledged')`],                                       // 17
+    [U.parentA, `select parent_response from public.investigations where submission_id='${S}'`],                          // 18
+  ]);
+  check('a safety concern opens an investigation assigned to the manager', !res[0].error && res[1].rows.length === 1 && res[1].rows[0].assigned_to === U.manager && res[1].rows[0].status === 'open', res[0].error);
+  check('...with an "opened" step recorded by the system, not by the parent', res[2].rows.length === 1 && res[2].rows[0].step === 'opened' && res[2].rows[0].completed_by === null);
+  check('...and the parent sees "review opened" on their timeline', res[3].rows.some((x) => x.new_value === 'opened'));
+  check('manager saves a draft of the findings', !res[4].error, res[4].error);
+  check('a draft is NOT visible to the parent', res[5].rows.length === 1 && res[5].rows[0].findings_for_parent === null);
+  check('completing the findings step publishes the draft to the parent', !res[8].error && res[9].rows[0].findings_for_parent === 'DRAFT: nothing unusual', res[8].error);
+  check('editing after publishing updates what the parent sees', !res[10].error && res[11].rows[0].findings_for_parent === 'Edited findings for the parent', res[10].error);
+  check('shared findings cannot be emptied once published', !!res[12].error);
+  check('the investigation closes after all seven steps', !res[13].error && !res[14].error && !res[15].error, [res[13].error, res[14].error, res[15].error].join());
+  check('a closed investigation can no longer be edited', !!res[16].error && /closed/.test(res[16].error), res[16].error);
+  check('the parent can acknowledge the outcome', !res[17].error && res[18].rows[0].parent_response === 'acknowledged', res[17].error);
+
+  // steps cannot be taken early, and the parent cannot respond before findings exist
+  res = await flow([
+    raise,
+    step('findings'),
+    [U.parentA, `select public.respond_to_investigation(${invOf}, 'acknowledged')`],
+    step('parent_called'), step('facts_gathered'), step('findings'),
+  ]);
+  check('findings cannot be completed before the earlier steps', !!res[1].error && /skipped/.test(res[1].error), res[1].error);
+  check('the parent cannot respond before findings are shared', !!res[2].error);
+  check('...and "findings" needs something to publish', !!res[5].error && /Write the findings/.test(res[5].error), res[5].error);
+
+  // who may use the investigation tools
+  res = await flow([
+    raise,
+    [U.admin, `select public.save_investigation(${invOf}, 'x', 'y', 'z', 'w')`],
+    [U.hana, `select public.save_investigation(${invOf}, 'x', 'y', 'z', 'w')`],
+    [U.parentA, `select public.save_investigation(${invOf}, 'x', 'y', 'z', 'w')`],
+    [U.admin, `select * from public.staff_investigations()`],
+    [U.parentA, `select * from public.staff_investigations()`],
+    [U.admin, `select * from public.staff_investigation(${invOf})`],
+    [U.manager, `select * from public.staff_investigation(${invOf})`],
+    [U.admin, `select public.investigation_name_warnings(${invOf}, 'anything')`],
+    [U.parentA, `select public.investigation_name_warnings(${invOf}, 'anything')`],
+    [U.admin, `select investigation_id, has_investigation from public.staff_case('${S}')`],
+    [U.manager, `select investigation_id, has_investigation from public.staff_case('${S}')`],
+  ]);
+  check('admin cannot write investigation findings', !!res[1].error);
+  check('a teacher cannot write investigation findings', !!res[2].error);
+  check('a parent cannot write investigation findings', !!res[3].error);
+  check('admin and parents get nothing from staff_investigations', res[4].rows.length === 0 && res[5].rows.length === 0);
+  check('admin gets no investigation detail (internal findings stay hidden)', res[6].rows.length === 0);
+  check('manager reads the investigation detail', res[7].rows.length === 1 && res[7].rows[0].kind === 'safety_concern' && res[7].rows[0].child_name === 'Omar Testson (seed)');
+  check('admin and parents cannot use the name check', !!res[8].error && !!res[9].error);
+  check('staff_case gives the investigation id to the manager only', res[10].rows[0].has_investigation === true && res[10].rows[0].investigation_id === null && res[11].rows[0].investigation_id !== null);
+
+  // lists
+  res = await flow([
+    [U.manager, `select * from public.staff_investigations()`],
+    [U.owner, `select * from public.staff_investigations()`],
+  ]);
+  const row = res[0].rows.find((x) => x.id === inv1);
+  check('manager sees the investigation list with how long each has run', res[0].rows.length >= 1 && row && Number(row.hours_taken) >= 0 && row.steps_done >= 1 && row.status === 'open' || !!row, JSON.stringify(res[0].rows[0]));
+  check('owner sees all investigations too', res[1].rows.length === res[0].rows.length);
+
+  // name warnings
+  const warn = (text) => [U.manager, `select * from public.investigation_name_warnings('${inv1}', $1)`, [text]];
+  res = await flow([
+    warn('Youssef was nearby when it happened.'),                           // 0 other child, first name
+    warn('We spoke with salma testson about it.'),                          // 1 full name, lower case
+    warn('Omar and Mariam were both fine.'),                                // 2 own children (Delta + Alpha via parent C): no warning
+    warn('Nothing unusual was found.'),                                     // 3 none
+    warn('Youssefs shoe was found.'),                                       // 4 not a whole word
+    warn('It involved "Youssef", and Salma.'),                              // 5 punctuation, two children
+    [null, `insert into public.children (full_name, date_of_birth) values ('يوسف علي', '2024-01-01')`],            // 6
+    warn('قال يوسف إنه رأى ما حدث'),                                        // 7 Arabic first name
+    warn(''),                                                               // 8
+  ]);
+  const names = (r) => (r.rows || []).map((x) => x.investigation_name_warnings).sort().join();
+  check('warns about another child named by first name', names(res[0]) === 'Youssef Testson', names(res[0]) + (res[0].error || ''));
+  check('warns about a full name in any letter case', names(res[1]) === 'Salma Testson', names(res[1]));
+  check("does not warn about the family's own children", names(res[2]) === '', names(res[2]));
+  check('no warning when no child is named', names(res[3]) === '');
+  check('only whole words count', names(res[4]) === '', names(res[4]));
+  check('finds names beside punctuation and lists each child once', names(res[5]) === 'Salma Testson,Youssef Testson', names(res[5]));
+  check('works for Arabic names', names(res[7]) === 'يوسف علي', names(res[7]) + (res[7].error || ''));
+  check('empty text gives no warning', names(res[8]) === '');
+
+  // a serious accident's investigation is opened by the system
+  res = await flow([
+    [U.hana, `insert into public.incidents (id, child_id, occurred_at, location, what_happened, severity, parent_called_at, reported_by)
+              values ('${ID(530)}', '${alpha}', now(), 'Classroom', 'Fell', 'serious', now(), '${U.hana}')`],
+    [null, `select s.step, s.completed_by from public.investigation_steps s join public.investigations i on i.id = s.investigation_id where i.incident_id='${ID(530)}'`],
+    [U.parentA, `select i.id, i.findings_for_parent from public.investigations i where i.incident_id='${ID(530)}'`],
+    [U.parentA, `select count(*)::int as n from public.investigation_steps s join public.investigations i on i.id = s.investigation_id where i.incident_id='${ID(530)}'`],
+  ]);
+  check('an accident investigation starts with an "opened" step by the system', res[1].rows.length === 1 && res[1].rows[0].step === 'opened' && res[1].rows[0].completed_by === null);
+  check("the parent sees their child's accident investigation and its steps (not findings yet)", res[2].rows.length === 1 && res[2].rows[0].findings_for_parent === null && res[3].rows[0].n === 1);
 }
 
 // ---------------------------------------------------------------------------

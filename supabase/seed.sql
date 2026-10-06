@@ -52,10 +52,10 @@ insert into public.staff_classes (staff_id, class_id) values
   ('00000000-0000-4000-8000-000000000002', '00000000-0000-4000-8000-000000000202');
 
 insert into public.children (id, full_name, date_of_birth, class_id) values
-  ('00000000-0000-4000-8000-000000000301', 'Child Alpha (seed)', '2024-03-10', '00000000-0000-4000-8000-000000000201'),
-  ('00000000-0000-4000-8000-000000000302', 'Child Beta (seed)',  '2024-06-21', '00000000-0000-4000-8000-000000000201'),
-  ('00000000-0000-4000-8000-000000000303', 'Child Gamma (seed)', '2023-09-02', '00000000-0000-4000-8000-000000000202'),
-  ('00000000-0000-4000-8000-000000000304', 'Child Delta (seed)', '2023-12-15', '00000000-0000-4000-8000-000000000202');
+  ('00000000-0000-4000-8000-000000000301', 'Omar Testson (seed)', '2024-03-10', '00000000-0000-4000-8000-000000000201'),
+  ('00000000-0000-4000-8000-000000000302', 'Salma Testson (seed)',  '2024-06-21', '00000000-0000-4000-8000-000000000201'),
+  ('00000000-0000-4000-8000-000000000303', 'Youssef Testson (seed)', '2023-09-02', '00000000-0000-4000-8000-000000000202'),
+  ('00000000-0000-4000-8000-000000000304', 'Mariam Testson (seed)', '2023-12-15', '00000000-0000-4000-8000-000000000202');
 
 -- Parent A: Alpha.  Parent B: Beta and Gamma.  Parent C: Delta, and is Alpha's second parent.
 insert into public.parent_children (parent_id, child_id) values
@@ -93,13 +93,15 @@ insert into public.incidents (id, child_id, occurred_at, location, what_happened
    'needs_attention', array['Teacher Mariam (seed)'], now() - interval '90 minutes',
    '00000000-0000-4000-8000-000000000002');
 
-insert into public.investigations (id, submission_id, assigned_to, findings_for_parent) values
-  ('00000000-0000-4000-8000-000000000601', '00000000-0000-4000-8000-000000000403',
-   '00000000-0000-4000-8000-000000000004', 'Seed findings for the parent: nothing unusual found at the academy.');
+-- The safety concern above opened its investigation automatically (assigned to the manager).
+-- Fill in some shared findings and internal notes on it for testing.
+update public.investigations
+   set findings_for_parent = 'Seed findings for the parent: nothing unusual found at the academy.'
+ where submission_id = '00000000-0000-4000-8000-000000000403';
 update public.investigation_internal
-   set internal_findings = 'SEED INTERNAL FINDINGS: names Child Gamma (seed); staff only',
+   set internal_findings = 'SEED INTERNAL FINDINGS: names Youssef Testson (seed); staff only',
        staff_statements = 'SEED STAFF STATEMENT: staff only'
- where investigation_id = '00000000-0000-4000-8000-000000000601';
+ where investigation_id = (select id from public.investigations where submission_id = '00000000-0000-4000-8000-000000000403');
 
 insert into public.ratings (parent_id, child_id, care_score, communication_score, daily_reports_score, comment) values
   ('00000000-0000-4000-8000-000000000102', '00000000-0000-4000-8000-000000000302', 5, 4, 5, 'Seed rating comment');
