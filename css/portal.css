@@ -205,3 +205,12 @@ tr.row-watch td{background:#fff8ee}
 /* every drop-down is thumb-sized, including the ones inside table rows and cards */
 .p-main select{min-height:42px;padding:8px 12px;border:2px solid var(--line);border-radius:12px;background:#fff;font-size:1rem;max-width:100%}
 .p-main select:focus{outline:none;border-color:var(--blue)}
+
+/* public registration form */
+.f-row .bad,.f-row input.bad,.f-row select.bad,.f-row textarea.bad{border-color:var(--bad)!important;background:#fdf3f2}
+.choice.bad,.action.bad{border-color:var(--bad);background:#fdf3f2}
+.consent{min-inline-size:0}
+.consent legend{padding:0 6px;margin-bottom:4px}
+.yn{display:flex;gap:10px}
+.yn .choice{flex:1;margin:0;align-items:center}
+.hp{position:absolute;inset-inline-start:-9999px;width:1px;height:1px;overflow:hidden}

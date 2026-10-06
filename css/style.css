@@ -215,3 +215,6 @@ footer{background:#211a30; color:#cfc9dc; padding:60px 0 26px;}
   .cta-banner{flex-direction:column; text-align:center;}
   .lightbox-grid{grid-template-columns:1fr 1fr;}
 }
+
+.modal-alt{background:var(--pink-light);color:var(--ink);border-radius:14px;padding:10px 14px;margin:0 0 14px;font-weight:600;font-size:.95rem}
+.modal-alt a{color:var(--pink-dark);text-decoration:underline}
