@@ -18,7 +18,7 @@ automatically; it takes effect only when you run it in a Supabase project.
 | `migrations/..._notifications.sql` | Email queue, event emails, deadline clock (warn 1 hour before, escalate when missed) |
 | `migrations/..._owner_dashboard.sql` | The owner's private dashboard: attendance, HR log, staff concerns (truly anonymous if asked), mistakes, confirmed investigation faults, editable thresholds. Every table is owner-only in the database |
 | `migrations/..._hardening.sql` | **Must always be last.** Locks every security-definer and trigger function so only the intended roles can run them (Supabase otherwise lets anonymous visitors run new functions). Safe to run again |
-| `catch-up-migrations-10-to-14.sql` | Migrations 10 to 14 in one paste, for a project that already has the first nine |
+| `catch-up-migrations.sql` | Migrations 10 to 14 in one paste, for a project that already has the first nine |
 | `migrations/..._owner_routines.sql` | The owner's morning/afternoon checklist (placeholder checks, editable), task tracker, and reminders at 09:00, 16:30, Thursday review and the monthly review. Reminders run in the same 15-minute job as the deadline clock |
 | `migrations/..._reports.sql` | `staff_report(from, to)`: every number for the manager/owner reports page |
 | `migrations/..._parent_views.sql` | Parent-safe lookups: own cases with handler name, own accident reports, staff names for "about a staff member" |

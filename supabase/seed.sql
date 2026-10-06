@@ -105,3 +105,30 @@ update public.investigation_internal
 
 insert into public.ratings (parent_id, child_id, care_score, communication_score, daily_reports_score, comment) values
   ('00000000-0000-4000-8000-000000000102', '00000000-0000-4000-8000-000000000302', 5, 4, 5, 'Seed rating comment');
+
+-- Registration: one application waiting for review, and the health details / pickup people / consents of the seed children.
+insert into public.registration_applications (id, draft_id, child_name, child_dob, programme, preferred_start, allergies, medical_conditions,
+    consent_photos_class, consent_photos_social, consent_outings, consent_emergency_treatment, consent_birthday_wall) values
+  ('00000000-0000-4000-8000-000000000701', '00000000-0000-4000-8000-0000000007d1', 'Layla Applicant (seed)', '2025-05-05', 'nursery', current_date + 30,
+   'SEED APPLICANT ALLERGY: egg', 'SEED APPLICANT CONDITION', true, false, true, true, false);
+insert into public.registration_parents (application_id, position, full_name, phone, email, relationship) values
+  ('00000000-0000-4000-8000-000000000701', 1, 'Seed Applicant Parent (seed)', '+20 100 000 0201', 'applicant@seed.cka.test', 'mother');
+insert into public.registration_pickups (application_id, full_name, relationship, phone) values
+  ('00000000-0000-4000-8000-000000000701', 'Seed Applicant Aunt (seed)', 'aunt', '+20 100 000 0202');
+insert into public.registration_documents (application_id, kind, storage_path, file_name, mime_type, size_bytes) values
+  ('00000000-0000-4000-8000-000000000701', 'birth_certificate', 'drafts/00000000-0000-4000-8000-0000000007d1/birth_certificate/seed.pdf', 'seed.pdf', 'application/pdf', 1000);
+insert into public.registration_events (application_id, kind) values ('00000000-0000-4000-8000-000000000701', 'submitted');
+
+insert into public.child_health (child_id, allergies, medical_conditions) values
+  ('00000000-0000-4000-8000-000000000301', 'Peanut allergy (seed)', null),
+  ('00000000-0000-4000-8000-000000000302', null, 'SEED HEALTH SECRET: asthma inhaler'),
+  ('00000000-0000-4000-8000-000000000303', 'None known (seed)', null);
+insert into public.child_pickups (child_id, full_name, relationship, phone) values
+  ('00000000-0000-4000-8000-000000000301', 'Grandma Seed (seed)', 'grandmother', '+20 100 000 0301'),
+  ('00000000-0000-4000-8000-000000000302', 'Uncle Seed Secret (seed)', 'uncle', '+20 100 000 0302');
+insert into public.child_consents (child_id, photos_class, photos_social, outings, emergency_treatment, birthday_wall) values
+  ('00000000-0000-4000-8000-000000000301', true, false, true, true, false);
+insert into public.child_documents (child_id, kind, storage_path) values
+  ('00000000-0000-4000-8000-000000000301', 'birth_certificate', 'drafts/seed/birth.pdf');
+insert into public.child_change_log (child_id, kind, summary) values
+  ('00000000-0000-4000-8000-000000000301', 'created', 'SEED LOG: created from application');

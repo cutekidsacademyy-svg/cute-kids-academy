@@ -10,13 +10,13 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 
 ## 1. Get the database up to date  (about 10 minutes)
 
-- [ ] In Supabase, open **SQL Editor > New query**, paste the whole of `supabase/catch-up-migrations-10-to-14.sql`, and run it.
+- [ ] In Supabase, open **SQL Editor > New query**, paste the whole of `supabase/catch-up-migrations.sql`, and run it.
       (The first nine migrations were already applied. This adds the email queue, reports, owner dashboard,
       owner checklist and the **security hardening**, which is last on purpose.)
 - [ ] From the project folder run `node tests/live-check.mjs`. Every line must say PASS.
       It looks at your live project from the outside, as a stranger would, using only the public key.
 - [ ] **Important:** if you ever add or change a function in a future migration, run
-      `supabase/migrations/20261006121300_hardening.sql` again afterwards (it is safe to repeat).
+      `supabase/migrations/29991231000000_hardening.sql` again afterwards (it is safe to repeat).
 
 ## 2. Lock down who can log in
 

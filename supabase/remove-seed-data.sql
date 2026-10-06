@@ -26,6 +26,16 @@ create temporary table seed_invs on commit drop as
 alter table public.submission_events   disable trigger submission_events_no_update;
 alter table public.investigation_steps disable trigger investigation_steps_no_change;
 
+delete from public.registration_events      where application_id in (select id from public.registration_applications where child_name like '%(seed)');
+delete from public.registration_documents   where application_id in (select id from public.registration_applications where child_name like '%(seed)');
+delete from public.registration_pickups     where application_id in (select id from public.registration_applications where child_name like '%(seed)');
+delete from public.registration_parents     where application_id in (select id from public.registration_applications where child_name like '%(seed)');
+delete from public.registration_applications where child_name like '%(seed)';
+delete from public.child_change_log         where child_id in (select id from seed_children);
+delete from public.child_documents          where child_id in (select id from seed_children);
+delete from public.child_consents           where child_id in (select id from seed_children);
+delete from public.child_pickups            where child_id in (select id from seed_children);
+delete from public.child_health             where child_id in (select id from seed_children);
 delete from public.owner_tasks             where assigned_to in (select id from seed_users) or created_by in (select id from seed_users);
 delete from public.investigation_faults   where staff_id in (select id from seed_users) or investigation_id in (select id from seed_invs);
 delete from public.staff_attendance       where staff_id in (select id from seed_users) or recorded_by in (select id from seed_users);

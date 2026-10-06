@@ -129,7 +129,7 @@ console.log('\n== Security audit: structure ==');
   check('only these tables allow column-level updates (own name/phone/language, assignee, concern status)', colOnly === 'investigations,profiles,staff_complaints', colOnly);
   const noSel = (await q(`select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r'
                           and not has_table_privilege('authenticated', c.oid, 'SELECT') order by 1`)).map((x) => x.relname).join(',');
-  check('server-only tables cannot be read from the browser at all', noSel === 'deadline_events,email_outbox', noSel);
+  check('server-only tables cannot be read from the browser at all', noSel === 'deadline_events,email_outbox,registration_rate', noSel);
 
   // 4. functions: nothing internal is reachable by the wrong person
   const fns = await q(`select p.proname as name, p.prosecdef as definer, p.prorettype = 'trigger'::regtype as is_trigger, coalesce(p.proconfig::text, '') as cfg,
@@ -143,7 +143,8 @@ console.log('\n== Security audit: structure ==');
     'cka_actor_name', 'change_urgency', 'respond_to_resolution', 'mark_incident_read', 'respond_to_investigation', 'submission_handler_name', 'parent_cases', 'parent_incidents', 'list_staff_names',
     'staff_queue', 'staff_case', 'staff_list', 'staff_ratings', 'staff_acknowledge', 'staff_mark_in_progress', 'staff_assign', 'staff_escalate', 'staff_resolve', 'save_investigation',
     'investigation_name_warnings', 'staff_investigations', 'staff_investigation', 'staff_report', 'record_staff_attendance', 'staff_attendance_day', 'submit_staff_complaint',
-    'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine'].sort();
+    'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
+    'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies', 'parent_update_health', 'parent_save_pickup'].sort();
   const reach = definers.filter((f) => !f.is_trigger && f.auth).map((f) => f.name).sort();
   check('the ONLY security-definer functions a logged-in user can run are the intended screens/helpers (nothing new slipped in)',
     JSON.stringify(reach) === JSON.stringify(ALLOWED), JSON.stringify({ extra: reach.filter((x) => !ALLOWED.includes(x)), missing: ALLOWED.filter((x) => !reach.includes(x)) }));
@@ -153,10 +154,12 @@ console.log('\n== Security audit: structure ==');
   check('the server key can run the scheduled jobs; nobody else can queue emails or look up names', svc[0].a && svc[0].b && !svc[0].c && !svc[0].d && !svc[0].e, JSON.stringify(svc[0]));
   const pure = fns.filter((f) => !f.definer && !f.is_trigger && f.anon).map((f) => f.name).sort().join(',');
   check('the only functions anonymous visitors can run are pure date and arithmetic helpers (they read no data)',
-    pure === 'cka_add_business_days,cka_add_working_hours,cka_case_payload,cka_deadlines,cka_in_working_hours,cka_is_happy,cka_is_work_day,cka_next_work_day,cka_threshold,cka_working_start', pure);
+    pure === 'cka_add_business_days,cka_add_working_hours,cka_case_payload,cka_deadlines,cka_in_working_hours,cka_is_email,cka_is_happy,cka_is_phone,cka_is_work_day,cka_next_work_day,cka_threshold,cka_working_start', pure);
 
   // 5. storage: the photo bucket is private with a 5 MB / images-only limit
   const b = (await q(`select public, file_size_limit, allowed_mime_types from storage.buckets where id = 'attachments'`))[0];
+  const regB = await q(`select id, public, file_size_limit from storage.buckets where id in ('registrations', 'child-files') order by id`);
+  check('the registration and child-file buckets are private with a 5 MB limit', regB.length === 2 && regB.every((x) => x.public === false && Number(x.file_size_limit) === 5242880), JSON.stringify(regB));
   check('the photo bucket is private, limited to 5 MB and to images only', b.public === false && Number(b.file_size_limit) === 5242880 && b.allowed_mime_types.every((m) => m.startsWith('image/')), JSON.stringify(b));
 }
 
@@ -167,6 +170,11 @@ console.log('\n== Security audit: who can read what (seed data) ==');
   // columns: anon, parentA, parentB, parentC, hana, mariam, admin, manager, owner
   const EXPECT = {
     attachments:            [D, 1, 0, 0, 1, 0, 1, 1, 1],
+    child_change_log:       [D, 0, 0, 0, 0, 0, 1, 1, 1],
+    child_consents:         [D, 1, 0, 1, 0, 0, 1, 1, 1],
+    child_documents:        [D, 0, 0, 0, 0, 0, 1, 1, 1],
+    child_health:           [D, 1, 2, 1, 0, 0, 3, 3, 3],
+    child_pickups:          [D, 1, 1, 1, 0, 0, 2, 2, 2],
     checklist_checks:       [D, 0, 0, 0, 0, 0, 0, 0, 0],
     checklist_items:        [D, 0, 0, 0, 0, 0, 0, 0, 10],
     children:               [D, 1, 2, 2, 2, 2, 4, 4, 4],
@@ -186,6 +194,12 @@ console.log('\n== Security audit: who can read what (seed data) ==');
     parent_children:        [D, 1, 2, 2, 0, 0, 5, 5, 5],
     profiles:               [D, 1, 1, 1, 4, 3, 8, 8, 8],
     ratings:                [D, 0, 1, 0, 0, 0, 0, 1, 1],
+    registration_applications: [D, 0, 0, 0, 0, 0, 1, 1, 1],
+    registration_documents: [D, 0, 0, 0, 0, 0, 1, 1, 1],
+    registration_events:    [D, 0, 0, 0, 0, 0, 1, 1, 1],
+    registration_parents:   [D, 0, 0, 0, 0, 0, 1, 1, 1],
+    registration_pickups:   [D, 0, 0, 0, 0, 0, 1, 1, 1],
+    registration_rate:      [D, D, D, D, D, D, D, D, D],
     staff_attendance:       [D, 0, 0, 0, 0, 0, 0, 0, 0],
     staff_classes:          [D, 0, 0, 0, 1, 1, 2, 2, 2],
     staff_complaints:       [D, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -213,7 +227,7 @@ console.log('\n== Security audit: who can read what (seed data) ==');
       const r = await as(who, `select coalesce(string_agg(to_jsonb(x)::text, ' '), '') as s from public.${t} x`);
       if (!r.error) parts.push(r.rows[0].s);
     }
-    for (const fn of ['parent_cases', 'parent_incidents', 'list_staff_names', 'staff_queue', 'staff_list', 'staff_ratings']) {
+    for (const fn of ['parent_cases', 'parent_incidents', 'list_staff_names', 'staff_queue', 'staff_list', 'staff_ratings', 'class_allergies']) {
       const r = await as(who, `select coalesce(string_agg(to_jsonb(x)::text, ' '), '') as s from public.${fn}() x`);
       if (!r.error) parts.push(r.rows[0].s);
     }
@@ -231,17 +245,17 @@ console.log('\n== Security audit: who can read what (seed data) ==');
   };
   const staffPhones = ['+20 100 000 0001', '+20 100 000 0002', '+20 100 000 0003', '+20 100 000 0004', '+20 100 000 0005'];
   const INTERNAL = ['SEED INTERNAL NOTE', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT'];
-  await scan(U.parentA, 'Parent A', ['Salma Testson', 'Youssef Testson', 'Mariam Testson', 'Parent B (seed)', 'Parent C (seed)', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'Seed rating comment', 'other.jpg', '+20 100 000 0102', '+20 100 000 0103'].concat(INTERNAL, staffPhones),
-    ['Omar Testson', 'lunch concern', 'seed-photo.jpg']);
-  await scan(U.parentB, 'Parent B', ['Omar Testson', 'Mariam Testson', 'lunch concern', 'Parent A (seed)', 'Parent C (seed)', 'mark on arm', 'Seed findings', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
-    ['Salma Testson', 'Youssef Testson', 'tripped on the path', 'Seed rating comment']);
-  await scan(U.parentC, 'Parent C', ['Salma Testson', 'Youssef Testson', 'lunch concern', 'Parent A (seed)', 'Parent B (seed)', 'tripped on the path', 'Seed rating comment', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
-    ['Omar Testson', 'Mariam Testson', 'mark on arm', 'Seed findings']);
-  await scan(U.hana, 'Teacher Hana', ['Youssef Testson', 'Mariam Testson', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'],
-    ['Omar Testson', 'lunch concern', 'SEED INTERNAL NOTE']);
-  await scan(U.mariam, 'Teacher Mariam', ['Omar Testson', 'Salma Testson', 'lunch concern', 'concern about Teacher Hana', 'SEED INTERNAL NOTE', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed findings', 'Seed rating comment'],
-    ['Youssef Testson', 'Mariam Testson', 'mark on arm', 'tripped on the path']);
-  await scan(U.admin, 'Admin', ['SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'], ['SEED INTERNAL NOTE', 'Seed findings', 'concern about Teacher Hana']);
+  await scan(U.parentA, 'Parent A', ['SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'Mariam Testson', 'Parent B (seed)', 'Parent C (seed)', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'Seed rating comment', 'other.jpg', '+20 100 000 0102', '+20 100 000 0103'].concat(INTERNAL, staffPhones),
+    ['Omar Testson', 'lunch concern', 'seed-photo.jpg', 'Peanut allergy (seed)', 'Grandma Seed']);
+  await scan(U.parentB, 'Parent B', ['Peanut allergy', 'Grandma Seed', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Omar Testson', 'Mariam Testson', 'lunch concern', 'Parent A (seed)', 'Parent C (seed)', 'mark on arm', 'Seed findings', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
+    ['Salma Testson', 'Youssef Testson', 'tripped on the path', 'Seed rating comment', 'SEED HEALTH SECRET', 'Uncle Seed Secret']);
+  await scan(U.parentC, 'Parent C', ['SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'lunch concern', 'Parent A (seed)', 'Parent B (seed)', 'tripped on the path', 'Seed rating comment', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
+    ['Omar Testson', 'Mariam Testson', 'mark on arm', 'Seed findings', 'Peanut allergy (seed)', 'Grandma Seed']);
+  await scan(U.hana, 'Teacher Hana', ['SEED HEALTH SECRET', 'asthma', 'Grandma Seed', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Youssef Testson', 'Mariam Testson', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'],
+    ['Omar Testson', 'lunch concern', 'SEED INTERNAL NOTE', 'Peanut allergy (seed)']);
+  await scan(U.mariam, 'Teacher Mariam', ['Peanut allergy', 'SEED HEALTH SECRET', 'Grandma Seed', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Omar Testson', 'Salma Testson', 'lunch concern', 'concern about Teacher Hana', 'SEED INTERNAL NOTE', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed findings', 'Seed rating comment'],
+    ['Youssef Testson', 'Mariam Testson', 'mark on arm', 'tripped on the path', 'None known (seed)']);
+  await scan(U.admin, 'Admin', ['SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'], ['SEED INTERNAL NOTE', 'Seed findings', 'concern about Teacher Hana', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'SEED APPLICANT ALLERGY', 'SEED LOG']);
   await scan(U.manager, 'The manager', [], ['SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment', 'SEED INTERNAL NOTE']);
   await db.exec(`delete from storage.objects`);
 }
@@ -1405,6 +1419,219 @@ console.log('\n== Launch test: overdue cases escalate and email exactly once =='
   check('each escalation is written to the timeline exactly once', res[11].rows[0].n === 3);
   check('each escalation emailed its recipient exactly once, with no duplicate alerts', res[9].rows[0].n === res[9].rows[0].uniq && res[9].rows[0].n >= 3, JSON.stringify(res[9].rows[0]));
   check('later runs inside the same window change nothing', res[12].rows[0].r.escalated === 0 && res[13].rows[0].r.escalated === 0 && res[14].rows[0].n === res[9].rows[0].n && JSON.stringify(res[15].rows) === JSON.stringify(res[10].rows.map((x) => ({ id: x.id, escalation_level: x.escalation_level }))));
+}
+
+// ---------------------------------------------------------------------------
+console.log('\n== Online registration ==');
+{
+  const DRAFT = ID(800), PREFIX = `drafts/${DRAFT}/`;
+  const valid = (o = {}) => { const PREFIX = `drafts/${o.draft_id || DRAFT}/`; return JSON.stringify(Object.assign({
+    draft_id: DRAFT, language: 'ar',
+    child: { name: 'Nour Newchild', dob: '2025-02-02', programme: 'nursery', preferred_start: '2027-01-10', photo_path: PREFIX + 'child_photo/c.jpg' },
+    parents: [{ full_name: 'Mona Newparent', phone: '+20 100 111 2222', email: 'Mona@New.test', relationship: 'mother' }],
+    health: { allergies: 'Peanuts', medical_conditions: 'Mild asthma', medications: '', doctor_name: 'Dr Seed', doctor_phone: '+20 2 1234 5678' },
+    pickups: [{ full_name: 'Aunt Newparent', relationship: 'aunt', phone: '+20 100 333 4444', id_photo_path: PREFIX + 'pickup/a.jpg' }],
+    consents: { photos_class: true, photos_social: false, outings: true, emergency_treatment: true, birthday_wall: false },
+    documents: [{ kind: 'birth_certificate', path: PREFIX + 'birth_certificate/b.pdf', file_name: 'b.pdf', mime_type: 'application/pdf', size_bytes: 12345 }],
+  }, o)); };
+  const submit = (json) => [null, `select public.register_application($1::jsonb) as r`, [json]];
+  const bad = async (label, json, re) => {
+    const res = await flow([submit(json)]);
+    check('a submission is refused: ' + label, !!res[0].error && (!re || re.test(res[0].error)), res[0].error);
+  };
+
+  let res = await flow([
+    submit(valid()),                                                                                       // 0
+    [null, `select status, child_name, programme, language, consent_photos_social, allergies from public.registration_applications where draft_id='${DRAFT}'`], // 1
+    [null, `select position, email, relationship from public.registration_parents order by position`],      // 2 (also contains the seed row)
+    [null, `select count(*)::int as n from public.registration_pickups p join public.registration_applications a on a.id = p.application_id where a.draft_id='${DRAFT}'`], // 3
+    [null, `select count(*)::int as n from public.registration_documents d join public.registration_applications a on a.id = d.application_id where a.draft_id='${DRAFT}'`], // 4
+    [null, `select to_email, language, template, payload, user_id from public.email_outbox where template='registration_received'`], // 5
+    submit(valid()),                                                                                       // 6 same child, same email again
+    submit(valid({ child: { name: 'Nour Newchild', dob: '2025-02-02', programme: 'nursery' }, draft_id: ID(801) })), // 7 duplicate with another draft
+    submit(valid({ draft_id: ID(802), child: { name: 'Another Kid', dob: '2025-03-03', programme: 'camp' } })), // 8 a different child is fine
+  ]);
+  check('a complete application is stored with its parents, pickup people and documents', !res[0].error && res[0].rows[0].r.application_no > 0 && res[1].rows[0].status === 'new' && res[1].rows[0].programme === 'nursery', res[0].error);
+  check('...the language, consent answers and health details are kept', res[1].rows[0].language === 'ar' && res[1].rows[0].consent_photos_social === false && res[1].rows[0].allergies === 'Peanuts');
+  check('...the parent email is stored in lower case', res[2].rows.some((x) => x.email === 'mona@new.test' && x.relationship === 'mother'));
+  check('...with 1 pickup person and 1 document', res[3].rows[0].n === 1 && res[4].rows[0].n === 1);
+  const rc = res[5].rows.find((x) => x.to_email === 'mona@new.test');
+  check('the applicant is emailed a confirmation with the application number, in their language', rc && rc.language === 'ar' && rc.user_id === null && rc.payload.application_no === res[0].rows[0].r.application_no && rc.payload.child_name === 'Nour Newchild');
+  check('the same child from the same email is refused as a duplicate (even with a new draft id)', !!res[6].error && /duplicate/.test(res[6].error) && !!res[7].error);
+  check('a different child from the same family is accepted', !res[8].error, res[8].error);
+
+  await bad('child name too short', valid({ child: { name: 'A', dob: '2025-02-02', programme: 'nursery' } }), /invalid_child_name/);
+  await bad('a date of birth in the future', valid({ child: { name: 'Future Kid', dob: '2999-01-01', programme: 'nursery' } }), /invalid_child_dob/);
+  await bad('a date of birth 30 years ago', valid({ child: { name: 'Old Kid', dob: '1990-01-01', programme: 'nursery' } }), /invalid_child_dob/);
+  await bad('a made-up programme', valid({ child: { name: 'Prog Kid', dob: '2025-02-02', programme: 'university' } }), /invalid_programme/);
+  await bad('no parent', valid({ parents: [] }), /invalid_parents/);
+  await bad('three parents', valid({ parents: [1, 2, 3].map((n) => ({ full_name: 'Parent ' + n, phone: '+20 100 111 222' + n, email: `p${n}@x.test`, relationship: 'other' })) }), /invalid_parents/);
+  await bad('a bad email address', valid({ parents: [{ full_name: 'Bad Email', phone: '+20 100 111 2222', email: 'not-an-email', relationship: 'mother' }] }), /invalid_parent_1/);
+  await bad('a bad phone number', valid({ parents: [{ full_name: 'Bad Phone', phone: 'call me', email: 'ok@x.test', relationship: 'mother' }] }), /invalid_parent_1/);
+  await bad('a consent left unanswered', valid({ consents: { photos_class: true, photos_social: null, outings: true, emergency_treatment: true, birthday_wall: false } }), /consents_incomplete/);
+  await bad('a consent answered with text instead of yes/no', valid({ consents: { photos_class: 'yes', photos_social: false, outings: true, emergency_treatment: true, birthday_wall: false } }), /consents_incomplete/);
+  await bad('a file from someone else\'s upload folder', valid({ draft_id: ID(803), documents: [{ kind: 'other', path: `drafts/${ID(999)}/other/x.pdf`, file_name: 'x.pdf', mime_type: 'application/pdf', size_bytes: 10 }], child: { name: 'File Kid', dob: '2025-02-02', programme: 'nursery' }, pickups: [] }), /invalid_file/);
+  await bad('a file path that tries to climb out of the folder', valid({ draft_id: ID(804), documents: [{ kind: 'other', path: `drafts/${ID(804)}/../x.pdf`, file_name: 'x.pdf', mime_type: 'application/pdf', size_bytes: 10 }], child: { name: 'Path Kid', dob: '2025-02-02', programme: 'nursery' }, pickups: [] }), /invalid_file/);
+  await bad('a document over 5 MB', valid({ draft_id: ID(805), documents: [{ kind: 'other', path: `drafts/${ID(805)}/other/x.pdf`, file_name: 'x.pdf', mime_type: 'application/pdf', size_bytes: 6000000 }], child: { name: 'Big Kid', dob: '2025-02-02', programme: 'nursery' }, pickups: [] }), /invalid_file/);
+  await bad('a document that is not an image or PDF', valid({ draft_id: ID(806), documents: [{ kind: 'other', path: `drafts/${ID(806)}/other/x.exe`, file_name: 'x.exe', mime_type: 'application/x-msdownload', size_bytes: 10 }], child: { name: 'Exe Kid', dob: '2025-02-02', programme: 'nursery' }, pickups: [] }), /invalid_file/);
+  await bad('more than 6 pickup people', valid({ draft_id: ID(807), child: { name: 'Crowd Kid', dob: '2025-02-02', programme: 'nursery' }, pickups: Array.from({ length: 7 }, (_, i) => ({ full_name: 'Person ' + i, relationship: 'friend', phone: '+20 100 111 222' + i })) }), /invalid_pickups/);
+  await bad('a string that is not JSON for the draft id', valid({ draft_id: 'nope' }), /bad_request/);
+
+  // who may call the server-only functions
+  const calls = [
+    ['register_application', `select public.register_application('{}'::jsonb)`],
+    ['find_user_by_email', `select * from public.find_user_by_email('parent.a@seed.cka.test')`],
+    ['registration_rate_hit', `select public.registration_rate_hit('x', 5)`],
+    ['cka_enqueue_email_address', `select public.cka_enqueue_email_address('a@b.test', 'en', 'registration_received', '{}'::jsonb, 'k')`],
+  ];
+  for (const [name, sql] of calls) {
+    const g = await flow([[U.owner, sql], [U.parentA, sql], [null + '', sql]].slice(0, 2));
+    check(name + ' cannot be called from a browser (not even by the owner)', !!g[0].error && !!g[1].error && /permission denied/.test(g[0].error), g[0].error);
+    const an = await as(null, sql);
+    check(name + ' cannot be called by an anonymous visitor', !!an.error, an.error);
+  }
+
+  // rate limiting
+  res = await flow([1, 2, 3, 4].map(() => [null, `select public.registration_rate_hit('ip:abc', 3) as ok`]).concat([[null, `select public.registration_rate_hit('ip:other', 3) as ok`]]));
+  check('the rate limiter allows the first 3 and refuses the 4th, per visitor', res[0].rows[0].ok && res[1].rows[0].ok && res[2].rows[0].ok && res[3].rows[0].ok === false && res[4].rows[0].ok === true, JSON.stringify(res.map((x) => x.rows && x.rows[0].ok)));
+
+  // the staff side
+  const APP = ID(701);                                       // the seeded application ("Layla Applicant (seed)")
+  res = await flow([
+    [U.admin, `select * from public.registration_list()`],                                                // 0
+    [U.hana, `select * from public.registration_list()`],                                                 // 1
+    [U.parentA, `select * from public.registration_list()`],                                              // 2
+    [U.admin, `select public.registration_get('${APP}') as r`],                                           // 3
+    [U.hana, `select public.registration_get('${APP}') as r`],                                            // 4
+    [U.admin, `select * from public.registration_list('declined')`],                                      // 5
+    [U.admin, `select public.registration_set_status('${APP}', 'missing_documents', '')`],                // 6 needs a note
+    [U.admin, `select public.registration_set_status('${APP}', 'missing_documents', 'Please upload the vaccination record')`], // 7
+    [null, `select status, status_note from public.registration_applications where id='${APP}'`],       // 8
+    [null, `select to_email, language, payload from public.email_outbox where template='registration_update' and payload->>'status'='missing_documents'`], // 9
+    [U.admin, `select public.registration_set_status('${APP}', 'approved', null)`],                       // 10
+    [U.hana, `select public.registration_set_status('${APP}', 'tour_booked', 'x')`],                      // 11
+    [U.manager, `select public.registration_set_status('${APP}', 'tour_booked', null)`],                  // 12
+    [U.admin, `select public.registration_set_status('${APP}', 'declined', null)`],                       // 13 needs a reason
+    [U.admin, `select public.registration_get('${APP}') as r`],                                           // 14 history
+  ]);
+  check('admin sees the applications list with the seeded application', res[0].rows.length >= 1 && res[0].rows.some((x) => x.id === APP && x.has_birth_certificate && !x.has_vaccination_record), res[0].error);
+  check('teachers and parents get nothing from the applications list or the details', res[1].rows.length === 0 && res[2].rows.length === 0 && !!res[4].error);
+  const got = res[3].rows[0].r;
+  check('an application opens with parents, pickup people, documents and history', got.parents.length === 1 && got.pickups.length === 1 && got.documents.length === 1 && got.events.length === 1 && got.child_name === 'Layla Applicant (seed)');
+  check('the filter by status works', res[5].rows.length === 0);
+  check('"missing documents" needs a note saying what is missing', !!res[6].error);
+  check('...and with a note it works and tells the applicant, in their language', !res[7].error && res[8].rows[0].status === 'missing_documents' && res[9].rows.length === 1 && res[9].rows[0].to_email === 'applicant@seed.cka.test' && res[9].rows[0].payload.note === 'Please upload the vaccination record', res[7].error);
+  check('approving is not possible through the status function', !!res[10].error);
+  check('a teacher cannot change an application', !!res[11].error);
+  check('the manager can mark a tour as booked; declining needs a reason', !res[12].error && !!res[13].error);
+  check('every change is recorded in the application history with who did it', res[14].rows[0].r.events.length === 3 && res[14].rows[0].r.events.some((e) => e.kind === 'missing_documents' && e.actor_name === 'Admin Sara (seed)'));
+
+  // approving
+  res = await flow([
+    [U.hana, `select public.approve_registration('${APP}', '${ID(201)}')`],                               // 0 teacher cannot
+    [U.admin, `select public.approve_registration('${APP}', '${ID(999)}')`],                              // 1 unknown class
+    [U.admin, `select public.approve_registration('${APP}', '${ID(201)}') as r`],                         // 2
+    [null, `select c.full_name, c.class_id, c.active from public.children c where c.id = (select child_id from public.registration_applications where id='${APP}')`], // 3
+    [null, `select h.allergies, h.medical_conditions from public.child_health h where h.child_id = (select child_id from public.registration_applications where id='${APP}')`], // 4
+    [null, `select photos_class, photos_social, birthday_wall from public.child_consents where child_id = (select child_id from public.registration_applications where id='${APP}')`], // 5
+    [null, `select full_name from public.child_pickups where child_id = (select child_id from public.registration_applications where id='${APP}')`], // 6
+    [null, `select kind from public.child_documents where child_id = (select child_id from public.registration_applications where id='${APP}')`], // 7
+    [null, `select kind, summary from public.child_change_log where child_id = (select child_id from public.registration_applications where id='${APP}')`], // 8
+    [U.admin, `select public.approve_registration('${APP}', '${ID(201)}')`],                              // 9 twice
+    [U.admin, `select public.registration_set_status('${APP}', 'waitlist', null)`],                       // 10 after approval
+    [null, `select template, to_email from public.email_outbox where template='registration_update' and payload->>'status'='approved'`], // 11
+  ]);
+  check('a teacher cannot approve; an unknown class is refused', !!res[0].error && !!res[1].error);
+  const ap = res[2].rows[0].r;
+  check('approving creates the child in the chosen class and says who to invite', !res[2].error && ap.child_id && ap.parents.length === 1 && ap.parents[0].email === 'applicant@seed.cka.test' && res[3].rows[0].class_id === ID(201) && res[3].rows[0].active === true, res[2].error);
+  check('...copies the health details, consents, pickup people and documents', res[4].rows[0].allergies === 'SEED APPLICANT ALLERGY: egg' && res[5].rows[0].photos_class === true && res[5].rows[0].photos_social === false && res[6].rows.length === 1 && res[7].rows.some((x) => x.kind === 'birth_certificate'));
+  check('...and records that it was created from the application', res[8].rows.length === 1 && res[8].rows[0].kind === 'created');
+  check('an application cannot be approved twice or changed afterwards', !!res[9].error && !!res[10].error);
+  check('the family is told the child has been accepted', res[11].rows.length === 1 && res[11].rows[0].to_email === 'applicant@seed.cka.test');
+
+  // after approval: who sees the child's private details
+  // (the approved child above only existed inside a rolled-back test, so the next test approves again)
+  res = await flow([
+    [U.admin, `select public.approve_registration('${APP}', '${ID(201)}') as r`],                         // 0
+    [null, `insert into public.parent_children (parent_id, child_id) select '${U.parentA}', child_id from public.registration_applications where id='${APP}'`], // 1 link (the server does this after the invitation)
+    [U.parentA, `select allergies, medical_conditions from public.child_health where allergies like 'SEED APPLICANT%'`], // 2
+    [U.parentB, `select count(*)::int as n from public.child_health h where h.allergies like 'SEED APPLICANT%'`], // 3
+    [U.hana, `select count(*)::int as n from public.child_health`],                                       // 4 teacher: table closed
+    [U.hana, `select * from public.class_allergies()`],                                                   // 5
+    [U.mariam, `select * from public.class_allergies()`],                                                 // 6
+    [U.parentA, `select * from public.class_allergies()`],                                                // 7
+    [U.admin, `select * from public.class_allergies()`],                                                  // 8
+  ]);
+  check('the parent can read their own child\'s health record, and another parent cannot', !res[2].error && res[2].rows[0].allergies === 'SEED APPLICANT ALLERGY: egg' && res[3].rows[0].n === 0);
+  check('a teacher cannot read the health table at all', res[4].rows[0].n === 0);
+  const hanaRows = res[5].rows;
+  check('a teacher sees the allergies of her own class, and ONLY allergies (no conditions, medications or doctor)', hanaRows.length === 3 && hanaRows.some((x) => x.allergies === 'Peanut allergy (seed)') && hanaRows.some((x) => x.allergies === 'SEED APPLICANT ALLERGY: egg') && !JSON.stringify(hanaRows).includes('asthma') && Object.keys(hanaRows[0]).join() === 'child_id,child_name,class_name,allergies', JSON.stringify(hanaRows));
+  check('...and the other teacher sees only her class', res[6].rows.length === 2 && res[6].rows.every((x) => x.class_name === 'Ducklings (seed)'), JSON.stringify(res[6].rows.map((x) => x.child_name)));
+  check('a parent gets no class allergy list; admin gets all', res[7].rows.length === 0 && res[8].rows.length === 5, String(res[8].rows.length));
+
+  // parents update health and pickup people
+  const CH = alpha;
+  res = await flow([
+    [U.parentA, `select public.parent_update_health('${CH}', 'Peanut allergy (seed) and kiwi', 'Eczema', '', 'Dr Seed', '+20 2 1234 5678')`],   // 0
+    [U.admin, `select kind, summary, old_value, new_value, changed_by_name from public.child_change_log where kind='health' order by created_at desc limit 1`], // 1
+    [null, `select user_id, template from public.email_outbox where template='child_health_changed' order by created_at`],                       // 2
+    [U.parentA, `select public.parent_update_health('${CH}', 'Peanut allergy (seed) and kiwi', 'Eczema', '', 'Dr Seed', '+20 2 1234 5678')`],   // 3 no change
+    [null, `select count(*)::int as n from public.child_change_log where kind='health'`],                                                      // 4
+    [U.parentB, `select public.parent_update_health('${CH}', 'x', null, null, null, null)`],                                                    // 5 someone else's child
+    [U.hana, `select public.parent_update_health('${CH}', 'x', null, null, null, null)`],                                                       // 6 teacher
+    [U.parentA, `select public.parent_update_health('${CH}', '${'x'.repeat(2001)}', null, null, null, null)`],                                  // 7 too long
+    [U.parentA, `select public.parent_update_health('${CH}', 'a', null, null, null, 'call me')`],                                               // 8 bad phone
+    [U.hana, `select * from public.class_allergies()`],                                                                                          // 9 teacher sees new allergy
+  ]);
+  check('a parent can update their child\'s health details', !res[0].error, res[0].error);
+  check('...it is logged with who, what changed and the old and new values (staff only)', res[1].rows.length === 1 && res[1].rows[0].changed_by_name === 'Parent A (seed)' && /Allergies/.test(res[1].rows[0].summary) && /Eczema/.test(res[1].rows[0].new_value) && /Peanut allergy \(seed\)/.test(res[1].rows[0].old_value), JSON.stringify(res[1].rows));
+  const who = res[2].rows.map((x) => x.user_id);
+  check('...and the class teachers and the admins are emailed (no health details in the email)', who.includes(U.hana) && who.includes(U.admin) && !who.includes(U.parentA) && !who.includes(U.mariam), JSON.stringify(who));
+  check('saving without changing anything logs and emails nothing more', !res[3].error && res[4].rows[0].n === 1);
+  check("another parent, a teacher and an oversized or invalid change are all refused", !!res[5].error && !!res[6].error && !!res[7].error && !!res[8].error);
+  check('the teacher\'s allergy list shows the new allergy straight away', res[9].rows.some((x) => /kiwi/.test(x.allergies || '')));
+
+  res = await flow([
+    [U.parentA, `select public.parent_save_pickup('${CH}', null, 'Uncle Newpick', 'uncle', '+20 100 555 6666', null, true) as id`],                    // 0 add
+    [U.parentA, `select count(*)::int as n from public.child_pickups where child_id='${CH}' and active`],                                              // 1
+    [U.parentA, `select public.parent_save_pickup('${CH}', (select id from public.child_pickups where full_name='Uncle Newpick'), 'Uncle Newpick', 'uncle', '+20 100 777 8888', null, true)`], // 2 edit
+    [U.parentA, `select phone from public.child_pickups where full_name='Uncle Newpick'`],                                                              // 3
+    [U.parentA, `select public.parent_save_pickup('${CH}', (select id from public.child_pickups where full_name='Uncle Newpick'), 'Uncle Newpick', 'uncle', '+20 100 777 8888', null, false)`], // 4 remove
+    [U.parentA, `select count(*)::int as n from public.child_pickups where child_id='${CH}' and active`],                                              // 5
+    [U.admin, `select summary from public.child_change_log where kind='pickup' order by created_at`],                                                   // 6
+    [null, `select user_id from public.email_outbox where template='child_pickup_changed'`],                                                           // 7
+    [U.parentB, `select public.parent_save_pickup('${CH}', null, 'Intruder Name', 'friend', '+20 100 999 0000', null, true)`],                          // 8
+    [U.parentA, `select public.parent_save_pickup('${CH}', null, 'Photo Path', 'friend', '+20 100 999 0000', 'somewhere/else.jpg', true)`],             // 9
+    [U.parentA, `select public.parent_save_pickup('${CH}', null, 'X', 'friend', '+20 100 999 0000', null, true)`],                                      // 10 name too short
+    [U.parentA, `select public.parent_save_pickup('${CH}', null, 'Good Name', 'friend', '+20 100 999 0000', '${CH}/pickups/id.jpg', true)`],            // 11 valid photo path
+    [U.parentA, `select public.parent_save_pickup('${ID(303)}', null, 'Not My Child', 'friend', '+20 100 999 0000', null, true)`],                      // 12
+    [U.hana, `select public.parent_save_pickup('${CH}', null, 'Teacher Try', 'friend', '+20 100 999 0000', null, true)`],                               // 13
+  ]);
+  check('a parent can add, edit and remove a pickup person', !res[0].error && res[1].rows[0].n === 2 && res[3].rows[0].phone === '+20 100 777 8888' && res[5].rows[0].n === 1, res[0].error);
+  check('...each change is logged for staff and the class staff are told', res[6].rows.length === 3 && /added/.test(res[6].rows[0].summary) && /removed/.test(res[6].rows[2].summary) && res[7].rows.length >= 2);
+  check('another parent, a teacher, a made-up photo path, a bad name, or someone else\'s child are all refused', !!res[8].error && !!res[10].error && !!res[12].error && !!res[13].error && !!res[9].error);
+  check('a photo path inside the child\'s own folder is accepted', !res[11].error, res[11].error);
+
+  // files
+  res = await flow([
+    [null, `insert into storage.objects (bucket_id, name) values ('registrations', '${PREFIX}birth_certificate/b.pdf'), ('child-files', '${alpha}/pickups/id.jpg'), ('child-files', '${gamma}/pickups/id.jpg')`],
+    [U.admin, `select count(*)::int as n from storage.objects where bucket_id = 'registrations'`],
+    [U.hana, `select count(*)::int as n from storage.objects where bucket_id = 'registrations'`],
+    [U.parentA, `select count(*)::int as n from storage.objects where bucket_id = 'registrations'`],
+    [U.parentA, `select count(*)::int as n from storage.objects where bucket_id = 'child-files'`],
+    [U.parentB, `select name from storage.objects where bucket_id = 'child-files'`],
+    [U.admin, `select count(*)::int as n from storage.objects where bucket_id = 'child-files'`],
+    [U.hana, `select count(*)::int as n from storage.objects where bucket_id = 'child-files'`],
+    [U.parentA, `insert into storage.objects (bucket_id, name) values ('child-files', '${alpha}/pickups/new.jpg')`],
+    [U.parentA, `insert into storage.objects (bucket_id, name) values ('child-files', '${gamma}/pickups/new.jpg')`],
+    [U.parentA, `insert into storage.objects (bucket_id, name) values ('child-files', '${alpha}/documents/new.jpg')`],
+    [U.parentA, `insert into storage.objects (bucket_id, name) values ('registrations', '${PREFIX}x.pdf')`],
+  ]);
+  check('registration files are readable by admin only: not teachers, not parents', res[1].rows[0].n === 1 && res[2].rows[0].n === 0 && res[3].rows[0].n === 0);
+  check('a child\'s files: the parent sees their own child\'s; another parent sees none; management sees all; teachers none', res[4].rows[0].n === 1 && res[5].rows.length === 1 && res[5].rows[0].name.startsWith(gamma) && res[6].rows[0].n === 2 && res[7].rows[0].n === 0, JSON.stringify([res[4].rows, res[5].rows]));
+  check('a parent can upload a pickup photo for their own child only, into the pickups folder, and never into the registration bucket', !res[8].error && !!res[9].error && !!res[10].error && !!res[11].error);
+
+  // seeds are removed by the launch script
 }
 
 // ---------------------------------------------------------------------------
