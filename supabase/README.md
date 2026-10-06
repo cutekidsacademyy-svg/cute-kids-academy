@@ -66,6 +66,29 @@ on yet") until these are filled in. Nothing here is needed for the public websit
    `insert into public.profiles (id, full_name, role) values ('<that user id>', 'Owner name', 'owner');`
    After that, everyone else is invited from `/staff`.
 
+## Emails and the deadline clock (Prompt 8)
+
+How it works: the database writes every email to a queue (`email_outbox`) and runs the deadline
+clock itself (warns the person handling a case 1 hour before a deadline; moves it up one level when a
+deadline is missed; ordinary deadlines pause outside Sun-Thu 08:00-18:00 Cairo, critical cases never
+pause; nothing is sent twice for the same deadline). A small Vercel function, `api/portal-send-emails.js`,
+sends the queued emails through Resend. Supabase's built-in scheduler calls it every minute, and every
+15 minutes with the deadline check switched on. Until Resend is set up, emails just wait in the queue.
+
+Set up (you, once; the order matters):
+1. **Resend:** create an account at resend.com, add and verify your own domain (DNS records at your
+   domain provider), then create an API key. Without a verified domain Resend can only email yourself.
+2. **Vercel environment variables** (Production and Preview): `RESEND_API_KEY`, `RESEND_FROM`
+   (for example `Cute Kids Academy <notifications@yourdomain.com>`), `CRON_SECRET` (a long random string
+   you make up), and `SITE_URL` (`https://cutekidsacademy-eg.vercel.app`). Redeploy.
+3. **Supabase > Database > Extensions:** switch on `pg_cron` and `pg_net`.
+4. **Run the new migration** (`..._notifications.sql`, or paste the regenerated `all-migrations.sql` if
+   starting from scratch), then run `schedule-emails.sql` with the two placeholders filled in.
+5. **Look at the queue:** `select template, status, to_email, last_error from public.email_outbox order by created_at desc;`
+
+Separately, Supabase's own invitation and password-reset emails (the ones from the People screen) need
+**custom SMTP**: Authentication > Emails > SMTP Settings, using the same Resend domain.
+
 How it fits together: `/login` signs people in; `/portal` (parents) and `/staff` (staff) check the
 account's role and send visitors to the right area. These pages are only a shell. All real data comes
 from Supabase, which applies the privacy rules, so skipping the page script reveals nothing.
