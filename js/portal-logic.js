@@ -80,6 +80,43 @@
   // First day of the current month in Cairo, as "YYYY-MM-01" (ratings are once a month per child).
   const monthKey = (nowMs) => cairoDay(new Date(nowMs)).slice(0, 8) + "01";
 
+  // ----- Staff queue -----
+  // red = overdue, orange = due within 2 hours, green = on track, done = nothing left to do
+  function dueState(nextDueIso, nowMs) {
+    if (!nextDueIso) return "done";
+    var diff = new Date(nextDueIso).getTime() - nowMs;
+    if (diff < 0) return "overdue";
+    return diff <= 2 * 3600 * 1000 ? "soon" : "ok";
+  }
+  var CLOSED = ["resolved", "closed"];
+  // Numbers for the manager/owner overview: open items per escalation level, overdue now,
+  // and items finished in the last 7 days.
+  function overview(rows, nowMs) {
+    var out = { byLevel: { 1: 0, 2: 0, 3: 0, 4: 0 }, overdue: 0, closedThisWeek: 0, open: 0 };
+    rows.forEach(function (r) {
+      if (CLOSED.indexOf(r.status) >= 0) {
+        if (r.resolved_at && nowMs - new Date(r.resolved_at).getTime() <= 7 * 86400000) out.closedThisWeek++;
+        return;
+      }
+      out.open++;
+      out.byLevel[r.escalation_level] = (out.byLevel[r.escalation_level] || 0) + 1;
+      if (dueState(r.next_due, nowMs) === "overdue") out.overdue++;
+    });
+    return out;
+  }
+  // Filters for the queue screen. f = { type, urgency, status ("open" | "all" | a status), classId, mine }
+  function filterQueue(rows, f, myId) {
+    return rows.filter(function (r) {
+      if (f.type && r.type !== f.type) return false;
+      if (f.urgency && r.urgency !== f.urgency) return false;
+      if (f.classId && r.class_id !== f.classId) return false;
+      if (f.mine && r.assigned_to !== myId) return false;
+      var st = f.status || "open";
+      if (st === "open") return CLOSED.indexOf(r.status) < 0;
+      return st === "all" ? true : r.status === st;
+    });
+  }
+
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -87,6 +124,6 @@
     STAFF_ROLES, ALL_ROLES, INACTIVITY_MS, EMAIL_RE, UUID_RE,
     areaFor, homePath, guard, isExpired,
     canInviteParents, canManageStaff, staffRolesCallerCanCreate, canChangeActive,
-    whenText, refLabel, monthKey,
+    whenText, refLabel, monthKey, dueState, overview, filterQueue,
   };
 });

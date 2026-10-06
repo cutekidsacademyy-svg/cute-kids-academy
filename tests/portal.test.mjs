@@ -136,6 +136,47 @@ test("reference numbers and the ratings month", () => {
   assert.equal(L.monthKey(Date.parse("2026-10-15T10:00:00Z")), "2026-10-01");
 });
 
+test("queue colours: overdue, due within 2 hours, on track, done", () => {
+  const now = Date.parse("2026-10-11T10:00:00Z");
+  assert.equal(L.dueState("2026-10-11T09:59:00Z", now), "overdue");
+  assert.equal(L.dueState("2026-10-11T11:59:00Z", now), "soon");
+  assert.equal(L.dueState("2026-10-11T12:00:00Z", now), "soon");
+  assert.equal(L.dueState("2026-10-11T12:01:00Z", now), "ok");
+  assert.equal(L.dueState(null, now), "done");
+});
+
+test("manager overview counts", () => {
+  const now = Date.parse("2026-10-11T10:00:00Z");
+  const rows = [
+    { status: "received", escalation_level: 1, next_due: "2026-10-11T09:00:00Z" },       // overdue
+    { status: "in_progress", escalation_level: 3, next_due: "2026-10-12T09:00:00Z" },
+    { status: "acknowledged", escalation_level: 3, next_due: "2026-10-11T09:30:00Z" },   // overdue
+    { status: "resolved", escalation_level: 2, next_due: null, resolved_at: "2026-10-09T10:00:00Z" },  // this week
+    { status: "closed", escalation_level: 1, next_due: null, resolved_at: "2026-09-01T10:00:00Z" },    // old
+  ];
+  const o = L.overview(rows, now);
+  assert.deepEqual(o.byLevel, { 1: 1, 2: 0, 3: 2, 4: 0 });
+  assert.equal(o.overdue, 2);
+  assert.equal(o.closedThisWeek, 1);
+  assert.equal(o.open, 3);
+});
+
+test("queue filters", () => {
+  const rows = [
+    { id: 1, type: "complaint", urgency: "urgent", status: "received", class_id: "A", assigned_to: "me" },
+    { id: 2, type: "safety_concern", urgency: "critical", status: "in_progress", class_id: "B", assigned_to: "other" },
+    { id: 3, type: "complaint", urgency: "can_wait", status: "resolved", class_id: "A", assigned_to: null },
+  ];
+  const ids = (f) => L.filterQueue(rows, f, "me").map((r) => r.id);
+  assert.deepEqual(ids({}), [1, 2]);                              // default: open only
+  assert.deepEqual(ids({ status: "all" }), [1, 2, 3]);
+  assert.deepEqual(ids({ status: "resolved" }), [3]);
+  assert.deepEqual(ids({ type: "safety_concern" }), [2]);
+  assert.deepEqual(ids({ urgency: "urgent" }), [1]);
+  assert.deepEqual(ids({ classId: "A", status: "all" }), [1, 3]);
+  assert.deepEqual(ids({ mine: true, status: "all" }), [1]);
+});
+
 // ------------------------------ invite parent ------------------------------
 test("invite parent: needs a login token", async () => {
   const r = await run(inviteParent, { body: parentBody });
