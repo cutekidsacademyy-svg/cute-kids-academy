@@ -159,3 +159,28 @@ table.tbl{width:100%;border-collapse:collapse;min-width:480px}
 .tbl thead th{white-space:nowrap}
 .filter-pill{font-family:'Baloo 2',cursive;font-weight:600;font-size:.9rem;padding:8px 18px;border-radius:999px;border:2px solid var(--pink-light);background:#fff;color:var(--pink-dark);cursor:pointer}
 .filter-pill.active{background:var(--pink);color:#fff;border-color:var(--pink)}
+
+/* ---- Owner dashboard ---- */
+.sec-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.sec-head h2{margin:0}
+.tile.big{padding:14px 10px}
+.tile.big .trend{display:block;font-style:normal;font-weight:700;font-size:.82rem;margin-top:4px}
+.tile.big.bad{border:2px solid var(--bad)}
+.tile.big.good{border:2px solid var(--ok)}
+.tile.big.bad .trend{color:var(--bad)}.tile.big.good .trend{color:var(--ok)}
+.tile.big small{display:block;font-size:.72rem;color:var(--muted)}
+.chart{width:100%;height:auto;max-width:720px;display:block}
+.pill.od-good{background:#e8f6ec;color:var(--ok);border:1px solid var(--ok)}
+.pill.od-watch{background:#fff3e0;color:#8a5200;border:1px solid #8a5200}
+.pill.od-action{background:#fdecea;color:var(--bad);border:1px solid var(--bad)}
+tr.row-bad td{background:#fdf1ef}
+tr.row-watch td{background:#fff8ee}
+.balance{display:flex;flex-direction:column;gap:3px;min-width:140px}
+.balance .bar-bad{display:block;height:12px;border:2px solid var(--ink);background:repeating-linear-gradient(45deg,#D55E00 0 4px,#fff 4px 8px)}
+.balance .bar-good{display:block;height:12px;border:2px solid var(--ink);background:#0072B2}
+.balance small{font-weight:700}
+.cat-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--line)}
+.cat-row strong{flex:1 1 180px}
+.att-msg{font-weight:700}.att-msg.ok{color:var(--ok)}.att-msg.bad{color:var(--bad)}
+.action[open] .f-row select,.action[open] .f-row input[type=date],.action[open] .f-row input[type=number]{width:100%;padding:10px 12px;border:2px solid var(--line);border-radius:12px;background:#fff;font-size:1rem}
+.f-row input[type=date],.f-row input[type=number]{width:100%;padding:12px 14px;border:2px solid var(--line);border-radius:12px;background:#fff;font-size:1rem}

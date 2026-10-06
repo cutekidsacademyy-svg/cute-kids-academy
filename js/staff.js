@@ -537,6 +537,28 @@
       list.appendChild(el("li", { class: d ? "done" : isNext ? "next" : "locked" }, kids));
     });
     nodes.push(card([el("h2", { text: t("s.v.steps") }), el("p", { class: "p-sub", text: t("s.v.stepsnote") }), list, stepMsg]));
+
+    // Responsibility: only once the findings are written, and only confirmed responsibility counts against a person.
+    var fb = await Promise.all([client.rpc("investigation_fault", { p_investigation: id }), loadStaff()]);
+    var current = fb[0].data && fb[0].data[0];
+    var fkids = [el("h2", { text: t("flt.title") }), el("p", { class: "p-sub", text: t("flt.hint") })];
+    if (!done.findings) fkids.push(note("info", t("flt.locked")));
+    else {
+      if (current) fkids.push(el("p", { class: "preline", text: t("flt.current") + ": " + current.staff_name + " (" + t(current.confirmed ? "flt.confirmed" : "flt.notconfirmed") + ")" }));
+      else fkids.push(el("p", { class: "p-sub", text: t("flt.none") }));
+      var who = el("select", {}, [opt("", t("s.c.assign.pick"))].concat((fb[1] || []).filter(function (p) { return p.role !== "owner"; }).map(function (p) { return opt(p.id, p.full_name); })));
+      if (current) who.value = current.staff_id;
+      var yes = el("input", { type: "checkbox" }); yes.checked = !!(current && current.confirmed);
+      var fmsg = el("div", {}), fbtn = el("button", { type: "submit", class: "btn btn-pink btn-small", text: t("flt.save") });
+      var fform = el("form", { novalidate: "novalidate" }, [field(t("flt.person"), who), el("label", { class: "choice small" }, [yes, el("span", { text: t("flt.confirm") })]), fmsg, fbtn]);
+      fform.addEventListener("submit", async function (e) {
+        e.preventDefault(); fmsg.textContent = ""; fbtn.disabled = true;
+        try { if (!who.value) throw new Error(t("s.c.needperson")); await rpc("confirm_investigation_fault", { p_investigation: id, p_staff: who.value, p_confirmed: yes.checked }); reload(t("s.v.saved")); }
+        catch (err) { fmsg.appendChild(note("err", msgFromError(err))); fbtn.disabled = false; }
+      });
+      fkids.push(fform);
+    }
+    nodes.push(card(fkids));
     nodes.push(card([el("h2", { text: t("s.v.notes") }), closed ? note("info", t("s.v.closedlock")) : null, notesForm], "blue"));
     show(nodes);
   }
@@ -613,6 +635,14 @@
     "": queue, "case": function (p) { return casePage(p[1]); }, incident: incidentForm, accidents: accidents,
     ratings: function () { return isTop() ? ratings() : queue(); }, people: function () { return isMgmt() ? people() : queue(); },
   };
+  // Shared with js/owner.js (the owner dashboard, attendance sheet and staff-concern form).
+  window.CKAStaff = {
+    routes: routes, me: function () { return me; }, isTop: isTop, isMgmt: isMgmt, isOwner: function () { return me.role === "owner"; },
+    show: show, card: card, note: note, pill: pill, link: link, field: field, opt: opt, kv: kv, textarea: textarea,
+    rpc: rpc, fmt: fmt, when: when, loadingView: loadingView, failView: failView, msgFromError: msgFromError, loadStaff: loadStaff,
+    setFlash: function (m) { flash = m; }, takeFlash: function () { var m = flash; flash = null; return m; },
+  };
+
   function go() {
     var parts = location.hash.replace(/^#\/?/, "").split("/"), name = parts[0] === "" ? "" : parts[0];
     var tab = name === "case" ? "queue" : name === "investigation" ? "investigations" : (name || "queue");
@@ -633,6 +663,8 @@
     document.querySelector('#nav [data-route="reports"]').hidden = !isTop();
     document.querySelector('#nav [data-route="investigations"]').hidden = !isTop();
     document.querySelector('#nav [data-route="people"]').hidden = !isMgmt();
+    document.querySelector('#nav [data-route="owner"]').hidden = me.role !== "owner";
+    document.querySelector('#nav [data-route="attendance"]').hidden = !isMgmt();
     document.getElementById("who").textContent = me.full_name + " · " + t("role." + me.role);
     document.getElementById("app").hidden = false;
     labelNav();

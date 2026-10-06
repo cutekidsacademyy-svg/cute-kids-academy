@@ -248,6 +248,59 @@ test("the CSV holds the same sections, and defuses formulas in compliments", () 
   assert.equal(csv.split("\r\n").filter((l) => l === "").length, 8);              // a blank line after each of the 8 sections
 });
 
+test("owner dashboard: 'last 3 months' is this month and the two before", () => {
+  assert.deepEqual(L.periodFor("quarter", Date.parse("2026-10-14T10:00:00Z")), { from: "2026-08-01", to: "2026-10-14" });
+  assert.deepEqual(L.periodFor("quarter", Date.parse("2026-01-14T10:00:00Z")), { from: "2025-11-01", to: "2026-01-14" });   // across a year end
+});
+
+test("chart axes get a friendly top", () => {
+  assert.equal(L.niceMax(0), 5);
+  assert.equal(L.niceMax(3), 5);
+  assert.equal(L.niceMax(5), 5);
+  assert.equal(L.niceMax(6), 10);
+  assert.equal(L.niceMax(11), 20);
+  assert.equal(L.niceMax(37), 50);
+  assert.equal(L.niceMax(101), 200);
+  assert.equal(L.niceMax(undefined), 5);
+});
+
+test("tile trends: rising problems are bad news, rising happy comments are good news", () => {
+  assert.deepEqual(L.trend("accidents", 3, 1), { diff: 2, dir: "up", good: false });
+  assert.deepEqual(L.trend("accidents", 1, 3), { diff: -2, dir: "down", good: true });
+  assert.deepEqual(L.trend("happy_comments", 5, 2), { diff: 3, dir: "up", good: true });
+  assert.deepEqual(L.trend("happy_comments", 2, 5), { diff: -3, dir: "down", good: false });
+  assert.deepEqual(L.trend("late_minutes", 7, 7), { diff: 0, dir: "same", good: null });
+});
+
+const SAMPLE_OWNER = {
+  period: { from: "2025-03-01", to: "2025-03-31", days: 31 },
+  tiles: { accidents: { value: 3, previous: 1 }, complaints: { value: 3, previous: 1 }, happy_comments: { value: 2, previous: 1 },
+           absence_days: { value: 12, previous: 1 }, late_minutes: { value: 30, previous: 5 }, open_hr: { value: 1, opened: 2, previous_opened: 0 } },
+  weekly: [{ week_start: "2025-03-02", accidents: 2, complaints: 1, happy_comments: 0 }],
+  latest_accidents: [{ occurred_at: "2025-03-09T08:00:00+00:00", child: "Youssef", class: "Ducklings", location: "Classroom", severity: "serious", note: "Fell", parent_read: false, investigation: "open" }],
+  mistakes: [{ category: "Phone in class", critical: false, count: 3 }, { category: "Allergy check missed", critical: true, count: 1 }],
+  staff: [{ name: "Hana", absence_days: 4, late_minutes: 30, class_accidents: 2, confirmed_faults: 4, complaints_about: 1, status: "action" }],
+  hr_log: [{ staff: "Hana", type: "written_warning", date: "2025-03-10", note: "=cmd", follow_up_date: null, awaiting: true, decided_at: null }],
+  staff_concerns: { recent: [{ date: "2025-03-10", category: "workload", status: "open", anonymous: true, raised_by: null, description: "Too many children" }] },
+  families: [{ parent: "Parent A", complaints: 2, happy: 1, latest_message: "Lunch: hungry" }],
+};
+
+test("owner dashboard sections: the screen tables and the CSV come from one place", () => {
+  const sec = L.ownerSections(SAMPLE_OWNER, (k) => k);
+  assert.deepEqual(sec.map((x) => x.id), ["tiles", "weekly", "accidents", "mistakes", "staff", "hr", "concerns", "families"]);
+  const byId = Object.fromEntries(sec.map((x) => [x.id, x]));
+  assert.deepEqual(byId.tiles.rows[0], ["od.accidents", 3, 1, 2]);
+  assert.deepEqual(byId.tiles.rows[5], ["od.open_hr", 1, "", 2]);
+  assert.deepEqual(byId.mistakes.rows[1], ["Allergy check missed", "od.yes", 1]);
+  assert.equal(byId.staff.rows[0][6], "od.status.action");
+  assert.equal(byId.hr.rows[0][5], "od.awaiting");
+  assert.equal(byId.concerns.rows[0][3], "od.anonymous");              // an anonymous concern never shows a name
+  assert.equal(byId.accidents.rows[0][0], "2025-03-09");
+  const csv = L.toCsv([byId.hr]);
+  assert.match(csv, /'=cmd/);                                         // HR notes cannot run as spreadsheet formulas
+  for (const s of sec) for (const row of s.rows) assert.equal(row.length, s.header.length, s.id + " row width");
+});
+
 // ------------------------------ invite parent ------------------------------
 test("invite parent: needs a login token", async () => {
   const r = await run(inviteParent, { body: parentBody });
