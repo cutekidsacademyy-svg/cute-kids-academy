@@ -2,9 +2,8 @@
 // visible to every browser), so it is safe to keep them in Git. The SECRET service key never
 // goes here: it lives only in Vercel's environment variables.
 //
-// Fill in from Supabase: Project Settings > API > "Project URL" and the "anon public" key.
-// While they are empty, the portal pages show "not switched on yet" and the public site is unaffected.
+// Project URL and "anon public" key from Supabase: Project Settings > API.
 window.CKA_PORTAL = {
-  supabaseUrl: "",
-  supabaseAnonKey: ""
+  supabaseUrl: "https://ocamgidbsjwbyxhlnysq.supabase.co",
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jYW1naWRic2p3Ynl4aGxueXNxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTEzMDYyOTUsImV4cCI6MjEwNjg4MjI5NX0.yyRygB4gbUZ4h0pH2-GUoMDXKTb4nXWuzo1p4I-twEs"
 };
