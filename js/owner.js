@@ -216,7 +216,7 @@
     });
     out.push(formCard(t("od.settings"), [el("p", { class: "p-sub", text: t("od.settings_hint") })].concat(thFields), async function () {
       var v = {};
-      Object.keys(inputs).forEach(function (m) { v[m] = { watch: Number(inputs[m].watch.value), action: Number(inputs[m].action.value) }; if (!(v[m].watch >= 1 && v[m].action >= v[m].watch)) throw new Error(t("od.err")); });
+      Object.keys(inputs).forEach(function (m) { v[m] = { watch: Number(inputs[m].watch.value), action: Number(inputs[m].action.value) }; if (!(v[m].watch >= 1 && v[m].action >= v[m].watch)) throw new Error(t("od.t_bad")); });
       var r = await client.from("owner_settings").update({ value: v, updated_at: new Date().toISOString() }).eq("key", "thresholds");
       if (r.error) throw new Error(r.error.message);
     }, t("od.save")));

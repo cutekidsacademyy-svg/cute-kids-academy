@@ -35,7 +35,7 @@
     "od.categories": "Mistake types", "od.cat_new": "New type", "od.cat_critical": "Critical", "od.cat_active": "In use", "od.cat_add": "Add type",
     "od.settings": "Settings: when someone needs attention", "od.settings_hint": "Per 30 days. For a shorter or longer period the limits scale automatically.",
     "od.t.absence_days": "Absence days", "od.t.late_minutes": "Late minutes", "od.t.confirmed_faults": "Confirmed faults", "od.t.complaints": "Complaints about them",
-    "od.watch": "Watch at", "od.action": "Action needed at", "od.save": "Save limits",
+    "od.watch": "Watch at", "od.action": "Action needed at", "od.save": "Save limits", "od.t_bad": "Each limit must be 1 or more, and \"Action needed at\" must not be lower than \"Watch at\".",
 
     "att.title": "Staff attendance", "att.date": "Day", "att.intro": "Record who was in today, and how late people were. You can record attendance, but only the owner can read it back.",
     "att.status": "Status", "att.present": "Present", "att.absent": "Absent", "att.leave": "On leave", "att.late": "Minutes late", "att.reason": "Reason (optional)",
@@ -85,7 +85,7 @@
     "od.categories": "أنواع الأخطاء", "od.cat_new": "نوع جديد", "od.cat_critical": "حرج", "od.cat_active": "مستخدم", "od.cat_add": "إضافة نوع",
     "od.settings": "الإعدادات: متى يحتاج شخص إلى اهتمام", "od.settings_hint": "لكل ٣٠ يوماً. تُعدَّل الحدود تلقائياً للفترات الأقصر أو الأطول.",
     "od.t.absence_days": "أيام الغياب", "od.t.late_minutes": "دقائق التأخير", "od.t.confirmed_faults": "الأخطاء المؤكدة", "od.t.complaints": "الشكاوى بخصوصهم",
-    "od.watch": "مراقبة عند", "od.action": "يحتاج إلى إجراء عند", "od.save": "حفظ الحدود",
+    "od.watch": "مراقبة عند", "od.action": "يحتاج إلى إجراء عند", "od.save": "حفظ الحدود", "od.t_bad": "يجب أن يكون كل حد ١ أو أكثر، ولا يقل حد «يحتاج إلى إجراء» عن حد «مراقبة».",
 
     "att.title": "حضور الموظفين", "att.date": "اليوم", "att.intro": "سجّل من حضر اليوم ومدى تأخر كل شخص. يمكنك تسجيل الحضور، لكن المالك فقط يستطيع قراءته.",
     "att.status": "الحالة", "att.present": "حاضر", "att.absent": "غائب", "att.leave": "في إجازة", "att.late": "دقائق التأخير", "att.reason": "السبب (اختياري)",

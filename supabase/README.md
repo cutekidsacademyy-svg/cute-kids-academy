@@ -16,6 +16,7 @@ automatically; it takes effect only when you run it in a Supabase project.
 | `migrations/..._staff_tools.sql` | Staff queue, case details, case actions (acknowledge, assign, escalate, resolve), auto-assign to the manager at level 3, serious accident opens an investigation |
 | `migrations/..._investigations.sql` | Investigation workflow: auto-open for safety concerns, findings drafts hidden until the "findings" step, other-child name warning, manager/owner list and detail |
 | `migrations/..._notifications.sql` | Email queue, event emails, deadline clock (warn 1 hour before, escalate when missed) |
+| `migrations/..._owner_dashboard.sql` | The owner's private dashboard: attendance, HR log, staff concerns (truly anonymous if asked), mistakes, confirmed investigation faults, editable thresholds. Every table is owner-only in the database |
 | `migrations/..._reports.sql` | `staff_report(from, to)`: every number for the manager/owner reports page |
 | `migrations/..._parent_views.sql` | Parent-safe lookups: own cases with handler name, own accident reports, staff names for "about a staff member" |
 | `seed.sql` | FAKE test data: 2 classes, 4 children, 3 parents, 5 staff logins |
