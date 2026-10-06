@@ -102,10 +102,11 @@
   document.addEventListener("DOMContentLoaded", async function () {
     var res = await CKA.requireArea("staff");        // redirects away if this is not staff
     me = res.profile; session = res.session;
-    $("hello").textContent = CKA.t("portal.hello") + ", " + me.full_name;
+    // Use the account's own language the first time, before anything is drawn.
+    if (me.language && !localStorage.getItem("cka_portal_lang")) CKA.setLang(me.language);
+    $("hello").textContent = CKA.greeting(me.full_name);
     var badge = function () { $("roleBadge").textContent = CKA.t("role." + me.role); };
     badge();
-    if (me.language && !localStorage.getItem("cka_portal_lang")) CKA.setLang(me.language);
     $("app").hidden = false;
 
     if (L.canInviteParents(me.role)) {
@@ -130,7 +131,7 @@
       });
     }
     document.addEventListener("cka-lang", function () {
-      badge(); $("hello").textContent = CKA.t("portal.hello") + ", " + me.full_name;
+      badge(); $("hello").textContent = CKA.greeting(me.full_name);
       if (!$("people").hidden) { renderForms(); renderPeople(); }
     });
   });

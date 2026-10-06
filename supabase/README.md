@@ -39,6 +39,38 @@ role, and check that parents see only their own family, teachers only their clas
 5. Keys: the browser uses only the project's public **anon** key. The **service_role** key
    goes only in Vercel's environment variables, never in the code or in Git.
 
+## Switching the portal on (when you are ready)
+
+The login, `/portal` and `/staff` pages are already in the site. They stay dormant ("not switched
+on yet") until these are filled in. Nothing here is needed for the public website.
+
+1. **Supabase keys into the site (public values, fine in Git):** edit `js/portal-config.js` and paste
+   the Project URL and the **anon public** key (Project Settings > API).
+2. **Vercel environment variables (secret, never in Git):** `SUPABASE_URL` (same URL) and
+   `SUPABASE_SERVICE_ROLE_KEY` (the **service_role** key). Optional: `SITE_URL`
+   (`https://cutekidsacademy-eg.vercel.app`). Redeploy after adding them.
+3. **Supabase > Authentication settings:**
+   - Turn **off** "Allow new users to sign up" (invitation only).
+   - URL Configuration: Site URL = your site address; add `https://cutekidsacademy-eg.vercel.app/login/` and
+     `https://cutekidsacademy-eg.vercel.app/login/?mode=set-password` to the Redirect URLs.
+   - Email Templates (Invite user, Reset password): write them in Arabic and English.
+   - Emails to real parents need **custom SMTP** (for example Resend with your own domain);
+     Supabase's built-in sender is for testing only and is heavily rate-limited.
+   - Sessions: the pages sign out after 30 minutes of inactivity. For a server-side limit too, set
+     "Inactivity timeout" and "Time-box user sessions" there (paid plans).
+4. **Create the first owner login** (once, by hand, because the invite screens need an owner to exist):
+   in Authentication > Users add the owner's email, then in the SQL editor run
+   `insert into public.profiles (id, full_name, role) values ('<that user id>', 'Owner name', 'owner');`
+   After that, everyone else is invited from `/staff`.
+
+How it fits together: `/login` signs people in; `/portal` (parents) and `/staff` (staff) check the
+account's role and send visitors to the right area. These pages are only a shell. All real data comes
+from Supabase, which applies the privacy rules, so skipping the page script reveals nothing.
+Server functions in `api/portal-*.js` (invite parent, invite staff, switch access on/off) check the
+caller's role again on the server before using the service key.
+
+Tests for these functions: from the project root, `node --test tests/portal.test.mjs`.
+
 ## Design notes
 
 - **Privacy is enforced in the database.** Even a broken page cannot show a parent another family's data.

@@ -5,7 +5,7 @@
   var profile = null, children = [];
 
   function render() {
-    document.getElementById("hello").textContent = CKA.t("portal.hello") + ", " + profile.full_name;
+    document.getElementById("hello").textContent = CKA.greeting(profile.full_name);
     var box = document.getElementById("kids");
     box.textContent = "";
     if (!children.length) { box.appendChild(el("p", { class: "p-sub", text: CKA.t("portal.nochildren") })); return; }

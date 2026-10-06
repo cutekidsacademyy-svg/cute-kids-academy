@@ -104,6 +104,8 @@
     document.dispatchEvent(new CustomEvent("cka-lang"));
   }
 
+  function greeting(name) { return t("portal.hello") + (getLang() === "ar" ? "، " : ", ") + name; }
+
   var client = null;
   var configured = !!(cfg.supabaseUrl && cfg.supabaseAnonKey && window.supabase);
   if (configured) {
@@ -171,7 +173,7 @@
   window.CKA = {
     configured: configured, client: client, t: t, getLang: getLang, setLang: setLang, applyI18n: applyI18n,
     getProfile: getProfile, requireArea: requireArea, signOut: signOut, touch: touch, el: el,
-    homePath: L.homePath, STR: STR,
+    homePath: L.homePath, STR: STR, greeting: greeting,
   };
 
   document.addEventListener("DOMContentLoaded", function () {
