@@ -12,7 +12,7 @@ const SITE = "https://site.test";
 const NOW = Date.parse("2026-10-11T07:00:00Z");           // Sunday 10:00 in Cairo
 const CASE = {
   id: "11111111-1111-4111-8111-111111111111", ref_no: 7, title: "Lunch concern", urgency: "urgent", old_urgency: "can_wait",
-  level: 2, application_no: 12, child_name: "Nour", status: "missing_documents", note: "the vaccination record", done: 2, total: 6, late_tasks: 3, step: "parent_called", kind: "ack", reason: "Child was hungry two days running",
+  level: 2, count: 3, application_no: 12, child_name: "Nour", status: "missing_documents", note: "the vaccination record", done: 2, total: 6, late_tasks: 3, step: "parent_called", kind: "ack", reason: "Child was hungry two days running",
   acknowledge_by: "2026-10-11T09:00:00Z", resolve_by: "2026-10-12T07:00:00Z", deadline: "2026-10-11T08:00:00Z",
 };
 
@@ -89,6 +89,7 @@ function world({ resendOk = true, claimRace = false, rows } = {}) {
       return resendOk ? json(200, { id: "re_1" }) : json(422, { message: "domain not verified" });
     }
     if (u.pathname === "/rest/v1/rpc/cka_run_owner_reminders") return json(200, { sent: 1, working_day: true, late_tasks: 2 });
+    if (u.pathname === "/rest/v1/rpc/cka_run_attendance_check") return json(200, { flagged: 2, emails: 1, checked: true });
     if (u.pathname === "/rest/v1/rpc/cka_run_deadline_check") return json(200, { warned: 1, escalated: 0, overdue_at_top: 0, requeued: 0, in_working_hours: true });
     if (u.pathname === "/rest/v1/email_outbox" && opts.method === "GET") return json(200, state.outbox.filter((r) => r.status === "pending"));
     if (u.pathname === "/rest/v1/email_outbox" && opts.method === "PATCH") {
@@ -169,6 +170,7 @@ test("sender: with check=true it runs the deadline clock first and reports it", 
   const r = await call({ w, body: { check: true } });
   assert.equal(r.deadlines.warned, 1);
   assert.equal(r.owner_reminders.sent, 1);
+  assert.equal(r.attendance.flagged, 2);
   assert.ok(w.state.calls.findIndex((c) => c.path.includes("cka_run_deadline_check")) < w.state.calls.findIndex((c) => c.path.startsWith("/rest/v1/email_outbox")));
   const plain = await call({ w: world(), body: {} });
   assert.equal(plain.deadlines, undefined);
@@ -214,4 +216,18 @@ test("staff notices about a child's health or pickup list carry no details", () 
     assert.ok(!/SECRET/.test(m.html + m.text), tpl);
     assert.match(m.text, new RegExp(SITE + "/staff/#/class"));
   }
+});
+
+test("attendance emails carry no child names: just a count or a plain warning, and link to the right place", () => {
+  for (const lang of ["en", "ar"]) {
+    const off = render("pickup_off_list_parent", { child_id: "abc", name: "SECRET NAME" }, lang, { site: SITE });
+    assert.ok(!/SECRET/.test(off.html + off.text));
+    assert.match(off.text, new RegExp(SITE + "/portal/"));
+    assert.match(off.text, /01063344389/);
+    const staff = render("pickup_off_list_staff", { child_id: "abc", name: "SECRET NAME" }, lang, { site: SITE });
+    assert.ok(!/SECRET/.test(staff.html + staff.text));
+    assert.match(staff.text, new RegExp(SITE + "/staff/#/door"));
+  }
+  assert.match(render("attendance_missing", { count: 1 }, "en", { site: SITE }).subject, /1 child not arrived/);
+  assert.match(render("attendance_missing", { count: 4 }, "en", { site: SITE }).subject, /4 children not arrived/);
 });

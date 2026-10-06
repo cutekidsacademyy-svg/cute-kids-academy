@@ -16,7 +16,7 @@ const ENV = { SUPABASE_URL: "https://fake.supabase.test", SUPABASE_SERVICE_ROLE_
 function world(o = {}) {
   const state = {
     calls: [], rate: {}, files: o.files || {}, registerResult: o.registerResult || { id: ID(1), application_no: 42 }, registerError: o.registerError || null,
-    users: o.users || {}, inviteFails: o.inviteFails || [], linked: [], invited: [], approveError: o.approveError || null, getResult: o.getResult,
+    users: o.users || {}, inviteFails: o.inviteFails || [], linked: [], invited: [], approveError: o.approveError || null, pickupRows: o.pickupRows, copyFails: o.copyFails, moved: [], copied: [], getResult: o.getResult,
     approveResult: o.approveResult || { child_id: ID(500), language: "ar", parents: [{ position: 1, full_name: "Mona", phone: "+20 100 111 2222", email: "mona@x.test" }, { position: 2, full_name: "Omar", phone: "+20 100 111 3333", email: "omar@x.test" }] },
     profiles: { [ID(1)]: { id: ID(1), role: "admin", active: true, full_name: "Admin" }, [ID(2)]: { id: ID(2), role: "teacher", active: true, full_name: "Teacher" }, [ID(3)]: { id: ID(3), role: "parent", active: true, full_name: "Parent" } },
     tokens: { "tok-admin": ID(1), "tok-teacher": ID(2), "tok-parent": ID(3) },
@@ -36,6 +36,9 @@ function world(o = {}) {
     if (p === "/rest/v1/profiles" && opts.method === "GET") { const id = u.searchParams.get("id").replace("eq.", ""); return json(200, state.profiles[id] ? [state.profiles[id]] : []); }
     if (p === "/rest/v1/rpc/approve_registration") return state.approveError ? json(400, { message: state.approveError }) : json(200, state.approveResult);
     if (p === "/rest/v1/rpc/registration_get") return state.getResult === undefined ? json(200, { id: body.p_id, status: "approved", child_id: ID(500), language: "en", parents: state.approveResult.parents }) : json(200, state.getResult);
+    if (p === "/rest/v1/child_pickups" && opts.method === "GET") return json(200, state.pickupRows || []);
+    if (p === "/rest/v1/child_pickups" && opts.method === "PATCH") { state.moved.push({ id: u.searchParams.get("id"), to: body.id_photo_path }); return json(204); }
+    if (p === "/storage/v1/object/copy") { if (state.copyFails) return json(500, { message: "boom" }); state.copied.push(body); return json(200, { Key: body.destinationKey }); }
     if (p === "/rest/v1/rpc/find_user_by_email") { const x = state.users[body.p_email]; return json(200, x ? [x] : []); }
     if (p === "/auth/v1/invite") { if (state.inviteFails.includes(body.email)) return json(500, { msg: "Error sending invite email" }); state.invited.push(body.email); return json(200, { id: ID(700 + state.invited.length) }); }
     if (p === "/rest/v1/profiles" && opts.method === "POST") return json(201);
@@ -240,4 +243,22 @@ test("approve retry: refused for staff who may not invite, and for an applicatio
   assert.equal(r.status, 400);
   assert.equal(notYet.state.invited.length, 0);
   assert.equal((await call(approve, { body: { application_id: "nope", retry: true }, headers: as("tok-admin") })).status, 400);
+});
+
+test("approve: pickup ID photos move from the private registration bucket into the child's own folder (so parents and door staff can open them)", async () => {
+  const w = world({ pickupRows: [{ id: ID(801), id_photo_path: "drafts/" + DRAFT + "/pickup_id/a.jpg" }, { id: ID(802), id_photo_path: "drafts/" + DRAFT + "/pickup_id/b.png" }] });
+  const r = await call(approve, { body: ap(), headers: as("tok-admin"), w });
+  assert.equal(r.status, 200);
+  assert.equal(r.photo_failures, 0);
+  assert.equal(w.state.copied.length, 2);
+  for (const c of w.state.copied) { assert.equal(c.bucketId, "registrations"); assert.equal(c.destinationBucket, "child-files"); assert.match(c.destinationKey, new RegExp("^" + ID(500) + "/pickups/[0-9a-f-]{36}\.(jpg|png)$")); }
+  assert.deepEqual(w.state.moved.map((m) => m.id.replace("eq.", "")).sort(), [ID(801), ID(802)]);
+});
+
+test("approve: if a photo cannot be moved the approval still stands and the failure is reported", async () => {
+  const w = world({ pickupRows: [{ id: ID(801), id_photo_path: "drafts/" + DRAFT + "/pickup_id/a.jpg" }], copyFails: true });
+  const r = await call(approve, { body: ap(), headers: as("tok-admin"), w });
+  assert.equal(r.status, 200);
+  assert.equal(r.photo_failures, 1);
+  assert.equal(w.state.moved.length, 0);
 });

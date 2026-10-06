@@ -30,7 +30,9 @@ declare
     'staff_investigation', 'staff_report', 'record_staff_attendance', 'staff_attendance_day', 'submit_staff_complaint',
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
     'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies',
-    'parent_update_health', 'parent_save_pickup'
+    'parent_update_health', 'parent_save_pickup',
+    'cka_door_file', 'door_list', 'door_pickups', 'door_check_in', 'door_check_out', 'door_undo', 'door_log_call', 'parent_report_attendance',
+    'parent_cancel_attendance_notice', 'attendance_report'
   ];
 begin
   for f in
@@ -52,6 +54,10 @@ begin
   if to_regprocedure('public.cka_run_deadline_check(timestamptz)') is not null then
     revoke all on function public.cka_run_deadline_check(timestamptz) from public, anon, authenticated;
     grant execute on function public.cka_run_deadline_check(timestamptz) to service_role;
+  end if;
+  if to_regprocedure('public.cka_run_attendance_check(timestamptz)') is not null then
+    revoke all on function public.cka_run_attendance_check(timestamptz) from public, anon, authenticated;
+    grant execute on function public.cka_run_attendance_check(timestamptz) to service_role;
   end if;
   if to_regprocedure('public.cka_run_owner_reminders(timestamptz)') is not null then
     revoke all on function public.cka_run_owner_reminders(timestamptz) from public, anon, authenticated;

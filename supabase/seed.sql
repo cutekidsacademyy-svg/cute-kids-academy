@@ -132,3 +132,11 @@ insert into public.child_documents (child_id, kind, storage_path) values
   ('00000000-0000-4000-8000-000000000301', 'birth_certificate', 'drafts/seed/birth.pdf');
 insert into public.child_change_log (child_id, kind, summary) values
   ('00000000-0000-4000-8000-000000000301', 'created', 'SEED LOG: created from application');
+
+-- Attendance (fake): Omar was in yesterday and left late with Grandma (overtime); Salma's parent reported an absence for tomorrow.
+insert into public.attendance (child_id, att_date, checked_in_at, checked_out_at, collector_name, collector_relationship, overtime_minutes) values
+  ('00000000-0000-4000-8000-000000000301', current_date - 1, (current_date - 1 + time '08:10') at time zone 'Africa/Cairo', (current_date - 1 + time '18:20') at time zone 'Africa/Cairo', 'Grandma Seed (seed)', 'grandmother', 20);
+insert into public.attendance_notices (child_id, notice_date, kind, reason, reported_by_role) values
+  ('00000000-0000-4000-8000-000000000302', current_date + 1, 'absence', 'SEED NOTICE: doctor appointment', 'parent');
+insert into public.attendance_events (child_id, att_date, kind, actor_name, note) values
+  ('00000000-0000-4000-8000-000000000301', current_date - 1, 'check_out', 'Admin (seed)', 'SEED DOOR LOG: Grandma Seed (seed)');

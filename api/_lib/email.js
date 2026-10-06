@@ -75,6 +75,16 @@ const T = {
   review_monthly: (p, l) => l === "ar"
     ? { subject: "مراجعة الشهر", lines: ["بدأ شهر جديد وحان وقت المراجعة الشهرية.", `المهام المتأخرة: ${p.late_tasks}.`], button: ["فتح لوحة المالك", "/staff/#/owner"] }
     : { subject: "Monthly review", lines: ["A new month has started: time for the monthly review.", `Late tasks: ${p.late_tasks}.`], button: ["Open the owner dashboard", "/staff/#/owner"] },
+  // ---- attendance and pickup (no names: just that something needs a look)
+  pickup_off_list_parent: (p, l) => l === "ar"
+    ? { subject: "تم تسليم طفلك لشخص غير مسجّل في قائمة الاستلام", lines: ["سُجّل اليوم استلام طفلك من شخص غير موجود في قائمة الاستلام الخاصة بك. إذا لم تكن تتوقع ذلك فيُرجى الاتصال بنا فوراً على 01063344389."], button: ["فتح البوابة", "/portal/#/attendance"] }
+    : { subject: "Your child was collected by someone not on your pickup list", lines: ["Today your child was collected by someone who is not on your pickup list. If you did not expect this, please call us at once on 01063344389."], button: ["Open the portal", "/portal/#/attendance"] },
+  pickup_off_list_staff: (p, l) => l === "ar"
+    ? { subject: "استلام طفل من شخص غير مسجّل في القائمة", lines: ["سُجّل استلام طفل من شخص غير موجود في قائمة الاستلام. يُرجى مراجعة سجل الحضور."], button: ["فتح شاشة الباب", "/staff/#/door"] }
+    : { subject: "A child was collected by someone not on the pickup list", lines: ["A child was collected by someone who is not on the pickup list. Please check the attendance record."], button: ["Open the door screen", "/staff/#/door"] },
+  attendance_missing: (p, l) => l === "ar"
+    ? { subject: `${p.count} طفل لم يصل بعد ولم يُبلَّغ عن غيابه`, lines: ["لم يصل بعض الأطفال حتى الساعة 9:30 ولم يُبلَّغ عن غيابهم. يُرجى الاتصال بأولياء أمورهم."], button: ["فتح شاشة الباب", "/staff/#/door"] }
+    : { subject: `${p.count} child${Number(p.count) === 1 ? "" : "ren"} not arrived and no absence reported`, lines: ["Some children have not arrived by 9:30 and no absence was reported. Please call their parents."], button: ["Open the door screen", "/staff/#/door"] },
   // ---- registration (the applicant has no login yet, so these point to the website, not the portal)
   registration_received: (p, l) => l === "ar"
     ? { subject: `استلمنا طلب التسجيل رقم ${p.application_no}`, lines: [`شكراً لتقديمك طلب التحاق ${p.child_name} بكيوت كيدز أكاديمي. رقم طلبك: ${p.application_no}.`, "سيراجع فريقنا الطلب ويتواصل معك قريباً. يمكنك الاتصال بنا على 01063344389."], button: ["زيارة الموقع", "/"] }

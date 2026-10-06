@@ -144,14 +144,16 @@ console.log('\n== Security audit: structure ==');
     'staff_queue', 'staff_case', 'staff_list', 'staff_ratings', 'staff_acknowledge', 'staff_mark_in_progress', 'staff_assign', 'staff_escalate', 'staff_resolve', 'save_investigation',
     'investigation_name_warnings', 'staff_investigations', 'staff_investigation', 'staff_report', 'record_staff_attendance', 'staff_attendance_day', 'submit_staff_complaint',
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
-    'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies', 'parent_update_health', 'parent_save_pickup'].sort();
+    'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies', 'parent_update_health', 'parent_save_pickup',
+    'cka_door_file', 'door_list', 'door_pickups', 'door_check_in', 'door_check_out', 'door_undo', 'door_log_call', 'parent_report_attendance', 'parent_cancel_attendance_notice', 'attendance_report'].sort();
   const reach = definers.filter((f) => !f.is_trigger && f.auth).map((f) => f.name).sort();
   check('the ONLY security-definer functions a logged-in user can run are the intended screens/helpers (nothing new slipped in)',
     JSON.stringify(reach) === JSON.stringify(ALLOWED), JSON.stringify({ extra: reach.filter((x) => !ALLOWED.includes(x)), missing: ALLOWED.filter((x) => !reach.includes(x)) }));
   const svc = await q(`select has_function_privilege('service_role', 'public.cka_run_deadline_check(timestamptz)', 'execute') as a, has_function_privilege('service_role', 'public.cka_run_owner_reminders(timestamptz)', 'execute') as b,
+      has_function_privilege('service_role', 'public.cka_run_attendance_check(timestamptz)', 'execute') as f, has_function_privilege('authenticated', 'public.cka_run_attendance_check(timestamptz)', 'execute') as g, has_function_privilege('authenticated', 'public.cka_now()', 'execute') as h,
       has_function_privilege('authenticated', 'public.cka_enqueue_email(uuid,text,jsonb,text)', 'execute') as c, has_function_privilege('anon', 'public.cka_enqueue_email(uuid,text,jsonb,text)', 'execute') as d,
       has_function_privilege('authenticated', 'public.cka_person_name(uuid)', 'execute') as e`);
-  check('the server key can run the scheduled jobs; nobody else can queue emails or look up names', svc[0].a && svc[0].b && !svc[0].c && !svc[0].d && !svc[0].e, JSON.stringify(svc[0]));
+  check('the server key can run the scheduled jobs; nobody else can queue emails or look up names', svc[0].a && svc[0].b && svc[0].f && !svc[0].g && !svc[0].h && !svc[0].c && !svc[0].d && !svc[0].e, JSON.stringify(svc[0]));
   const pure = fns.filter((f) => !f.definer && !f.is_trigger && f.anon).map((f) => f.name).sort().join(',');
   check('the only functions anonymous visitors can run are pure date and arithmetic helpers (they read no data)',
     pure === 'cka_add_business_days,cka_add_working_hours,cka_case_payload,cka_deadlines,cka_in_working_hours,cka_is_email,cka_is_happy,cka_is_phone,cka_is_work_day,cka_next_work_day,cka_threshold,cka_working_start', pure);
@@ -170,6 +172,10 @@ console.log('\n== Security audit: who can read what (seed data) ==');
   // columns: anon, parentA, parentB, parentC, hana, mariam, admin, manager, owner
   const EXPECT = {
     attachments:            [D, 1, 0, 0, 1, 0, 1, 1, 1],
+    attendance:             [D, 1, 0, 1, 1, 0, 1, 1, 1],
+    attendance_events:      [D, 0, 0, 0, 0, 0, 1, 1, 1],
+    attendance_flags:       [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    attendance_notices:     [D, 0, 1, 0, 1, 0, 1, 1, 1],
     child_change_log:       [D, 0, 0, 0, 0, 0, 1, 1, 1],
     child_consents:         [D, 1, 0, 1, 0, 0, 1, 1, 1],
     child_documents:        [D, 0, 0, 0, 0, 0, 1, 1, 1],
@@ -245,17 +251,17 @@ console.log('\n== Security audit: who can read what (seed data) ==');
   };
   const staffPhones = ['+20 100 000 0001', '+20 100 000 0002', '+20 100 000 0003', '+20 100 000 0004', '+20 100 000 0005'];
   const INTERNAL = ['SEED INTERNAL NOTE', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT'];
-  await scan(U.parentA, 'Parent A', ['SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'Mariam Testson', 'Parent B (seed)', 'Parent C (seed)', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'Seed rating comment', 'other.jpg', '+20 100 000 0102', '+20 100 000 0103'].concat(INTERNAL, staffPhones),
+  await scan(U.parentA, 'Parent A', ['SEED NOTICE', 'SEED DOOR LOG', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'Mariam Testson', 'Parent B (seed)', 'Parent C (seed)', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'Seed rating comment', 'other.jpg', '+20 100 000 0102', '+20 100 000 0103'].concat(INTERNAL, staffPhones),
     ['Omar Testson', 'lunch concern', 'seed-photo.jpg', 'Peanut allergy (seed)', 'Grandma Seed']);
-  await scan(U.parentB, 'Parent B', ['Peanut allergy', 'Grandma Seed', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Omar Testson', 'Mariam Testson', 'lunch concern', 'Parent A (seed)', 'Parent C (seed)', 'mark on arm', 'Seed findings', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
-    ['Salma Testson', 'Youssef Testson', 'tripped on the path', 'Seed rating comment', 'SEED HEALTH SECRET', 'Uncle Seed Secret']);
-  await scan(U.parentC, 'Parent C', ['SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'lunch concern', 'Parent A (seed)', 'Parent B (seed)', 'tripped on the path', 'Seed rating comment', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
+  await scan(U.parentB, 'Parent B', ['SEED DOOR LOG', 'Peanut allergy', 'Grandma Seed', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Omar Testson', 'Mariam Testson', 'lunch concern', 'Parent A (seed)', 'Parent C (seed)', 'mark on arm', 'Seed findings', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
+    ['Salma Testson', 'Youssef Testson', 'tripped on the path', 'Seed rating comment', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'SEED NOTICE']);
+  await scan(U.parentC, 'Parent C', ['SEED NOTICE', 'SEED DOOR LOG', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'lunch concern', 'Parent A (seed)', 'Parent B (seed)', 'tripped on the path', 'Seed rating comment', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
     ['Omar Testson', 'Mariam Testson', 'mark on arm', 'Seed findings', 'Peanut allergy (seed)', 'Grandma Seed']);
-  await scan(U.hana, 'Teacher Hana', ['SEED HEALTH SECRET', 'asthma', 'Grandma Seed', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Youssef Testson', 'Mariam Testson', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'],
-    ['Omar Testson', 'lunch concern', 'SEED INTERNAL NOTE', 'Peanut allergy (seed)']);
-  await scan(U.mariam, 'Teacher Mariam', ['Peanut allergy', 'SEED HEALTH SECRET', 'Grandma Seed', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Omar Testson', 'Salma Testson', 'lunch concern', 'concern about Teacher Hana', 'SEED INTERNAL NOTE', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed findings', 'Seed rating comment'],
+  await scan(U.hana, 'Teacher Hana', ['SEED DOOR LOG', 'SEED HEALTH SECRET', 'asthma', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Youssef Testson', 'Mariam Testson', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'],
+    ['Omar Testson', 'lunch concern', 'SEED INTERNAL NOTE', 'Peanut allergy (seed)', 'Grandma Seed', 'SEED NOTICE']);
+  await scan(U.mariam, 'Teacher Mariam', ['SEED NOTICE', 'SEED DOOR LOG', 'Peanut allergy', 'SEED HEALTH SECRET', 'Grandma Seed', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Omar Testson', 'Salma Testson', 'lunch concern', 'concern about Teacher Hana', 'SEED INTERNAL NOTE', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed findings', 'Seed rating comment'],
     ['Youssef Testson', 'Mariam Testson', 'mark on arm', 'tripped on the path', 'None known (seed)']);
-  await scan(U.admin, 'Admin', ['SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'], ['SEED INTERNAL NOTE', 'Seed findings', 'concern about Teacher Hana', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'SEED APPLICANT ALLERGY', 'SEED LOG']);
+  await scan(U.admin, 'Admin', ['SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'], ['SEED INTERNAL NOTE', 'Seed findings', 'concern about Teacher Hana', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'SEED APPLICANT ALLERGY', 'SEED LOG', 'SEED DOOR LOG', 'SEED NOTICE']);
   await scan(U.manager, 'The manager', [], ['SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment', 'SEED INTERNAL NOTE']);
   await db.exec(`delete from storage.objects`);
 }
@@ -1628,10 +1634,180 @@ console.log('\n== Online registration ==');
     [U.parentA, `insert into storage.objects (bucket_id, name) values ('registrations', '${PREFIX}x.pdf')`],
   ]);
   check('registration files are readable by admin only: not teachers, not parents', res[1].rows[0].n === 1 && res[2].rows[0].n === 0 && res[3].rows[0].n === 0);
-  check('a child\'s files: the parent sees their own child\'s; another parent sees none; management sees all; teachers none', res[4].rows[0].n === 1 && res[5].rows.length === 1 && res[5].rows[0].name.startsWith(gamma) && res[6].rows[0].n === 2 && res[7].rows[0].n === 0, JSON.stringify([res[4].rows, res[5].rows]));
+  check('a child\'s files: the parent sees their own child\'s; another parent sees none; management sees all; a teacher only the pickup ID photos of their own class (not the other class)', res[4].rows[0].n === 1 && res[5].rows.length === 1 && res[5].rows[0].name.startsWith(gamma) && res[6].rows[0].n === 2 && res[7].rows[0].n === 1, JSON.stringify([res[4].rows, res[5].rows]));
   check('a parent can upload a pickup photo for their own child only, into the pickups folder, and never into the registration bucket', !res[8].error && !!res[9].error && !!res[10].error && !!res[11].error);
 
   // seeds are removed by the launch script
+}
+
+// ---------------------------------------------------------------------------
+console.log('\n== Attendance and pickup ==');
+{
+  const T = (local) => [null, `select set_config('app.now', ((timestamp '${local}') at time zone 'Africa/Cairo')::text, true)`];
+  const A = alpha, B = beta, G = gamma;
+  const lastInOut = `select checked_in_at is not null as i, checked_out_at is not null as o, collector_name, off_list, overtime_minutes from public.attendance where child_id = '${A}' and att_date = '2026-10-11'`;
+  let res = await flow([
+    T('2026-10-11 08:05'),                                                                 // 0  Sunday morning
+    [U.hana, `select child_id from public.door_list()`],                                   // 1  her class only
+    [U.mariam, `select public.door_check_in('${A}')`],                                     // 2  not her class
+    [U.parentA, `select public.door_check_in('${A}')`],                                    // 3  a parent cannot work the door
+    [U.hana, `select public.door_check_in('${A}')`],                                       // 4  ok
+    [U.hana, `select public.door_check_in('${A}')`],                                       // 5  twice
+    [U.admin, `select checked_in_at is not null as i from public.door_list() where child_id = '${A}'`], // 6
+    [U.parentA, `select count(*)::int as n from public.attendance where child_id = '${A}' and att_date = '2026-10-11'`],            // 7  parent sees the times
+    [U.parentB, `select count(*)::int as n from public.attendance where att_date = '2026-10-11'`],                                     // 8  other parent sees none
+    [U.hana, `select full_name from public.door_pickups('${A}')`],                                       // 9  teacher sees the pickup list through the door function
+    [U.mariam, `select full_name from public.door_pickups('${A}')`],                                     // 10 other class: nothing
+    [U.parentA, `select full_name from public.door_pickups('${A}')`],                                    // 11 parents: nothing
+    T('2026-10-11 15:00'),                                                                 // 12
+    [U.hana, `select public.door_check_out('${A}', (select id from public.door_pickups('${A}') limit 1))`], // 13 ok
+    [null, lastInOut],                                                                     // 14
+    [U.hana, `select public.door_check_out('${A}', (select id from public.door_pickups('${A}') limit 1))`], // 15 twice
+    [U.hana, `select public.door_check_out('${B}', null, 'Someone', 'friend', 'x')`],      // 16 never checked in
+    [U.hana, `select public.door_check_in('${B}')`],                                       // 17
+    [U.hana, `select public.door_check_out('${B}', (select id from public.child_pickups where full_name like 'Grandma%'))`], // 18 a person from another child's list
+    [U.admin, `select count(*)::int as n from public.attendance_events where child_id = '${A}' and att_date = '2026-10-11'`], // 19 audit trail
+    [U.hana, `select count(*)::int as n from public.attendance_events where att_date = '2026-10-11'`],                   // 20 teachers cannot read the log
+    [U.parentA, `select count(*)::int as n from public.attendance_events where att_date = '2026-10-11'`],                // 21
+  ]);
+  check('a class teacher sees only their own class at the door; another class\'s teacher and parents cannot check a child in', res[1].rows.length === 2 && res[1].rows.every((x) => [A, B].includes(x.child_id)) && !!res[2].error && !!res[3].error);
+  check('check-in works once per day and the time is recorded; the parent sees it, another parent does not', !res[4].error && !!res[5].error && res[6].rows[0].i === true && res[7].rows[0].n === 1 && res[8].rows[0].n === 0, JSON.stringify([res[4], res[5]]));
+  check('the child\'s class teacher sees the authorised pickup list through the door function; other teachers and parents get nothing', res[9].rows.length === 1 && /Grandma Seed/.test(res[9].rows[0].full_name) && res[10].rows.length === 0 && res[11].rows.length === 0);
+  check('check-out records who collected, once; a child never checked in, or a person from another child\'s list, is refused', !res[13].error && res[14].rows[0].o && /Grandma Seed/.test(res[14].rows[0].collector_name) && res[14].rows[0].off_list === false && res[14].rows[0].overtime_minutes === 0 && !!res[15].error && !!res[16].error && !res[17].error && !!res[18].error, JSON.stringify([res[13], res[14], res[18]]));
+  check('every door action is logged for management; teachers and parents cannot read the log', res[19].rows[0].n === 2 && res[20].rows[0].n === 0 && res[21].rows[0].n === 0, JSON.stringify(res[19].rows));
+
+  // overtime: closing time is 18:00 Cairo
+  res = await flow([
+    T('2026-10-11 08:00'), [U.hana, `select public.door_check_in('${A}')`], [U.hana, `select public.door_check_in('${B}')`],
+    T('2026-10-11 18:25'),
+    [U.hana, `select public.door_check_out('${A}', (select id from public.door_pickups('${A}') limit 1))`],
+    T('2026-10-11 18:00'),
+    [U.hana, `select public.door_check_out('${B}', (select id from public.door_pickups('${B}') limit 1))`],
+    [null, `select child_id, overtime_minutes from public.attendance where att_date = '2026-10-11'`],
+  ]);
+  const ot = Object.fromEntries(res[7].rows.map((x) => [x.child_id, x.overtime_minutes]));
+  check('pickups after 18:00 are recorded as overtime minutes; at closing time there is none', !res[4].error && !res[6].error && ot[A] === 25 && ot[B] === 0, JSON.stringify([res[4], res[6], ot]));
+
+  // a person who is not on the list
+  res = await flow([
+    T('2026-10-11 08:00'), [U.hana, `select public.door_check_in('${A}')`], T('2026-10-11 14:00'),
+    [U.hana, `select public.door_check_out('${A}', null, 'Stranger Name', 'friend', null)`],                      // 3 no approval note
+    [U.hana, `select public.door_check_out('${A}', null, 'S', 'friend', 'Mother approved by phone')`],            // 4 name too short
+    [U.hana, `select public.door_check_out('${A}', null, 'Stranger Name', 'friend', 'Mother approved by phone')`], // 5 ok
+    [null, lastInOut],                                                                                            // 6
+    [null, `select user_id, template, payload::text as p from public.email_outbox where template like 'pickup_off_list%' order by template, user_id`], // 7
+    [U.parentA, `select off_list, collector_name from public.attendance where child_id = '${A}' and att_date = '2026-10-11'`],                // 8 the parent can see it
+  ]);
+  check('someone not on the pickup list needs a name, a relationship and a note saying the parent approved it', /off_list_needs_parent_approval/.test(res[3].error) && !!res[4].error && !res[5].error, JSON.stringify([res[3].error, res[4].error, res[5].error]));
+  const em = res[7].rows;
+  check('...it is recorded as an exception, and the parents, class staff and admins are emailed (without any names)', res[6].rows[0].off_list === true && res[6].rows[0].collector_name === 'Stranger Name'
+    && em.filter((x) => x.template === 'pickup_off_list_parent').map((x) => x.user_id).sort().join() === [U.parentA, U.parentC].sort().join()
+    && em.filter((x) => x.template === 'pickup_off_list_staff').map((x) => x.user_id).includes(U.hana) && em.filter((x) => x.template === 'pickup_off_list_staff').map((x) => x.user_id).includes(U.admin)
+    && !em.some((x) => /Stranger/.test(x.p)) && res[8].rows[0].off_list === true, JSON.stringify(em.map((x) => [x.template, x.user_id])));
+
+  // corrections
+  res = await flow([
+    T('2026-10-11 08:00'), [U.hana, `select public.door_check_in('${A}')`],
+    T('2026-10-11 18:10'), [U.hana, `select public.door_check_out('${A}', (select id from public.door_pickups('${A}') limit 1))`],
+    [U.hana, `select public.door_undo('${A}', 'check_in')`],                          // 4 must undo the check-out first
+    [U.mariam, `select public.door_undo('${A}', 'check_out')`],                       // 5 not her class
+    [U.hana, `select public.door_undo('${A}', 'check_out')`],                         // 6
+    [null, lastInOut],                                                                // 7
+    [U.hana, `select public.door_undo('${A}', 'check_in')`],                          // 8
+    [null, `select count(*)::int as n from public.attendance where child_id = '${A}' and att_date = '2026-10-11'`], // 9
+    [U.admin, `select string_agg(kind, ',' order by created_at, id) as k from public.attendance_events where child_id = '${A}' and att_date = '2026-10-11'`], // 10
+  ]);
+  check('a slip at the door can be undone (check-out first, then check-in) and overtime goes with it; every correction is logged', !!res[4].error && !!res[5].error && !res[6].error && res[7].rows[0].o === false && res[7].rows[0].overtime_minutes === 0 && !res[8].error && res[9].rows[0].n === 0 && /undo_check_out/.test(res[10].rows[0].k) && /undo_check_in/.test(res[10].rows[0].k), JSON.stringify([res[4].error, res[7].rows, res[10].rows]));
+
+  // parents report an absence or a late arrival
+  res = await flow([
+    T('2026-10-12 07:30'),                                                                                            // 0 Monday
+    [U.parentA, `select public.parent_report_attendance('${A}', '2026-10-12', 'absence', 'Fever')`],                  // 1 ok, before 8
+    [U.hana, `select notice_kind, notice_reason from public.door_list() where child_id = '${A}'`],                      // 2 teacher sees it on the class list
+    [U.mariam, `select notice_kind from public.door_list() where child_id = '${A}'`],                                   // 3 other class: child not on her list
+    [U.parentB, `select public.parent_report_attendance('${A}', '2026-10-12', 'absence', 'Not mine')`],               // 4 not their child
+    [U.hana, `select public.parent_report_attendance('${A}', '2026-10-12', 'absence', 'Teacher trying')`],            // 5 staff cannot use the parent function
+    [U.parentA, `select public.parent_report_attendance('${A}', '2026-10-12', 'late', 'Doctor', '09:15')`],           // 6 replaces the notice
+    [U.parentA, `select kind, expected_arrival::text as t from public.attendance_notices where child_id = '${A}'`],   // 7
+    [U.parentA, `select public.parent_report_attendance('${A}', '2026-10-12', 'late', 'Doctor', '07:00')`],           // 8 bad arrival
+    [U.parentA, `select public.parent_report_attendance('${A}', '2026-10-12', 'absence', 'Fever', '09:00')`],         // 9 arrival only for late
+    [U.parentA, `select public.parent_report_attendance('${A}', '2026-10-12', 'absence', 'x')`],                      // 10 reason too short
+    [U.parentA, `select public.parent_report_attendance('${A}', '2026-10-11', 'absence', 'Yesterday')`],              // 11 past
+    [U.parentA, `select public.parent_report_attendance('${A}', '2026-10-16', 'absence', 'Friday')`],                 // 12 closed day
+    [U.parentA, `select public.parent_report_attendance('${A}', '2026-12-30', 'absence', 'Too far')`],                // 13 > 60 days
+    [U.parentA, `select public.parent_report_attendance('${A}', '2026-10-13', 'absence', 'Tomorrow')`],               // 14 ok
+    [U.parentA, `select public.parent_cancel_attendance_notice('${A}', '2026-10-13')`],                               // 15 ok
+    [U.parentA, `select count(*)::int as n from public.attendance_notices where notice_date = '2026-10-13'`],       // 16
+    T('2026-10-12 08:00'),                                                                                            // 17 8 am sharp
+    [U.parentA, `select public.parent_report_attendance('${A}', '2026-10-12', 'absence', 'Too late today')`],         // 18 too late
+    [U.parentA, `select public.parent_cancel_attendance_notice('${A}', '2026-10-12')`],                               // 19 too late
+    [U.parentA, `select public.parent_report_attendance('${A}', '2026-10-13', 'absence', 'Tomorrow still ok')`],      // 20 ok
+    [U.parentB, `select count(*)::int as n from public.attendance_notices where notice_date between '2026-10-12' and '2026-10-13'`],                                          // 21 another family sees only their own
+    T('2026-10-12 07:59'), [U.hana, `select public.door_check_in('${A}')`],                                           // 22, 23
+    [U.parentC, `select public.parent_report_attendance('${A}', '2026-10-12', 'absence', 'Already here')`],           // 24 already checked in
+  ]);
+  check('a parent can report an absence before 8 am; the class teacher sees it on the list; another class\'s teacher does not see the child', !res[1].error && res[2].rows[0].notice_kind === 'absence' && res[2].rows[0].notice_reason === 'Fever' && res[3].rows.length === 0, JSON.stringify([res[1].error, res[2], res[3]]));
+  check('...only for their own child; staff cannot use the parent function; a second report replaces the first', !!res[4].error && !!res[5].error && !res[6].error && res[7].rows.length === 1 && res[7].rows[0].kind === 'late' && res[7].rows[0].t === '09:15:00', JSON.stringify([res[4].error, res[5].error, res[6].error, res[7]]));
+  check('...bad arrival times, short reasons, past days, Fridays and dates over 60 days away are refused', [8, 9, 10, 11, 12, 13].every((i) => !!res[i].error), JSON.stringify([8, 9, 10, 11, 12, 13].map((i) => res[i].error)));
+  check('a notice for a later day can be cancelled', !res[14].error && !res[15].error && res[16].rows[0].n === 0);
+  check('from 8 am sharp, today\'s absence can no longer be reported or cancelled online (they must call), but a later day still can; another family sees no notices', /too_late_today/.test(res[18].error) && /too_late_today/.test(res[19].error) && !res[20].error && res[21].rows[0].n === 0, JSON.stringify([res[18].error, res[19].error, res[20].error, res[21]]));
+  check('a child already checked in today cannot be reported absent', !res[23].error && !!res[24].error, JSON.stringify([res[23], res[24]]));
+
+  // 9:30 flag
+  res = await flow([
+    T('2026-10-12 09:29'), [U.hana, `select child_id, flagged from public.door_list()`],                              // 1
+    T('2026-10-12 07:00'), [U.parentB, `select public.parent_report_attendance('${B}', '2026-10-12', 'absence', 'Sick')`], // 3 ok
+    T('2026-10-12 09:30'), [U.hana, `select child_id, flagged from public.door_list()`],                              // 5
+    [U.admin, `select child_id, flagged from public.door_list()`],                                                    // 6
+    [null, `select public.cka_run_attendance_check((timestamp '2026-10-12 09:30') at time zone 'Africa/Cairo') as r`], // 7
+    [null, `select count(*)::int as n from public.attendance_flags`],                                                 // 8
+    [null, `select user_id, template, payload::text as p from public.email_outbox where template = 'attendance_missing'`], // 9
+    [null, `select public.cka_run_attendance_check((timestamp '2026-10-12 09:45') at time zone 'Africa/Cairo') as r`], // 10 nothing new
+    [null, `select count(*)::int as n from public.email_outbox where template = 'attendance_missing'`],               // 11
+    [null, `select public.cka_run_attendance_check((timestamp '2026-10-12 09:00') at time zone 'Africa/Cairo') as r`], // 12 too early
+    [null, `select public.cka_run_attendance_check((timestamp '2026-10-16 10:00') at time zone 'Africa/Cairo') as r`], // 13 Friday
+    [U.hana, `select public.door_log_call('${A}', 'Mother says on the way')`],                                        // 14 teachers cannot
+    [U.admin, `select public.door_log_call('${A}', 'Mother says on the way')`],                                       // 15
+    [U.admin, `select public.door_log_call('${B}', ' ')`],                                                            // 16 needs a note
+    [U.admin, `select called_at is not null as c, call_note from public.door_list() where child_id = '${A}'`],       // 17
+    [U.hana, `select public.door_check_in('${A}')`],                                                                  // 18
+    [U.hana, `select flagged from public.door_list() where child_id = '${A}'`],                                       // 19 arrived: no longer flagged
+    [U.hana, `select count(*)::int as n from public.attendance_flags`],                                               // 20 teachers cannot read flags
+    [U.hana, `select call_note from public.door_list() where child_id = '${B}' or child_id = '${A}'`],                // 21 nor call notes via the list
+  ]);
+  check('before 9:30 nobody is flagged', res[1].rows.every((x) => x.flagged === false));
+  const fl = (r) => Object.fromEntries(r.rows.map((x) => [x.child_id, x.flagged]));
+  check('at 9:30 a child with no check-in and no notice is flagged; a child with a parent\'s notice is not', fl(res[5])[A] === true && fl(res[5])[B] === false && fl(res[6])[G] === true && fl(res[6])[delta] === true, JSON.stringify([fl(res[5]), fl(res[6])]));
+  const r7 = res[7].rows[0].r, r10 = res[10].rows[0].r;
+  check('the scheduler flags each child once and emails the admin a count only (no names)', r7.flagged === 3 && res[8].rows[0].n === 3 && res[9].rows.length === 1 && res[9].rows[0].user_id === U.admin && !/Testson|Omar/.test(res[9].rows[0].p), JSON.stringify([r7, res[8].rows, res[9].rows]));
+  check('...and does nothing again later, before 9:30, or on a Friday', r10.flagged === 0 && res[11].rows[0].n === 1 && res[12].rows[0].r.checked === false && res[13].rows[0].r.checked === false);
+  check('admin can log "I called the parent" (a note is required); teachers cannot and cannot read the flags or call notes', !!res[14].error && !res[15].error && !!res[16].error && res[17].rows[0].c === true && res[20].rows[0].n === 0 && res[21].rows.every((x) => x.call_note === null), JSON.stringify([res[14].error, res[15].error, res[16].error, res[17], res[21]]));
+  check('once the child arrives they are no longer flagged', !res[18].error && res[19].rows[0].flagged === false);
+
+  // reports and overtime billing
+  res = await flow([
+    [null, `update public.children set created_at = '2026-01-01'`],
+    [null, `delete from public.attendance`], [null, `delete from public.attendance_notices`],
+    [null, `insert into public.attendance (child_id, att_date, checked_in_at, checked_out_at, overtime_minutes) values
+        ('${A}', '2026-10-11', '2026-10-11 05:00+00', '2026-10-11 15:20+00', 20), ('${A}', '2026-10-12', '2026-10-12 05:00+00', '2026-10-12 12:00+00', 0)`],
+    [null, `insert into public.attendance_notices (child_id, notice_date, kind, reason) values ('${A}', '2026-10-13', 'absence', 'Sick'), ('${B}', '2026-10-11', 'absence', 'Trip'), ('${B}', '2026-10-12', 'late', 'Doctor')`],
+    T('2026-10-13 19:00'),                                                                                              // 5
+    [U.admin, `select public.attendance_report('2026-10-11', '2026-10-13') as r`],                                       // 6
+    [U.hana, `select public.attendance_report('2026-10-11', '2026-10-13')`],                                             // 7
+    [U.parentA, `select public.attendance_report('2026-10-11', '2026-10-13')`],                                          // 8
+    [U.admin, `select public.attendance_report('2026-10-13', '2026-10-11')`],                                            // 9 backwards
+    [U.admin, `select public.attendance_report('2025-01-01', '2026-10-11')`],                                            // 10 over a year
+    T('2026-10-13 12:00'),                                                                                              // 11 Tuesday noon: today not counted yet
+    [U.manager, `select public.attendance_report('2026-10-11', '2026-10-13') as r`],                                     // 12
+    [U.admin, `select public.attendance_report('2026-10-15', '2026-10-17') as r`],                                       // 13 Thu, Fri, Sat: in the future
+  ]);
+  const r6 = res[6].rows[0].r, byc = Object.fromEntries(r6.by_child.map((x) => [x.child_id, x]));
+  check('the report counts school days, present days, reported absences and unreported days per child (Sunday to Thursday only)', byc[A].school_days === 3 && byc[A].present_days === 2 && byc[A].absent_reported === 1 && byc[A].not_reported === 0
+    && byc[B].present_days === 0 && byc[B].absent_reported === 1 && byc[B].not_reported === 2 && byc[B].late_notices === 1 && byc[G].not_reported === 3, JSON.stringify(byc[A]) + JSON.stringify(byc[B]));
+  check('...by class too, and the overtime list names the family and the minutes (the billing source)', r6.by_class.length === 2 && r6.by_class.find((x) => x.class_name === 'Butterflies (seed)').children === 2
+    && r6.overtime.length === 1 && r6.overtime[0].minutes === 20 && /Parent A \(seed\)/.test(r6.overtime[0].parents) && /Parent C \(seed\)/.test(r6.overtime[0].parents), JSON.stringify(r6.overtime));
+  check('only management can run the report; bad periods are refused', !!res[7].error && !!res[8].error && !!res[9].error && !!res[10].error && !res[12].error);
+  check('a day still in progress is not counted as "not reported"', res[12].rows[0].r.by_child.find((x) => x.child_id === G).school_days === 2 && res[13].rows[0].r.by_child.every((x) => x.school_days === 0));
 }
 
 // ---------------------------------------------------------------------------
