@@ -891,6 +891,231 @@ console.log('\n== Manager and owner reports ==');
 }
 
 // ---------------------------------------------------------------------------
+console.log('\n== Owner dashboard: privacy ==');
+{
+  const OWNER_TABLES = ['staff_attendance', 'hr_log', 'staff_complaints', 'mistake_categories', 'mistakes', 'investigation_faults', 'owner_settings'];
+  // Put one row in each table (as the server would), then see who can read them.
+  const fill = [
+    [null, `insert into public.staff_attendance (staff_id, att_date, status, recorded_by) values ('${U.hana}', current_date, 'absent', '${U.admin}')`],
+    [null, `insert into public.hr_log (staff_id, entry_type, note) values ('${U.hana}', 'verbal_reminder', 'SECRET HR NOTE')`],
+    [null, `insert into public.staff_complaints (raised_by, category, description) values ('${U.mariam}', 'pay', 'SECRET STAFF CONCERN')`],
+    [null, `insert into public.mistakes (staff_id, category_id, source, confirmed) values ('${U.hana}', (select id from public.mistake_categories limit 1), 'spot_check', true)`],
+    [null, `insert into public.investigation_faults (investigation_id, staff_id, confirmed) values ('${inv1}', '${U.hana}', true)`],
+  ];
+  for (const [who, label] of [[U.owner, 'the owner'], [U.manager, 'the manager'], [U.admin, 'admin'], [U.hana, 'a teacher'], [U.parentA, 'a parent']]) {
+    const steps = fill.concat(OWNER_TABLES.map((t) => [who, `select count(*)::int as n from public.${t}`]));
+    const res = await flow(steps);
+    const counts = res.slice(fill.length).map((x) => (x.error ? 0 : x.rows[0].n));
+    if (who === U.owner) check('the owner can read every owner-only table', counts.every((n) => n >= 1), JSON.stringify(counts));
+    else check(label + ' cannot read ANY owner-only table', counts.every((n) => n === 0), JSON.stringify(counts));
+  }
+
+  // writes
+  let res = await flow([
+    [U.manager, `insert into public.hr_log (staff_id, entry_type) values ('${U.hana}', 'praise')`],
+    [U.admin, `insert into public.mistakes (category_id, source) values ((select id from public.mistake_categories limit 1), 'spot_check')`],
+    [U.hana, `update public.owner_settings set value = '{}'::jsonb where key = 'thresholds'`],
+    [U.manager, `insert into public.mistake_categories (name) values ('Sneaky')`],
+    [U.owner, `insert into public.hr_log (staff_id, entry_type, note, needs_decision) values ('${U.hana}', 'written_warning', 'ok', true) returning created_by`],
+    [U.owner, `insert into public.mistake_categories (name, critical) values ('Late report', false) returning name`],
+  ]);
+  check('only the owner can write HR entries, mistakes, categories and settings', !!res[0].error && !!res[1].error && !!res[3].error && (res[2].error || res[2].rows.length === 0));
+  check('the owner can add an HR entry, and the database records who wrote it', !res[4].error && res[4].rows[0].created_by === U.owner, res[4].error);
+  check('the owner can add a mistake category', !res[5].error, res[5].error);
+
+  res = await flow([
+    [null, `insert into public.hr_log (id, staff_id, entry_type) values ('${ID(600)}', '${U.hana}', 'praise')`],
+    [U.owner, `update public.hr_log set staff_id = '${U.mariam}' where id = '${ID(600)}'`],
+    [U.owner, `update public.hr_log set needs_decision = true, decided_at = now() where id = '${ID(600)}' returning decided_by`],
+    [U.owner, `select * from public.owner_settings`],
+  ]);
+  check('an HR entry cannot be re-assigned to another person', !!res[1].error, res[1].error);
+  check('deciding an HR item records the owner as the decider', !res[2].error && res[2].rows[0].decided_by === U.owner, res[2].error);
+
+  // attendance: recorded by management, readable only by the owner
+  res = await flow([
+    [U.admin, `select public.record_staff_attendance('${U.hana}', current_date, 'present', 15, 'Traffic')`],       // 0
+    [U.admin, `select public.record_staff_attendance('${U.hana}', current_date, 'absent', 99, 'Ill')`],           // 1 replaces
+    [U.admin, `select count(*)::int as n from public.staff_attendance`],                                          // 2 admin cannot read
+    [U.owner, `select status, minutes_late, reason from public.staff_attendance where staff_id='${U.hana}'`],     // 3
+    [U.hana, `select public.record_staff_attendance('${U.mariam}', current_date, 'present', 0, null)`],           // 4
+    [U.parentA, `select public.record_staff_attendance('${U.mariam}', current_date, 'present', 0, null)`],        // 5
+    [U.admin, `select public.record_staff_attendance('${U.hana}', current_date + 1, 'present', 0, null)`],        // 6 future
+    [U.admin, `select public.record_staff_attendance('${U.hana}', current_date - 90, 'present', 0, null)`],       // 7 too old
+    [U.admin, `select public.record_staff_attendance('${U.hana}', current_date, 'maybe', 0, null)`],              // 8
+    [U.admin, `select public.record_staff_attendance('${U.parentA}', current_date, 'present', 0, null)`],         // 9 not staff
+    [U.admin, `select * from public.staff_attendance_day(current_date)`],                                         // 10
+    [U.owner, `select * from public.staff_attendance_day(current_date)`],                                         // 11
+    [U.hana, `select * from public.staff_attendance_day(current_date)`],                                          // 12
+  ]);
+  check('admin can record attendance', !res[0].error, res[0].error);
+  check('recording again for the same day replaces the earlier entry', !res[1].error && res[3].rows.length === 1 && res[3].rows[0].status === 'absent' && res[3].rows[0].minutes_late === 0 && res[3].rows[0].reason === 'Ill', JSON.stringify(res[3].rows));
+  check('admin cannot read attendance back', res[2].rows[0].n === 0);
+  check('teachers and parents cannot record attendance', !!res[4].error && !!res[5].error);
+  check('attendance cannot be recorded for the future, the distant past, with a bad status, or for a non-staff account', !!res[6].error && !!res[7].error && !!res[8].error && !!res[9].error);
+  check('the attendance sheet lists staff for admin without any saved values', res[10].rows.length >= 3 && res[10].rows.every((x) => x.status === null));
+  check('...but shows the saved values to the owner', res[11].rows.find((x) => x.staff_id === U.hana).status === 'absent');
+  check('a teacher gets no attendance sheet', res[12].rows.length === 0);
+
+  // staff concerns and anonymity
+  res = await flow([
+    [U.hana, `select public.submit_staff_complaint('workload', 'Too many children in the room', true)`],         // 0 anonymous
+    [U.mariam, `select public.submit_staff_complaint('supplies', 'We ran out of wipes', false)`],               // 1 named
+    [U.owner, `select raised_by, anonymous, category, created_at from public.staff_complaints order by category`], // 2
+    [U.hana, `select count(*)::int as n from public.staff_complaints`],                                          // 3
+    [U.parentA, `select public.submit_staff_complaint('pay', 'x', false)`],                                      // 4
+    [U.hana, `select public.submit_staff_complaint('gossip', 'x', false)`],                                      // 5
+    [U.hana, `select public.submit_staff_complaint('pay', '   ', false)`],                                       // 6
+    [null, `insert into public.staff_complaints (raised_by, category, description, anonymous) values ('${U.hana}', 'pay', 'x', true)`], // 7
+    [null, `select (select count(*) from public.staff_complaints where anonymous and raised_by is not null)::int as leaked`], // 8
+  ]);
+  const rowsC = res[2].rows;
+  const anon = rowsC.find((x) => x.category === 'workload'), named = rowsC.find((x) => x.category === 'supplies');
+  check('an anonymous concern stores no name at all', !res[0].error && anon && anon.anonymous === true && anon.raised_by === null, res[0].error);
+  check('...and its time is rounded to the day so it cannot be matched to a login time', anon && new Date(anon.created_at).getUTCMinutes() === 0 && new Date(anon.created_at).getUTCSeconds() === 0);
+  check('a named concern keeps its author for the owner', named && named.raised_by === U.mariam);
+  check('staff cannot read concerns back (not even their own)', res[3].rows[0].n === 0);
+  check('parents cannot raise staff concerns; bad categories and empty text are refused', !!res[4].error && !!res[5].error && !!res[6].error);
+  check('the database refuses an "anonymous" concern that carries a name', !!res[7].error && /anonymous_has_no_name/.test(res[7].error), res[7].error);
+  check('no anonymous concern has a name attached', res[8].rows[0].leaked === 0);
+
+  // confirming responsibility from investigation findings
+  const S = ID(610);
+  const invOf = `(select id from public.investigations where submission_id='${S}')`;
+  const step = (name) => [U.manager, `insert into public.investigation_steps (investigation_id, step) values (${invOf}, '${name}')`];
+  res = await flow([
+    [U.parentA, `insert into public.submissions (id, parent_id, child_id, type, title, description, urgency) values ('${S}', '${U.parentA}', '${alpha}', 'safety_concern', 'T', 'd', 'urgent')`], // 0
+    [U.manager, `select public.confirm_investigation_fault(${invOf}, '${U.hana}', true)`],                         // 1 too early
+    [U.manager, `select public.save_investigation(${invOf}, 'Findings', 'i', 's', 'a')`],                          // 2
+    step('parent_called'), step('facts_gathered'), step('findings'),                                               // 3-5
+    [U.manager, `select public.confirm_investigation_fault(${invOf}, '${U.hana}', true)`],                         // 6
+    [U.manager, `select * from public.investigation_fault(${invOf})`],                                             // 7
+    [U.admin, `select public.confirm_investigation_fault(${invOf}, '${U.hana}', true)`],                           // 8
+    [U.hana, `select public.confirm_investigation_fault(${invOf}, '${U.hana}', true)`],                            // 9
+    [U.manager, `select public.confirm_investigation_fault(${invOf}, '${U.parentA}', true)`],                      // 10
+    [U.manager, `select public.confirm_investigation_fault(${invOf}, '${U.hana}', false)`],                        // 11 change of mind
+    [U.manager, `select * from public.investigation_fault(${invOf})`],                                             // 12
+    [U.admin, `select * from public.investigation_fault(${invOf})`],                                               // 13
+  ]);
+  check('responsibility cannot be confirmed before the findings are written', !!res[1].error && /findings/.test(res[1].error), res[1].error);
+  check('after the findings, the manager can confirm who was responsible', !res[6].error && res[7].rows.length === 1 && res[7].rows[0].confirmed === true && res[7].rows[0].staff_name === 'Teacher Hana (seed)', res[6].error);
+  check('admin and teachers cannot confirm responsibility, and only staff can be named', !!res[8].error && !!res[9].error && !!res[10].error);
+  check('the confirmation can be withdrawn', !res[11].error && res[12].rows[0].confirmed === false);
+  check('admin cannot see who an investigation blames', res[13].rows.length === 0);
+}
+
+// ---------------------------------------------------------------------------
+console.log('\n== Owner dashboard: the numbers ==');
+{
+  const R = (n) => ID(620 + n);
+  const dash = (who, from = '2025-03-01', to = '2025-03-31') => [who, `select public.owner_dashboard('${from}', '${to}') as d`];
+  const tr = (sql) => [null, sql];
+  const sub = (n, parent, child, type, about, at) => [
+    tr(`insert into public.submissions (id, parent_id, child_id, type, title, description, urgency, about_staff_member) values ('${R(n)}', '${parent}', '${child}', '${type}', 'Case ${n}', 'Text ${n}', 'urgent', ${about ? `'${about}'` : 'null'})`),
+    tr(`update public.submissions set created_at='${at}' where id='${R(n)}'`)];
+  const att = (staff, date, status, late = 0) => tr(`insert into public.staff_attendance (staff_id, att_date, status, minutes_late) values ('${staff}', '${date}', '${status}', ${late})`);
+  const inc = (n, child, loc, sev, at) => tr(`insert into public.incidents (id, child_id, occurred_at, location, what_happened, severity, parent_called_at, reported_by)
+      values ('${ID(640 + n)}', '${child}', '${at}', '${loc}', 'Note ${n}', '${sev}', ${sev === 'minor' ? 'null' : `'${at}'`}, '${U.hana}')`);
+  const rate = (parent, child, cls, month, c, m, d, comment, comp) => tr(`insert into public.ratings (parent_id, child_id, class_id, month, care_score, communication_score, daily_reports_score, comment, compliment_text, created_at)
+      values ('${parent}', '${child}', '${cls}', '${month}', ${c}, ${m}, ${d}, ${comment ? `'${comment}'` : 'null'}, ${comp ? `'${comp}'` : 'null'}, '${month.slice(0, 7)}-15T10:00:00Z')`);
+  const mist = (staff, cat, date, confirmed) => tr(`insert into public.mistakes (staff_id, category_id, mistake_date, source, confirmed) values (${staff ? `'${staff}'` : 'null'}, (select id from public.mistake_categories where name='${cat}'), '${date}', 'spot_check', ${confirmed})`);
+
+  // flatten helper results (sub() returns two steps)
+  const built = [
+    dash(U.owner),
+    tr(`alter table public.submissions disable trigger submissions_before_update`),
+    tr(`alter table public.ratings disable trigger ratings_before_insert`),
+    ...sub(1, U.parentA, alpha, 'complaint', U.hana, '2025-03-03T08:00Z'),
+    ...sub(2, U.parentB, beta, 'complaint', null, '2025-03-10T08:00Z'),
+    ...sub(3, U.parentA, alpha, 'complaint', null, '2025-03-17T08:00Z'),
+    ...sub(4, U.parentC, delta, 'safety_concern', null, '2025-03-12T08:00Z'),              // not a "complaint"
+    ...sub(5, U.parentC, delta, 'complaint', null, '2025-02-12T08:00Z'),                   // previous period
+    att(U.hana, '2025-03-03', 'absent', 0), att(U.hana, '2025-03-04', 'absent'), att(U.hana, '2025-03-05', 'absent'), att(U.hana, '2025-03-06', 'absent'),
+    att(U.hana, '2025-03-09', 'present', 10), att(U.hana, '2025-03-10', 'present', 20), att(U.hana, '2025-03-11', 'leave'),
+    ...['03', '04', '05', '06', '09', '10', '11'].map((d) => att(U.mariam, `2025-03-${d}`, 'absent')),   // 7 absences
+    att(U.admin, '2025-03-03', 'absent'),
+    att(U.hana, '2025-02-10', 'absent', 5),                                                  // previous period: 1 absence, 5 late minutes
+    inc(1, alpha, 'Garden', 'minor', '2025-03-04T08:00Z'), inc(2, alpha, 'Garden', 'minor', '2025-03-06T08:00Z'),
+    inc(3, gamma, 'Classroom', 'serious', '2025-03-09T08:00Z'), inc(4, alpha, 'Garden', 'minor', '2025-02-10T08:00Z'),   // last one: previous period
+    rate(U.parentA, alpha, ID(201), '2025-03-01', 5, 5, 5, null, 'Lovely teachers'),         // happy (compliment)
+    rate(U.parentB, beta, ID(201), '2025-03-01', 4, 4, 5, 'Great reports', null),            // happy (comment + high scores)
+    rate(U.parentB, gamma, ID(202), '2025-03-01', 2, 3, 2, 'Not happy', null),               // comment but low scores: not happy
+    rate(U.parentA, alpha, ID(201), '2025-02-01', 5, 5, 5, null, 'Last month thanks'),       // previous period: 1 happy
+    tr(`insert into public.hr_log (id, staff_id, entry_type, entry_date, note, needs_decision, created_at) values ('${ID(660)}', '${U.hana}', 'written_warning', '2025-03-10', 'Phone use', true, '2025-03-10T08:00Z')`),
+    tr(`insert into public.hr_log (id, staff_id, entry_type, entry_date, note, needs_decision, decided_at, created_at) values ('${ID(661)}', '${U.mariam}', 'verbal_reminder', '2025-03-05', 'Late twice', true, '2025-03-06T08:00Z', '2025-03-05T08:00Z')`),
+    tr(`insert into public.hr_log (id, staff_id, entry_type, entry_date, note, created_at) values ('${ID(662)}', '${U.admin}', 'praise', '2025-03-12', 'Great month', '2025-03-12T08:00Z')`),
+    mist(U.hana, 'Phone in class', '2025-03-05', true), mist(U.hana, 'Phone in class', '2025-03-12', true), mist(U.hana, 'Phone in class', '2025-03-20', true),
+    mist(U.mariam, 'Allergy check missed', '2025-03-08', true), mist(U.admin, 'Cleaning log not signed', '2025-03-09', false), mist(null, 'Cleaning log not signed', '2025-03-09', true),
+    tr(`insert into public.staff_complaints (raised_by, category, description, anonymous, status, created_at) values (null, 'workload', 'Anonymous workload', true, 'open', '2025-03-10T00:00Z')`),
+    tr(`insert into public.staff_complaints (raised_by, category, description, anonymous, status, created_at) values ('${U.mariam}', 'supplies', 'Named supplies', false, 'resolved', '2025-03-11T10:00Z')`),
+    tr(`insert into public.investigation_faults (investigation_id, staff_id, confirmed) select id, '${U.hana}', true from public.investigations where incident_id='${ID(643)}'`),     // confirmed fault for Hana
+    tr(`update public.investigations set opened_at='2025-03-09T09:00Z' where incident_id='${ID(643)}'`),
+    tr(`insert into public.investigation_faults (investigation_id, staff_id, confirmed) select id, '${U.admin}', false from public.investigations where submission_id='${R(4)}'`),   // NOT confirmed: must not count
+    tr(`update public.investigations set opened_at='2025-03-12T09:00Z' where submission_id='${R(4)}'`),
+    dash(U.owner),
+  ];
+  const res = await flow(built);
+  const firstErr = res.findIndex((x, i) => i > 0 && x.error);
+  check('the dashboard test dataset loads cleanly', firstErr === -1, firstErr >= 0 ? `step ${firstErr}: ${res[firstErr].error}` : '');
+  const b = res[0].rows[0].d, d = res[res.length - 1].rows[0].d;
+  const tile = (k) => d.tiles[k];
+
+  check('accidents tile: 3 this period against 1 before', tile('accidents').value === 3 && tile('accidents').previous === 1, JSON.stringify(tile('accidents')));
+  check('complaints tile counts parent complaints only (a safety concern is separate): 3 against 1', tile('complaints').value === 3 && tile('complaints').previous === 1, JSON.stringify(tile('complaints')));
+  check('happy comments tile: a compliment, or a comment with high scores; a comment with low scores does not count (2 against 1)', tile('happy_comments').value === 2 && tile('happy_comments').previous === 1, JSON.stringify(tile('happy_comments')));
+  check('staff absence days exclude leave and presence (4 + 7 + 1 = 12 against 1)', tile('absence_days').value === 12 && tile('absence_days').previous === 1, JSON.stringify(tile('absence_days')));
+  check('total late minutes (30 against 5)', tile('late_minutes').value === 30 && tile('late_minutes').previous === 5, JSON.stringify(tile('late_minutes')));
+  check('open HR items: waiting for a decision now, and how many were opened this period', tile('open_hr').value - b.tiles.open_hr.value === 1 && tile('open_hr').opened === 2 && tile('open_hr').previous_opened === 0, JSON.stringify(tile('open_hr')));
+  check('the previous period has the same length and ends the day before', d.period.days === 31 && d.period.previous_from === '2025-01-29' && d.period.previous_to === '2025-02-28', JSON.stringify(d.period));
+
+  check('weekly series covers 8 Sunday-to-Saturday weeks, oldest first', d.weekly.length === 8 && d.weekly[7].week_start === '2025-03-30' && d.weekly[0].week_start === '2025-02-09', JSON.stringify(d.weekly.map((x) => x.week_start)));
+  const wk = Object.fromEntries(d.weekly.map((x) => [x.week_start, x]));
+  check('accidents per week land in the right week', wk['2025-03-02'].accidents === 2 && wk['2025-03-09'].accidents === 1 && wk['2025-02-09'].accidents === 1, JSON.stringify(d.weekly.map((x) => x.accidents)));
+  check('complaints per week land in the right week', wk['2025-03-02'].complaints === 1 && wk['2025-03-09'].complaints === 1 && wk['2025-03-16'].complaints === 1 && wk['2025-02-09'].complaints === 1, JSON.stringify(d.weekly.map((x) => x.complaints)));
+
+  check('latest accidents show severity and investigation status, newest first', d.latest_accidents.length === 3 && d.latest_accidents[0].severity === 'serious' && d.latest_accidents[0].investigation === 'open' && d.latest_accidents[1].investigation === null, JSON.stringify(d.latest_accidents.map((x) => [x.severity, x.investigation])));
+
+  const mk = d.mistakes;
+  check('mistakes are ranked by count, confirmed only, with critical ones flagged', mk.length === 3 && mk[0].category === 'Phone in class' && mk[0].count === 3 && mk[0].critical === false && mk.some((x) => x.category === 'Allergy check missed' && x.critical === true && x.count === 1) && mk.find((x) => x.category === 'Cleaning log not signed').count === 1, JSON.stringify(mk));
+
+  const st = Object.fromEntries(d.staff.map((x) => [x.name, x]));
+  const hana = st['Teacher Hana (seed)'], mar = st['Teacher Mariam (seed)'], sara = st['Admin Sara (seed)'];
+  check('Hana: 4 absences, 30 late minutes, 2 accidents in her class, 1 complaint about her', hana.absence_days === 4 && hana.late_minutes === 30 && hana.class_accidents === 2 && hana.complaints_about === 1, JSON.stringify(hana));
+  check('Hana: confirmed faults = 3 confirmed mistakes + 1 confirmed investigation = 4, which needs action', hana.confirmed_faults === 4 && hana.status === 'action', JSON.stringify(hana));
+  check('Mariam: 7 absences needs action; her single confirmed mistake alone would not', mar.absence_days === 7 && mar.confirmed_faults === 1 && mar.class_accidents === 1 && mar.status === 'action', JSON.stringify(mar));
+  check('Sara: an UNCONFIRMED fault and an unconfirmed mistake never count against her', sara.confirmed_faults === 0 && sara.absence_days === 1 && sara.status === 'good', JSON.stringify(sara));
+  check('the owner is not rated in the staff table', !d.staff.some((x) => x.role === 'owner'));
+  check('thresholds are returned, scaled to the period (31 days: absence watch 3 -> 4, action 6 -> 7)', d.thresholds.absence_days.watch === 3 && d.thresholds.absence_days.action === 6, JSON.stringify(d.thresholds.absence_days));
+
+  const hr = d.hr_log;
+  check('the HR log lists items waiting for the owner on top, then newest first', hr.length === 3 && hr[0].id === ID(660) && hr[0].awaiting === true && hr[1].id === ID(662) && hr[2].id === ID(661) && hr[2].awaiting === false, JSON.stringify(hr.map((x) => [x.type, x.awaiting])));
+
+  const sc = d.staff_concerns;
+  check('staff concerns are counted by category and status', sc.by_category_status.length === 2 && sc.by_category_status.some((x) => x.category === 'workload' && x.status === 'open' && x.count === 1), JSON.stringify(sc.by_category_status));
+  check('an anonymous concern shows no name even to the owner; a named one shows its author', sc.recent.find((x) => x.category === 'workload').raised_by === null && sc.recent.find((x) => x.category === 'workload').anonymous === true && sc.recent.find((x) => x.category === 'supplies').raised_by === 'Teacher Mariam (seed)', JSON.stringify(sc.recent));
+  check('open concerns are listed before resolved ones', sc.recent[0].status !== 'resolved');
+
+  const fam = Object.fromEntries(d.families.map((x) => [x.parent, x]));
+  check('feedback per family: complaints, happy comments and the latest message', fam['Parent A (seed)'].complaints === 2 && fam['Parent A (seed)'].happy === 1 && fam['Parent B (seed)'].complaints === 1 && fam['Parent B (seed)'].happy === 1 && typeof fam['Parent B (seed)'].latest_message === 'string' && fam['Parent B (seed)'].latest_message.length > 5 && !!fam['Parent B (seed)'].latest_at, JSON.stringify(d.families));
+
+  // who may open it
+  const gate = await flow([dash(U.manager), dash(U.admin), dash(U.hana), dash(U.parentA), dash(null), [U.owner, `select public.owner_dashboard('2025-03-31', '2025-03-01')`], [U.owner, `select public.owner_dashboard('2020-01-01', '2025-03-31')`]]);
+  check('only the owner can open the dashboard: not the manager, admin, teachers, parents or visitors', gate.slice(0, 5).every((x) => !!x.error), gate.slice(0, 5).map((x) => x.error).join('|'));
+  check('a backwards or huge period is refused', !!gate[5].error && !!gate[6].error);
+
+  // thresholds are editable and change the status
+  const edit = await flow([
+    [U.owner, `update public.owner_settings set value = jsonb_set(value, '{absence_days,action}', '40') where key = 'thresholds'`],
+    [U.owner, `update public.owner_settings set value = jsonb_set(value, '{absence_days,watch}', '30') where key = 'thresholds'`],
+    [U.owner, `update public.owner_settings set value = jsonb_set(value, '{confirmed_faults,action}', '99') where key = 'thresholds'`],
+    [U.owner, `update public.owner_settings set value = jsonb_set(value, '{confirmed_faults,watch}', '98') where key = 'thresholds'`],
+    dash(U.owner),
+  ]);
+  const st2 = Object.fromEntries(edit[4].rows[0].d.staff.map((x) => [x.name, x]));
+  check('raising the thresholds changes who needs action (editable in settings)', st2['Teacher Mariam (seed)'].status === 'good' && st2['Teacher Hana (seed)'].status === 'good', JSON.stringify(st2['Teacher Mariam (seed)']));
+}
+
+// ---------------------------------------------------------------------------
 console.log('\n== Removing the seed data before launch ==');
 {
   // Add a real (non-seed) family first: the clean-up must leave it alone.
