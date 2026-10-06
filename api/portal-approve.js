@@ -2,16 +2,24 @@
 // Admin, manager or owner approves a registration: the database creates the child in the chosen class
 // (and checks the caller's role itself), then this function invites the parents to the portal and links
 // them to the child. A parent who already has a login (a second child) is linked, not invited again.
-// Body: { application_id, class_id }
+// Body: { application_id, class_id }   or   { application_id, retry: true } to try the invitations again
 const { L, HttpError, endpoint, inviteUser } = require("./_lib/portal.js");
 
 module.exports = endpoint(async ({ req, body, client, caller, env }) => {
   if (!L.canInviteParents(caller.role)) throw new HttpError(403, "You are not allowed to approve applications.");
-  if (!L.UUID_RE.test(String(body.application_id || "")) || !L.UUID_RE.test(String(body.class_id || ""))) throw new HttpError(400, "Please choose a class.");
+  if (!L.UUID_RE.test(String(body.application_id || "")) || (body.retry !== true && !L.UUID_RE.test(String(body.class_id || "")))) throw new HttpError(400, "Please choose a class.");
 
   // 1. Approve in the database AS THE CALLER, so the database enforces who may do this.
   const token = /^Bearer\s+(.+)$/i.exec(req.headers.authorization || req.headers.Authorization || "")[1];
-  const approved = await client.call("/rest/v1/rpc/approve_registration", { method: "POST", token, body: { p_id: body.application_id, p_class: body.class_id } });
+  //    With retry:true the application is already approved: only the invitations that failed are tried again.
+  let approved;
+  if (body.retry === true) {
+    const a = await client.call("/rest/v1/rpc/registration_get", { method: "POST", token, body: { p_id: body.application_id } });
+    if (!a || a.status !== "approved" || !a.child_id) throw new HttpError(400, "This application has not been approved yet.");
+    approved = { child_id: a.child_id, language: a.language, parents: a.parents };
+  } else {
+    approved = await client.call("/rest/v1/rpc/approve_registration", { method: "POST", token, body: { p_id: body.application_id, p_class: body.class_id } });
+  }
   const childId = approved.child_id, language = approved.language === "ar" ? "ar" : "en";
 
   // 2. Invite or link each parent (at most two).

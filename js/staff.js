@@ -645,7 +645,7 @@
 
   function go() {
     var parts = location.hash.replace(/^#\/?/, "").split("/"), name = parts[0] === "" ? "" : parts[0];
-    var tab = name === "case" ? "queue" : name === "investigation" ? "investigations" : (name || "queue");
+    var tab = name === "case" ? "queue" : name === "investigation" ? "investigations" : name === "application" ? "applications" : (name || "queue");
     document.querySelectorAll("#nav a").forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-route") === tab); });
     window.scrollTo(0, 0);
     Promise.resolve((routes[name] || queue)(parts)).catch(function () { failView(); });
@@ -666,6 +666,7 @@
     document.querySelector('#nav [data-route="owner"]').hidden = me.role !== "owner";
     document.querySelector('#nav [data-route="routine"]').hidden = me.role !== "owner";
     document.querySelector('#nav [data-route="attendance"]').hidden = !isMgmt();
+    document.querySelector('#nav [data-route="applications"]').hidden = !isMgmt();
     document.getElementById("who").textContent = me.full_name + " · " + t("role." + me.role);
     document.getElementById("app").hidden = false;
     labelNav();

@@ -98,7 +98,7 @@ function walk(dir, out = []) {
   return out;
 }
 const portalJs = ["js/login.js", "js/portal-core.js", "js/portal-parent.js", "js/portal-parent-strings.js", "js/staff.js", "js/owner.js", "js/routine.js", "js/owner-charts.js",
-  "js/staff-strings.js", "js/staff-investigation-strings.js", "js/staff-report-strings.js", "js/staff-owner-strings.js", "js/staff-routine-strings.js", "js/portal-logic.js"];
+  "js/staff-strings.js", "js/staff-investigation-strings.js", "js/staff-report-strings.js", "js/staff-owner-strings.js", "js/staff-routine-strings.js", "js/applications.js", "js/staff-applications-strings.js", "js/portal-logic.js"];
 
 test("portal pages never turn text into HTML (no innerHTML, eval or document.write)", () => {
   const bad = [];

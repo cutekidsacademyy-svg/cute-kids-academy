@@ -62,3 +62,25 @@ test("the public Enroll popup links to the full registration", () => {
 test("the registration page is not indexed and loads no secret", () => {
   assert.match(read("register/index.html"), /<meta name="robots" content="noindex, nofollow">/);
 });
+
+test("staff Applications and My class wording: same keys in both languages, and every key used exists", () => {
+  const c2 = { CKA: { STR: { en: {}, ar: {} } } };
+  vm.runInNewContext(read("js/staff-applications-strings.js"), c2);
+  const { en, ar } = c2.CKA.STR;
+  assert.deepEqual(Object.keys(ar).sort(), Object.keys(en).sort());
+  const src = read("js/applications.js");
+  const used = new Set([...src.matchAll(/\bt\("(ap\.[A-Za-z0-9_.]+|mc\.[A-Za-z0-9_.]+)"\)/g)].map((m) => m[1]));
+  for (const s of ["new", "missing_documents", "tour_booked", "waitlist", "approved", "declined"]) used.add("ap.st." + s);
+  for (const s of ["submitted", "new", "missing_documents", "tour_booked", "waitlist", "declined", "approved"]) used.add("ap.ev." + s);
+  for (const s of ["invited", "linked", "failed"]) used.add("ap.out." + s);
+  for (const s of ["nursery", "preschool", "after_school", "camp"]) used.add("ap.prog." + s);
+  for (const s of ["mother", "father", "guardian", "other"]) used.add("ap.rel." + s);
+  for (const s of ["photos_class", "photos_social", "outings", "emergency_treatment", "birthday_wall"]) used.add("ap.c." + s);
+  assert.deepEqual([...used].filter((k) => !(k in en)), []);
+});
+
+test("only admin, manager and owner reach the Applications screens", () => {
+  const src = read("js/applications.js");
+  assert.match(src, /S\.routes\.applications = function \(\) \{ return S\.isMgmt\(\)/);
+  assert.match(src, /S\.routes\.application = function \(p\) \{ return S\.isMgmt\(\)/);
+});
