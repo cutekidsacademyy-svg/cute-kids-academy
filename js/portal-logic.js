@@ -53,6 +53,33 @@
     return true; // parent, teacher
   }
 
+  // ----- Dates in plain words, always in Cairo time -----
+  const TZ = "Africa/Cairo";
+  function cairoDay(d) {        // "2026-10-11"
+    return new Intl.DateTimeFormat("en-CA", { timeZone: TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  }
+  function daysBetween(fromKey, toKey) {
+    var a = fromKey.split("-").map(Number), b = toKey.split("-").map(Number);
+    return Math.round((Date.UTC(b[0], b[1] - 1, b[2]) - Date.UTC(a[0], a[1] - 1, a[2])) / 86400000);
+  }
+  // "today at 2:00 pm", "tomorrow at 9:00 am", "Sunday at 2:00 pm", "12 October at 2:00 pm"
+  function whenText(iso, nowMs, lang) {
+    var d = new Date(iso), loc = lang === "ar" ? "ar-EG" : "en-GB";
+    var time = new Intl.DateTimeFormat(loc, { timeZone: TZ, hour: "numeric", minute: "2-digit", hour12: true }).format(d);
+    var diff = daysBetween(cairoDay(new Date(nowMs)), cairoDay(d));
+    var weekday = new Intl.DateTimeFormat(loc, { timeZone: TZ, weekday: "long" }).format(d);
+    var date = new Intl.DateTimeFormat(loc, { timeZone: TZ, day: "numeric", month: "long" }).format(d);
+    if (lang === "ar") {
+      var dayAr = diff <= 0 ? "اليوم" : diff === 1 ? "غداً" : diff <= 6 ? weekday : date;
+      return dayAr + " الساعة " + time;
+    }
+    var day = diff <= 0 ? "today" : diff === 1 ? "tomorrow" : diff <= 6 ? weekday : date;
+    return day + " at " + time;
+  }
+  const refLabel = (n) => "CKA-" + String(n).padStart(4, "0");
+  // First day of the current month in Cairo, as "YYYY-MM-01" (ratings are once a month per child).
+  const monthKey = (nowMs) => cairoDay(new Date(nowMs)).slice(0, 8) + "01";
+
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -60,5 +87,6 @@
     STAFF_ROLES, ALL_ROLES, INACTIVITY_MS, EMAIL_RE, UUID_RE,
     areaFor, homePath, guard, isExpired,
     canInviteParents, canManageStaff, staffRolesCallerCanCreate, canChangeActive,
+    whenText, refLabel, monthKey,
   };
 });

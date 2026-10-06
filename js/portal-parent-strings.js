@@ -1,0 +1,143 @@
+// Parent portal wording, English and Arabic (right-to-left). Plain, warm language: parents
+// may be upset when they write. Arabic uses the neutral-masculine form common in app
+// interfaces; please have a native speaker review it before launch.
+(function () {
+  var en = {
+    "p.nav.home": "Home", "p.nav.reports": "Accident reports", "p.nav.rate": "Rate us",
+    "p.back": "← Back", "p.home.cases": "Your cases", "p.home.nocases": "You have no open cases. If something worries you, tell us and we will look into it.",
+    "p.home.past": "Closed cases", "p.btn.concern": "Raise a concern or complaint", "p.btn.rate": "Rate your experience",
+    "p.btn.reports": "Accident reports", "p.btn.view": "View this case", "p.btn.home": "Back to home",
+    "p.handledby": "Handled by", "p.unassigned": "We are finding the right person",
+    "p.respondby": "We will respond by", "p.resolveby": "We aim to resolve it by", "p.ref": "Reference",
+    "p.loading": "Loading…", "p.error": "Something went wrong. Please try again.", "p.sending": "Sending…",
+    "p.nodata": "Nothing to show yet.",
+
+    "p.new.title": "Raise a concern or complaint",
+    "p.new.intro": "We are sorry something worried you. Tell us what happened and we will look into it.",
+    "p.new.child": "Which child is this about?", "p.new.subject": "Short title", "p.new.subject.ph": "For example: lunch time concern",
+    "p.new.desc": "What happened?", "p.new.safety": "It is about my child's safety",
+    "p.new.safety.hint": "For example, a mark you noticed at home. This goes straight to the manager and is treated as critical.",
+    "p.new.urgency": "How soon do you need us to respond?",
+    "p.new.urgent": "Urgent: we will respond within 24 hours",
+    "p.new.urgent.ex": "For example: a repeated issue with care, your child is upset, a billing error before a deadline.",
+    "p.new.canwait": "Can wait: we will respond within 3 business days",
+    "p.new.canwait.ex": "For example: a suggestion, a schedule question, general feedback.",
+    "p.new.aboutstaff": "This is about a specific staff member",
+    "p.new.aboutstaff.hint": "It will go to the manager, not to that person.",
+    "p.new.pickstaff": "Choose a staff member", "p.new.photo": "Add a photo (optional)", "p.new.photo.hint": "One photo, up to 5 MB.",
+    "p.new.send": "Send", "p.new.needchild": "Please choose a child.", "p.new.needtitle": "Please add a short title.",
+    "p.new.needdesc": "Please tell us what happened.", "p.new.needstaff": "Please choose the staff member.",
+    "p.new.photofail": "We received your message, but the photo could not be uploaded. You can reply on the case page to try again.",
+    "p.new.photobad": "That photo could not be read. Please try another one.",
+    "p.safety.box": "If your child needs help right now, call us:", "p.safety.call": "Call the academy",
+    "p.safety.critical": "A manager will call you within 1 hour.",
+
+    "p.done.title": "Thank you, we have received it", "p.done.urgency": "Priority",
+    "p.done.deadline": "We will get back to you by", "p.done.critical": "A manager will call you within 1 hour, by",
+    "p.done.keep": "Keep this reference number:",
+
+    "p.case.desc": "What you told us", "p.case.timeline": "What has happened so far", "p.case.photos": "Your photos",
+    "p.case.urgencychanged": "We changed the priority of your case.", "p.case.reason": "Reason",
+    "p.case.reply": "Add a message", "p.case.reply.ph": "Write here…", "p.case.send": "Send message",
+    "p.case.sent": "Your message was sent.", "p.case.closednote": "This case is closed.",
+    "p.case.satisfied": "Are you satisfied with how this was handled?", "p.case.yes": "Yes, thank you", "p.case.no": "No, I still need help",
+    "p.case.thanks": "Thank you for telling us.", "p.case.reopened": "We have reopened your case and passed it to a more senior person.",
+    "p.case.investigation": "Safety review", "p.case.findings": "What we found", "p.case.nofindings": "We are still looking into this and will share what we find.",
+    "p.case.ack": "I have read this", "p.case.disagree": "I disagree", "p.case.acked": "You told us you have read this.", "p.case.disagreed": "You told us you disagree. The owner has been told and will look at it.",
+
+    "p.ev.created": "We received your message", "p.ev.acknowledged": "We have seen it and are on it", "p.ev.status_changed": "Status changed to",
+    "p.ev.urgency_changed": "Priority changed", "p.ev.assigned": "Now handled by", "p.ev.update": "Update from the academy",
+    "p.ev.parent_reply": "You wrote", "p.ev.resolved": "Marked as resolved", "p.ev.reopened": "Reopened", "p.ev.satisfaction": "You told us you are satisfied",
+    "p.ev.investigation_step": "Safety review",
+    "p.step.opened": "Review opened", "p.step.parent_called": "We called you", "p.step.facts_gathered": "Facts gathered",
+    "p.step.findings": "Findings written", "p.step.actions_taken": "Actions taken", "p.step.parent_informed": "You were informed", "p.step.closed": "Review closed",
+
+    "p.status.received": "Received", "p.status.acknowledged": "Seen", "p.status.in_progress": "In progress", "p.status.resolved": "Resolved", "p.status.closed": "Closed",
+    "p.urg.critical": "Critical", "p.urg.urgent": "Urgent", "p.urg.can_wait": "Can wait",
+    "p.type.complaint": "Concern", "p.type.safety_concern": "Safety",
+
+    "p.reports.title": "Accident reports", "p.reports.none": "There are no accident reports for your children.",
+    "p.reports.when": "When", "p.reports.where": "Where", "p.reports.what": "What happened", "p.reports.injury": "Injury", "p.reports.firstaid": "First aid given",
+    "p.reports.called": "We contacted you at", "p.reports.notcalled": "Not recorded", "p.reports.by": "Reported by", "p.reports.severity": "Severity",
+    "p.reports.read": "I have read this report", "p.reports.readat": "You read this on",
+    "p.sev.minor": "Minor", "p.sev.needs_attention": "Needs attention", "p.sev.serious": "Serious",
+
+    "p.rate.title": "Rate your experience", "p.rate.intro": "Once a month you can tell us how we are doing. Ratings are seen only by the management team, never by teachers.",
+    "p.rate.care": "Care for my child", "p.rate.comm": "Communication", "p.rate.daily": "Daily reports",
+    "p.rate.comment": "Anything you would like to add? (optional)", "p.rate.compliment": "Would you like to thank someone? (optional)",
+    "p.rate.nostaff": "Choose a staff member", "p.rate.complimenttext": "Your message to them", "p.rate.send": "Send my rating",
+    "p.rate.done": "Thank you. You have already rated this month for", "p.rate.thanks": "Thank you for your rating.",
+    "p.rate.needall": "Please give all three ratings.", "p.rate.stars": "stars",
+  };
+
+  var ar = {
+    "p.nav.home": "الرئيسية", "p.nav.reports": "تقارير الحوادث", "p.nav.rate": "قيّمنا",
+    "p.back": "→ رجوع", "p.home.cases": "طلباتك", "p.home.nocases": "لا توجد طلبات مفتوحة. إذا كان هناك ما يقلقك، أخبرنا وسنتابع الأمر.",
+    "p.home.past": "الطلبات المغلقة", "p.btn.concern": "تقديم ملاحظة أو شكوى", "p.btn.rate": "قيّم تجربتك",
+    "p.btn.reports": "تقارير الحوادث", "p.btn.view": "عرض الطلب", "p.btn.home": "العودة إلى الرئيسية",
+    "p.handledby": "المسؤول عن الطلب", "p.unassigned": "نحدد الشخص المناسب",
+    "p.respondby": "سنرد عليك قبل", "p.resolveby": "نهدف إلى حل الأمر قبل", "p.ref": "الرقم المرجعي",
+    "p.loading": "جارٍ التحميل…", "p.error": "حدث خطأ ما. يُرجى المحاولة مرة أخرى.", "p.sending": "جارٍ الإرسال…",
+    "p.nodata": "لا يوجد شيء لعرضه حتى الآن.",
+
+    "p.new.title": "تقديم ملاحظة أو شكوى",
+    "p.new.intro": "نأسف لأن شيئاً أقلقك. أخبرنا بما حدث وسنتابع الأمر.",
+    "p.new.child": "لأي طفل هذا الطلب؟", "p.new.subject": "عنوان قصير", "p.new.subject.ph": "مثال: ملاحظة عن وقت الغداء",
+    "p.new.desc": "ماذا حدث؟", "p.new.safety": "الأمر يتعلق بسلامة طفلي",
+    "p.new.safety.hint": "مثلاً: علامة لاحظتها في المنزل. يصل هذا الطلب مباشرة إلى المدير ويُعامل كأمر حرج.",
+    "p.new.urgency": "ما مدى استعجالك للرد؟",
+    "p.new.urgent": "عاجل: سنرد خلال ٢٤ ساعة",
+    "p.new.urgent.ex": "مثلاً: مشكلة متكررة في الرعاية، طفلك منزعج، خطأ في الفاتورة قبل موعد الاستحقاق.",
+    "p.new.canwait": "يمكن الانتظار: سنرد خلال ٣ أيام عمل",
+    "p.new.canwait.ex": "مثلاً: اقتراح، سؤال عن الجدول، ملاحظات عامة.",
+    "p.new.aboutstaff": "الأمر يخص أحد الموظفين تحديداً",
+    "p.new.aboutstaff.hint": "سيصل الطلب إلى المدير وليس إلى هذا الشخص.",
+    "p.new.pickstaff": "اختر الموظف", "p.new.photo": "أضف صورة (اختياري)", "p.new.photo.hint": "صورة واحدة بحجم أقصاه ٥ ميجابايت.",
+    "p.new.send": "إرسال", "p.new.needchild": "يُرجى اختيار الطفل.", "p.new.needtitle": "يُرجى كتابة عنوان قصير.",
+    "p.new.needdesc": "يُرجى إخبارنا بما حدث.", "p.new.needstaff": "يُرجى اختيار الموظف.",
+    "p.new.photofail": "استلمنا رسالتك، لكن تعذّر رفع الصورة. يمكنك الرد من صفحة الطلب للمحاولة مرة أخرى.",
+    "p.new.photobad": "تعذّرت قراءة هذه الصورة. يُرجى تجربة صورة أخرى.",
+    "p.safety.box": "إذا كان طفلك يحتاج إلى مساعدة الآن، اتصل بنا:", "p.safety.call": "اتصل بالحضانة",
+    "p.safety.critical": "سيتصل بك المدير خلال ساعة واحدة.",
+
+    "p.done.title": "شكراً لك، لقد استلمنا طلبك", "p.done.urgency": "الأولوية",
+    "p.done.deadline": "سنعود إليك قبل", "p.done.critical": "سيتصل بك المدير خلال ساعة واحدة، قبل",
+    "p.done.keep": "احتفظ بهذا الرقم المرجعي:",
+
+    "p.case.desc": "ما أخبرتنا به", "p.case.timeline": "ما حدث حتى الآن", "p.case.photos": "صورك",
+    "p.case.urgencychanged": "قمنا بتغيير أولوية طلبك.", "p.case.reason": "السبب",
+    "p.case.reply": "أضف رسالة", "p.case.reply.ph": "اكتب هنا…", "p.case.send": "إرسال الرسالة",
+    "p.case.sent": "تم إرسال رسالتك.", "p.case.closednote": "هذا الطلب مغلق.",
+    "p.case.satisfied": "هل أنت راضٍ عن طريقة التعامل مع طلبك؟", "p.case.yes": "نعم، شكراً", "p.case.no": "لا، ما زلت بحاجة إلى مساعدة",
+    "p.case.thanks": "شكراً لإخبارنا.", "p.case.reopened": "أعدنا فتح طلبك وأحلناه إلى مسؤول أعلى.",
+    "p.case.investigation": "مراجعة السلامة", "p.case.findings": "ما توصلنا إليه", "p.case.nofindings": "ما زلنا ندرس الأمر وسنُطلعك على النتيجة.",
+    "p.case.ack": "اطلعت على هذا", "p.case.disagree": "لا أوافق", "p.case.acked": "أخبرتنا أنك اطلعت على هذا.", "p.case.disagreed": "أخبرتنا أنك لا توافق. تم إبلاغ المالك وسيراجع الأمر.",
+
+    "p.ev.created": "استلمنا رسالتك", "p.ev.acknowledged": "اطلعنا على طلبك ونتابعه", "p.ev.status_changed": "تغيّرت الحالة إلى",
+    "p.ev.urgency_changed": "تغيّرت الأولوية", "p.ev.assigned": "المسؤول الآن", "p.ev.update": "تحديث من الحضانة",
+    "p.ev.parent_reply": "كتبتَ", "p.ev.resolved": "تم تحديده كمُنجز", "p.ev.reopened": "أُعيد فتحه", "p.ev.satisfaction": "أخبرتنا أنك راضٍ",
+    "p.ev.investigation_step": "مراجعة السلامة",
+    "p.step.opened": "بدأت المراجعة", "p.step.parent_called": "اتصلنا بك", "p.step.facts_gathered": "جمع المعلومات",
+    "p.step.findings": "كتابة النتائج", "p.step.actions_taken": "الإجراءات المتخذة", "p.step.parent_informed": "تم إبلاغك", "p.step.closed": "انتهت المراجعة",
+
+    "p.status.received": "تم الاستلام", "p.status.acknowledged": "تم الاطلاع", "p.status.in_progress": "قيد المتابعة", "p.status.resolved": "تم الحل", "p.status.closed": "مغلق",
+    "p.urg.critical": "حرج", "p.urg.urgent": "عاجل", "p.urg.can_wait": "يمكن الانتظار",
+    "p.type.complaint": "ملاحظة", "p.type.safety_concern": "سلامة",
+
+    "p.reports.title": "تقارير الحوادث", "p.reports.none": "لا توجد تقارير حوادث لأطفالك.",
+    "p.reports.when": "الوقت", "p.reports.where": "المكان", "p.reports.what": "ماذا حدث", "p.reports.injury": "الإصابة", "p.reports.firstaid": "الإسعاف الأولي",
+    "p.reports.called": "تواصلنا معك في", "p.reports.notcalled": "غير مسجّل", "p.reports.by": "كتبه", "p.reports.severity": "الخطورة",
+    "p.reports.read": "اطلعت على هذا التقرير", "p.reports.readat": "اطلعت على هذا التقرير في",
+    "p.sev.minor": "بسيطة", "p.sev.needs_attention": "تحتاج إلى متابعة", "p.sev.serious": "خطيرة",
+
+    "p.rate.title": "قيّم تجربتك", "p.rate.intro": "مرة كل شهر يمكنك إخبارنا برأيك. لا يطّلع على التقييمات سوى فريق الإدارة، ولا تراها المعلمات.",
+    "p.rate.care": "رعاية طفلي", "p.rate.comm": "التواصل", "p.rate.daily": "التقارير اليومية",
+    "p.rate.comment": "هل تود إضافة شيء؟ (اختياري)", "p.rate.compliment": "هل تود شكر أحد؟ (اختياري)",
+    "p.rate.nostaff": "اختر الموظف", "p.rate.complimenttext": "رسالتك إليه", "p.rate.send": "إرسال تقييمي",
+    "p.rate.done": "شكراً لك. لقد قيّمت هذا الشهر بالفعل لـ", "p.rate.thanks": "شكراً على تقييمك.",
+    "p.rate.needall": "يُرجى إعطاء التقييمات الثلاثة.", "p.rate.stars": "نجوم",
+  };
+
+  Object.assign(CKA.STR.en, en);
+  Object.assign(CKA.STR.ar, ar);
+})();

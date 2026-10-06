@@ -356,6 +356,29 @@ console.log('\n== Ratings, attachments, deactivation, storage ==');
 }
 
 // ---------------------------------------------------------------------------
+console.log('\n== Parent-safe lookups ==');
+{
+  let r = await as(U.parentA, 'select * from public.parent_cases()');
+  check('parent_cases returns only the caller\'s own cases', r.rows.length === 1 && r.rows[0].id === sub1, JSON.stringify(r.rows.map((x) => x.id)));
+  check('...and no escalation level or internal fields', !('escalation_level' in r.rows[0]) && !('assigned_to' in r.rows[0]));
+  r = await as(U.parentB, 'select * from public.parent_cases()');
+  check('parent_cases for Parent B is Parent B\'s case only', r.rows.length === 1 && r.rows[0].id === sub2);
+  r = await as(U.hana, 'select * from public.parent_cases()');
+  check('a teacher gets nothing from parent_cases', r.rows.length === 0);
+  r = await as(U.parentB, 'select * from public.parent_incidents()');
+  check('parent_incidents returns the accident about their own child, with the reporter\'s name', r.rows.length === 1 && r.rows[0].id === inc1 && r.rows[0].reported_by_name === 'Teacher Mariam (seed)', JSON.stringify(r.rows));
+  r = await as(U.parentA, 'select * from public.parent_incidents()');
+  check('parent_incidents hides other families\' accidents', r.rows.length === 0);
+  r = await as(U.parentA, 'select * from public.list_staff_names()');
+  const names = r.rows.map((x) => x.full_name);
+  check('list_staff_names gives names only (staff, not parents or owner)', names.length === 4 && !names.some((n) => n.includes('Parent') || n.includes('Owner')) && Object.keys(r.rows[0]).join() === 'id,full_name', names.join());
+  r = await as(U.hana, 'select * from public.list_staff_names()');
+  check('staff cannot use list_staff_names', r.rows.length === 0);
+  r = await as(null, 'select * from public.parent_cases()');
+  check('a logged-out visitor cannot call parent_cases', !!r.error, r.error);
+}
+
+// ---------------------------------------------------------------------------
 console.log('\n== Removing the seed data before launch ==');
 {
   // Add a real (non-seed) family first: the clean-up must leave it alone.

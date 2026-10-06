@@ -117,6 +117,25 @@ test("who may switch access on or off", () => {
   assert.equal(L.canChangeActive("parent", "parent"), false);
 });
 
+test("deadlines are described in plain words in Cairo time", () => {
+  const now = Date.parse("2026-10-11T07:00:00Z");            // Sunday 10:00 in Cairo
+  assert.equal(L.whenText("2026-10-11T08:00:00Z", now, "en"), "today at 11:00 am");
+  assert.equal(L.whenText("2026-10-12T06:00:00Z", now, "en"), "tomorrow at 9:00 am");
+  assert.equal(L.whenText("2026-10-15T11:00:00Z", now, "en"), "Thursday at 2:00 pm");
+  assert.match(L.whenText("2026-10-30T11:00:00Z", now, "en"), /^30 October at /);
+  assert.match(L.whenText("2026-10-11T08:00:00Z", now, "ar"), /^اليوم الساعة /);
+  assert.match(L.whenText("2026-10-12T06:00:00Z", now, "ar"), /^غداً الساعة /);
+  // 22:30 UTC on Sunday is already Monday 01:30 in Cairo
+  assert.equal(L.whenText("2026-10-11T22:30:00Z", now, "en"), "tomorrow at 1:30 am");
+});
+
+test("reference numbers and the ratings month", () => {
+  assert.equal(L.refLabel(7), "CKA-0007");
+  assert.equal(L.refLabel(12345), "CKA-12345");
+  assert.equal(L.monthKey(Date.parse("2026-10-31T22:30:00Z")), "2026-11-01");   // already November in Cairo
+  assert.equal(L.monthKey(Date.parse("2026-10-15T10:00:00Z")), "2026-10-01");
+});
+
 // ------------------------------ invite parent ------------------------------
 test("invite parent: needs a login token", async () => {
   const r = await run(inviteParent, { body: parentBody });
