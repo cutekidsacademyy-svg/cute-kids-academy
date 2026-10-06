@@ -5,10 +5,11 @@
 //
 // Every request must carry the caller's own login token (Authorization: Bearer ...). We ask
 // Supabase who that is, load their profile, and only then decide what they may do.
+const crypto = require("crypto");
 const L = require("../../js/portal-logic.js");
 
 class HttpError extends Error {
-  constructor(status, message) { super(message); this.status = status; }
+  constructor(status, message, code) { super(message); this.status = status; this.code = code; }
 }
 
 function makeClient(env, fetchImpl) {
@@ -29,7 +30,7 @@ function makeClient(env, fetchImpl) {
     try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
     if (!res.ok) {
       const msg = (data && (data.msg || data.message || data.error_description || data.error)) || "Request failed";
-      throw new HttpError(res.status >= 500 ? 502 : (res.status === 422 || res.status === 409 ? 409 : 400), String(msg));
+      throw Object.assign(new HttpError(res.status >= 500 ? 502 : (res.status === 422 || res.status === 409 ? 409 : 400), String(msg)), { upstream: true });   // upstream = text written by Supabase, not by us
     }
     return data;
   }
@@ -80,6 +81,40 @@ function endpoint(handler) {
   };
 }
 
+// For forms anyone on the internet may use (the registration form): no login, but a strict body size,
+// JSON errors only, and no stack traces. Callers must rate-limit with visitorKey().
+function publicEndpoint(handler, { maxBytes = 60000 } = {}) {
+  return async function (req, res, env = process.env, fetchImpl = globalThis.fetch) {
+    const send = (status, body) => {
+      res.statusCode = status;
+      res.setHeader("Content-Type", "application/json");
+      res.setHeader("Cache-Control", "no-store");
+      res.end(JSON.stringify(body));
+    };
+    try {
+      if (req.method !== "POST") throw new HttpError(405, "Use POST.");
+      const raw = typeof req.body === "string" ? req.body : JSON.stringify(req.body || {});
+      if (raw.length > maxBytes) throw new HttpError(413, "That is too much data in one go.");
+      const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
+      if (body === null || typeof body !== "object" || Array.isArray(body)) throw new HttpError(400, "Invalid request.");
+      const client = makeClient(env, fetchImpl);
+      const result = await handler({ req, body, client, env });
+      send(200, Object.assign({ ok: true }, result));
+    } catch (e) {
+      if (e instanceof HttpError && !e.upstream) send(e.status, { ok: false, error: e.message, code: e.code });   // only messages WE wrote reach a stranger
+      else if (e instanceof SyntaxError) send(400, { ok: false, error: "Invalid request." });
+      else send(500, { ok: false, error: "Something went wrong. Please try again." });
+    }
+  };
+}
+
+// A one-way fingerprint of the visitor (so we can count requests without ever storing an IP address).
+function visitorKey(req, env, label) {
+  const fwd = (req.headers && (req.headers["x-forwarded-for"] || req.headers["x-real-ip"])) || "";
+  const ip = String(fwd).split(",")[0].trim() || "unknown";
+  return label + ":" + crypto.createHash("sha256").update(ip + "|" + (env.CRON_SECRET || env.SUPABASE_SERVICE_ROLE_KEY || "salt")).digest("hex").slice(0, 32);
+}
+
 function cleanText(v, max) {
   return typeof v === "string" ? v.trim().slice(0, max || 200) : "";
 }
@@ -109,4 +144,4 @@ async function inviteUser({ client, req, env, email, fullName, phone, language, 
   return userId;
 }
 
-module.exports = { L, HttpError, makeClient, authenticate, endpoint, cleanText, inviteUser, origin };
+module.exports = { L, HttpError, makeClient, authenticate, endpoint, publicEndpoint, visitorKey, cleanText, inviteUser, origin };

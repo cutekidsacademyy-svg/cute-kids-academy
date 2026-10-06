@@ -75,6 +75,33 @@ const T = {
   review_monthly: (p, l) => l === "ar"
     ? { subject: "مراجعة الشهر", lines: ["بدأ شهر جديد وحان وقت المراجعة الشهرية.", `المهام المتأخرة: ${p.late_tasks}.`], button: ["فتح لوحة المالك", "/staff/#/owner"] }
     : { subject: "Monthly review", lines: ["A new month has started: time for the monthly review.", `Late tasks: ${p.late_tasks}.`], button: ["Open the owner dashboard", "/staff/#/owner"] },
+  // ---- registration (the applicant has no login yet, so these point to the website, not the portal)
+  registration_received: (p, l) => l === "ar"
+    ? { subject: `استلمنا طلب التسجيل رقم ${p.application_no}`, lines: [`شكراً لتقديمك طلب التحاق ${p.child_name} بكيوت كيدز أكاديمي. رقم طلبك: ${p.application_no}.`, "سيراجع فريقنا الطلب ويتواصل معك قريباً. يمكنك الاتصال بنا على 01063344389."], button: ["زيارة الموقع", "/"] }
+    : { subject: `We received your application #${p.application_no}`, lines: [`Thank you for applying to Cute Kids Academy for ${p.child_name}. Your application number is ${p.application_no}.`, "Our team will review it and be in touch soon. You can call us on 01063344389."], button: ["Visit our website", "/"] },
+  registration_update: (p, l) => {
+    const ar = l === "ar", n = p.application_no, kid = p.child_name, note = p.note;
+    const by = {
+      missing_documents: ar ? ["نحتاج إلى مزيد من المعلومات", [`لإكمال طلب ${kid} نحتاج إلى: ${note}`, "يُرجى التواصل معنا على 01063344389."]]
+                            : ["We need a little more information", [`To finish the application for ${kid} we still need: ${note}`, "Please contact us on 01063344389."]],
+      tour_booked: ar ? ["تم ترتيب زيارة للحضانة", [`تم ترتيب زيارة للحضانة بخصوص طلب ${kid}.`, "إن لم نتصل بك لتأكيد الموعد فيُرجى الاتصال بنا على 01063344389."]]
+                      : ["A tour has been arranged", [`A visit to the academy has been arranged for the application for ${kid}.`, "If you have not heard from us about the time, please call 01063344389."]],
+      waitlist: ar ? ["أُضيف طلبك إلى قائمة الانتظار", [`أضفنا طلب ${kid} إلى قائمة الانتظار.`, "سنتواصل معك فور توفر مكان."]]
+                   : ["Your application is on our waiting list", [`We have added the application for ${kid} to our waiting list.`, "We will contact you as soon as a place opens."]],
+      declined: ar ? ["بخصوص طلب التسجيل", [`نأسف، لا نستطيع عرض مكان لـ${kid} في الوقت الحالي.`, note ? `السبب: ${note}` : "", "نشكرك على اهتمامك."]]
+                   : ["About your application", [`We are sorry, we cannot offer a place for ${kid} at the moment.`, note ? `Reason: ${note}` : "", "Thank you for your interest in Cute Kids Academy."]],
+      approved: ar ? ["مرحباً بك في كيوت كيدز أكاديمي", [`يسعدنا أن نخبرك بقبول ${kid}!`, "ستصلك رسالة منفصلة برابط لإعداد حسابك في بوابة أولياء الأمور."]]
+                   : ["Welcome to Cute Kids Academy", [`We are delighted to tell you that ${kid} has been accepted!`, "You will get a separate email with a link to set up your parent portal login."]],
+    };
+    const [subject, lines] = by[p.status] || by.approved;
+    return { subject: `${subject} (#${n})`, lines, button: [ar ? "زيارة الموقع" : "Visit our website", "/"] };
+  },
+  child_health_changed: (p, l) => l === "ar"
+    ? { subject: "وليّ أمر حدّث معلومات صحية", lines: ["قام وليّ أمر بتحديث المعلومات الصحية لطفل في فصلك. يُرجى مراجعة قائمة الحساسية."], button: ["فتح فصلي", "/staff/#/class"] }
+    : { subject: "A parent updated health information", lines: ["A parent updated the health information for a child in your class. Please check the allergy list."], button: ["Open my class", "/staff/#/class"] },
+  child_pickup_changed: (p, l) => l === "ar"
+    ? { subject: "تغيير في قائمة المخوّلين بالاستلام", lines: ["قام وليّ أمر بتغيير قائمة الأشخاص المخوّلين باستلام طفله. يُرجى مراجعتها قبل الاستلام."], button: ["فتح فصلي", "/staff/#/class"] }
+    : { subject: "A pickup list was changed", lines: ["A parent changed the list of people allowed to collect their child. Please check it before the next pickup."], button: ["Open my class", "/staff/#/class"] },
   serious_accident: (p, l) => l === "ar"
     ? { subject: "تم تسجيل حادث خطير", lines: ["سُجّل حادث خطير وفُتحت مراجعة سلامة."], button: ["فتح المراجعات", "/staff/#/investigations"] }
     : { subject: "A serious accident was logged", lines: ["A serious accident was logged and a safety investigation was opened."], button: ["Open investigations", "/staff/#/investigations"] },

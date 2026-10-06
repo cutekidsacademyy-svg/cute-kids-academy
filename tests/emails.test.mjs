@@ -12,7 +12,7 @@ const SITE = "https://site.test";
 const NOW = Date.parse("2026-10-11T07:00:00Z");           // Sunday 10:00 in Cairo
 const CASE = {
   id: "11111111-1111-4111-8111-111111111111", ref_no: 7, title: "Lunch concern", urgency: "urgent", old_urgency: "can_wait",
-  level: 2, done: 2, total: 6, late_tasks: 3, step: "parent_called", kind: "ack", reason: "Child was hungry two days running",
+  level: 2, application_no: 12, child_name: "Nour", status: "missing_documents", note: "the vaccination record", done: 2, total: 6, late_tasks: 3, step: "parent_called", kind: "ack", reason: "Child was hungry two days running",
   acknowledge_by: "2026-10-11T09:00:00Z", resolve_by: "2026-10-12T07:00:00Z", deadline: "2026-10-11T08:00:00Z",
 };
 
@@ -193,4 +193,25 @@ test("sender: running it again right after sends nothing a second time", async (
   assert.equal(again.emails.waiting, 0);
   assert.equal(w.state.resend.length, 2, "Resend was called exactly twice in total");
   assert.ok(w.state.outbox.every((x) => x.status === "sent" && x.attempts === 1));
+});
+
+test("registration emails explain each outcome in plain words, in both languages, and point to the website", () => {
+  for (const status of ["missing_documents", "tour_booked", "waitlist", "declined", "approved"]) for (const lang of ["en", "ar"]) {
+    const m = render("registration_update", { ...CASE, status, note: status === "missing_documents" || status === "declined" ? "the vaccination record" : null }, lang, { site: SITE });
+    assert.ok(m.subject.includes("12"), status + " subject has the application number");
+    assert.ok(m.text.includes(SITE + "/"), status + " links to the website, not the portal");
+    assert.ok(!/undefined|null/.test(m.text), status + "/" + lang);
+  }
+  assert.match(render("registration_update", { ...CASE, status: "missing_documents" }, "en", { site: SITE }).text, /we still need: the vaccination record/);
+  assert.match(render("registration_update", { ...CASE, status: "approved" }, "en", { site: SITE }).text, /Nour has been accepted/);
+  assert.match(render("registration_received", CASE, "ar", { site: SITE }).subject, /12/);
+  assert.match(render("registration_received", CASE, "en", { site: SITE }).text, /application number is 12/);
+});
+
+test("staff notices about a child's health or pickup list carry no details", () => {
+  for (const tpl of ["child_health_changed", "child_pickup_changed"]) {
+    const m = render(tpl, { child_id: "abc", allergies: "SECRET ALLERGY", name: "SECRET NAME" }, "en", { site: SITE });
+    assert.ok(!/SECRET/.test(m.html + m.text), tpl);
+    assert.match(m.text, new RegExp(SITE + "/staff/#/class"));
+  }
 });
