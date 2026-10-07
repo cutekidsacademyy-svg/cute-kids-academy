@@ -62,7 +62,7 @@ function fakeSupabase({ failLinks = false } = {}) {
     if (p === "/rest/v1/parent_children" && failLinks) return json(400, { message: "A child can have at most two parents" });
     if (p === "/rest/v1/parent_children" || p === "/rest/v1/staff_classes") return json(201);
     if (p === "/rest/v1/profiles" && opts.method === "PATCH") {
-      state.profiles[u.searchParams.get("id").replace("eq.", "")].active = body.active; return json(204);
+      Object.assign(state.profiles[u.searchParams.get("id").replace("eq.", "")], body); return json(204);
     }
     if (p === "/rest/v1/profiles" && opts.method === "DELETE") { delete state.profiles[u.searchParams.get("id").replace("eq.", "")]; return json(204); }
     if (p.startsWith("/auth/v1/admin/users/")) return json(200, {});
@@ -392,7 +392,23 @@ test("invite staff: manager adds a teacher with a class", async () => {
   const r = await run(inviteStaff, { token: "tok-manager", body: staffBody, fake });
   assert.equal(r.status, 200);
   const link = fake.state.calls.find((c) => c.path === "/rest/v1/staff_classes");
-  assert.deepEqual(link.body, [{ staff_id: ID(900), class_id: ID(201) }]);
+  assert.deepEqual(link.body, [{ staff_id: ID(900), class_id: ID(201), class_role: "teacher" }]);
+  assert.equal(fake.state.profiles[ID(900)].job_title, "teacher");
+});
+
+test("invite staff: assistants and co-teachers are teachers with a job title and a class role; finance has its own role; titles must fit", async () => {
+  const fake = fakeSupabase();
+  assert.equal((await run(inviteStaff, { token: "tok-manager", body: { ...staffBody, job_title: "assistant" }, fake })).status, 200);
+  assert.equal(fake.state.profiles[ID(900)].role, "teacher");
+  assert.equal(fake.state.profiles[ID(900)].job_title, "assistant");
+  assert.equal(fake.state.calls.find((c) => c.path === "/rest/v1/staff_classes").body[0].class_role, "assistant");
+  const fin = fakeSupabase();
+  assert.equal((await run(inviteStaff, { token: "tok-manager", body: { ...staffBody, role: "finance", job_title: "finance_manager", class_ids: [] }, fake: fin })).status, 200);
+  assert.equal(fin.state.profiles[ID(900)].role, "finance");
+  assert.equal(fin.state.profiles[ID(900)].job_title, "finance_manager");
+  for (const bad of [{ job_title: "finance_manager" }, { job_title: "owner" }, { role: "finance", job_title: "assistant", class_ids: [] }]) {
+    assert.equal((await run(inviteStaff, { token: "tok-manager", body: { ...staffBody, ...bad } })).status, 400, JSON.stringify(bad));
+  }
 });
 
 test("invite staff: a manager cannot create an owner or another manager", async () => {

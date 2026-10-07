@@ -353,12 +353,13 @@
   }
   function langSelect() { return el("select", {}, [opt("ar", t("lang.ar")), opt("en", t("lang.en"))]); }
 
+  var TITLES = { teacher: ["teacher", "co_teacher", "assistant"], finance: ["finance_assistant", "finance_manager"], admin: ["admin"], manager: ["manager"], owner: ["owner"] };
   async function people() {
     loadingView();
     var res = await Promise.all([
       client.from("children").select("id, full_name, classes(name)").eq("active", true).order("full_name"),
       client.from("classes").select("id, name").order("name"),
-      client.from("profiles").select("id, full_name, role, phone, active").order("full_name"),
+      client.from("profiles").select("id, full_name, role, phone, active, job_title").order("full_name"),
     ]);
     var kids = res[0].data || [], classes = res[1].data || [], list = res[2].data || [];
     var nodes = [];
@@ -395,12 +396,22 @@
       var name = el("input", { type: "text" }), email = el("input", { type: "email", inputmode: "email" }), phone = el("input", { type: "tel" }), lg = langSelect();
       var role = el("select", {}, L.staffRolesCallerCanCreate(me.role).map(function (r) { return opt(r, t("role." + r)); }));
       var cl = checks(classes.map(function (c) { return { id: c.id, label: c.name }; }));
+      var title = el("select", {}), titleRow = field(t("staff.jobtitle"), title);
+      function syncTitles() { var opts = TITLES[role.value] || []; title.textContent = ""; opts.forEach(function (k) { title.appendChild(opt(k, t("jt." + k))); }); titleRow.classList.toggle("hidden", opts.length < 2); }
+      role.addEventListener("change", syncTitles); syncTitles();
       return {
-        fields: [el("div", { class: "f-grid" }, [field(t("field.name"), name), field(t("field.email"), email), field(t("field.phone"), phone), field(t("field.role"), role), field(t("field.language"), lg)]), field(t("field.classes"), cl)],
-        submit: async function () { await api("/api/portal-invite-staff", { email: email.value, full_name: name.value, phone: phone.value, language: lg.value, role: role.value, class_ids: cl.values() }); },
+        fields: [el("div", { class: "f-grid" }, [field(t("field.name"), name), field(t("field.email"), email), field(t("field.phone"), phone), field(t("field.role"), role), field(t("field.language"), lg)]), titleRow, field(t("field.classes"), cl)],
+        submit: async function () { await api("/api/portal-invite-staff", { email: email.value, full_name: name.value, phone: phone.value, language: lg.value, role: role.value, job_title: title.value || (TITLES[role.value] || [])[0] || null, class_ids: cl.values() }); },
       };
     }));
 
+    function titleSelect(p) {
+      var opts = TITLES[p.role] || [];
+      if (!isTop() || opts.length < 2 || p.role === "owner" || p.role === "manager") return p.job_title ? el("small", { text: " " + t("jt." + p.job_title) }) : null;
+      var s = el("select", {}, opts.map(function (k) { return opt(k, t("jt." + k)); })); s.value = p.job_title || opts[0];
+      s.addEventListener("change", async function () { try { await rpc("staff_job_title_save", { p_staff: p.id, p_title: s.value }); } catch (e) { s.value = p.job_title || opts[0]; } });
+      return s;
+    }
     var msg = el("div", {}), tbody = el("tbody", {});
     list.forEach(function (p) {
       var isMe = p.id === me.id, canToggle = !isMe && L.canChangeActive(me.role, p.role), btn = null;
@@ -414,7 +425,7 @@
         });
       }
       tbody.appendChild(el("tr", {}, [
-        el("td", {}, [el("strong", { text: p.full_name }), isMe ? " " + t("staff.you") : ""]), el("td", {}, [pill(t("role." + p.role))]),
+        el("td", {}, [el("strong", { text: p.full_name }), isMe ? " " + t("staff.you") : ""]), el("td", {}, [pill(t("role." + p.role)), titleSelect(p)]),
         el("td", { text: p.phone || "" }), el("td", {}, [p.active ? "" : pill(t("staff.off"), "off")]), el("td", {}, [btn]),
       ]));
     });
@@ -645,6 +656,7 @@
 
   function go() {
     var parts = location.hash.replace(/^#\/?/, "").split("/"), name = parts[0] === "" ? "" : parts[0];
+    if (me.role === "finance") { name = "attreport"; parts = ["attreport"]; }
     var tab = name === "case" ? "queue" : name === "investigation" ? "investigations" : name === "application" ? "applications" : (name || "queue");
     document.querySelectorAll("#nav a").forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-route") === tab); });
     window.scrollTo(0, 0);
@@ -667,7 +679,9 @@
     document.querySelector('#nav [data-route="routine"]').hidden = me.role !== "owner";
     document.querySelector('#nav [data-route="attendance"]').hidden = !isMgmt();
     document.querySelector('#nav [data-route="applications"]').hidden = !isMgmt();
-    document.querySelector('#nav [data-route="attreport"]').hidden = !isMgmt();
+    document.querySelector('#nav [data-route="attreport"]').hidden = !isMgmt() && me.role !== "finance";
+    document.querySelector('#nav [data-route="admin"]').hidden = !isMgmt();
+    if (me.role === "finance") document.querySelectorAll('#nav a').forEach(function (a) { if (a.getAttribute("data-route") !== "attreport") a.hidden = true; });
     ['announcements', 'menu', 'events'].forEach(function (r) { document.querySelector('#nav [data-route="' + r + '"]').hidden = !isMgmt(); });
     document.getElementById("who").textContent = me.full_name + " · " + t("role." + me.role);
     document.getElementById("app").hidden = false;

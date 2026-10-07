@@ -190,7 +190,7 @@
   }
 
   async function attReport() {
-    if (!S.isMgmt()) return S.routes[""]();
+    if (!S.isMgmt() && S.me().role !== "finance") return S.routes[""]();
     var period = reportState.kind === "custom" ? { from: reportState.from, to: reportState.to } : L.periodFor(reportState.kind, Date.now());
     if (reportState.kind === "custom" && !reportState.from) { var m = L.periodFor("month", Date.now()); reportState.from = m.from; reportState.to = m.to; period = m; }
     S.loadingView();

@@ -102,6 +102,15 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 - [ ] Set how long photos are kept (default 12 months, then delete). The clean-up runs with the scheduler (step 3).
 - [ ] **Videos are checked in the browser (60 seconds, 50 MB)**: the phone does not shrink videos. If storage use grows, tell me and we can lower the limit.
 
+### The admin area (Prompt 16)
+
+- [ ] **Admin > Today**: the counts match what you see at the door, in daily reports, announcements, events and cases; tap a tile to go to that screen.
+- [ ] **Admin > Children**: search by a child's or a parent's name; open a profile (class, parents and whether each has signed in, pickup people, health, consents, documents, change history). Move a pretend child to another class: the old teacher stops seeing them, the new one sees them, and the move is in the history.
+- [ ] **Withdraw** a pretend child: parents with no other child lose access; everything is kept; **Re-enrol** brings them back.
+- [ ] **Admin > Classes**: capacity and enrolled; assign a head teacher, teachers, a co-teacher and an assistant; each sees only their classes.
+- [ ] **Staff accounts** (owner or manager): create a **Finance** account. Sign in as them: they see only **Attendance reports** (with overtime), no children, health, cases or HR. Try a few URLs by hand to be sure.
+- [ ] **Admin > Settings**: set the real phone, WhatsApp number (digits with country code), email and address, and the closing time after which pickups count as overtime. Working hours and urgency deadlines are fixed in the system, as is the wording of consents and emails.
+
 ## 7. Staff first (one week)
 
 - [ ] Staff use the portal with a few pretend cases for a week, so they learn the screens before any family sees them.
@@ -137,5 +146,4 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 
 ### What is not built yet
 
-The admin area,
-the parent dashboard and calendar, absence follow-up, approval reminders, payments, transport and birthdays (Prompts 12 to 20 and the rest of Prompt 21).
+The parent dashboard and calendar, absence follow-up, approval reminders, payments, transport and birthdays (Prompts 12 to 20 and the rest of Prompt 21).

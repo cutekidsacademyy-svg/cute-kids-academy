@@ -103,7 +103,7 @@ test("the door and the attendance report are wired into the staff page; the pare
   const staff = read("staff/index.html"), portal = read("portal/index.html"), door = read("js/door.js");
   for (const f of ["staff-door-strings.js", "door.js"]) assert.match(staff, new RegExp(f.replace(".", "\.")));
   for (const f of ["portal-attendance-strings.js", "portal-attendance.js"]) assert.match(portal, new RegExp(f.replace(".", "\.")));
-  assert.match(door, /if \(!S\.isMgmt\(\)\) return S\.routes\[""\]\(\)/);
+  assert.match(door, /if \(!S\.isMgmt\(\) && S\.me\(\)\.role !== "finance"\) return S\.routes\[""\]\(\)/);
   assert.match(read("js/staff.js"), /data-route="attreport"/);
 });
 

@@ -12,6 +12,9 @@ const read = (f) => readFileSync(join(root, f), "utf8");
 const range = (prefix, list) => list.map((x) => prefix + x);
 
 const SETS = [
+  { name: "admin area and job titles", strings: "js/admin-strings.js", scripts: ["js/admin.js"], prefixes: ["ad", "jt", "staff"],
+    extra: [...range("ad.access.", ["active", "invited", "off"]), ...range("ad.c.", ["photos_class", "photos_social", "outings", "emergency_treatment", "birthday_wall"]), ...range("ad.log.", ["created", "health", "pickup", "consent", "contact", "class", "withdrawn", "reinstated"]),
+      ...range("ad.cl.r.", ["head", "teacher", "co_teacher", "assistant"]), ...range("ad.tab.", ["today", "children", "classes", "settings", "people"]), ...range("jt.", ["teacher", "co_teacher", "assistant", "admin", "manager", "owner", "finance_assistant", "finance_manager"])] },
   { name: "photos (staff and parent)", strings: "js/photos-strings.js", scripts: ["js/photos.js", "js/portal-photos.js"], prefixes: ["ph", "pp"], extra: ["ph.a.delete", "ph.a.archive"] },
   { name: "announcements, menu and events (staff)", strings: "js/staff-comm-strings.js", scripts: ["js/comm-admin.js"], prefixes: ["ca", "cm", "ce", "al"],
     extra: [...range("ca.a.", ["all", "class", "families"]), ...range("cm.", ["breakfast", "lunch", "snack"]), ...range("al.", ["peanuts", "tree_nuts", "milk", "eggs", "wheat", "soy", "fish", "shellfish", "sesame"]),

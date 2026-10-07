@@ -1778,6 +1778,20 @@ begin
   return out;
 end $$;
 
+-- Fix for projects that already ran the daily-reports migration: an account that was switched off could call report_send (it sent nothing, but it should be refused).
+create or replace function public.report_send(p_children uuid[] default null) returns int
+language plpgsql security definer set search_path = public as $$
+declare day date := public.cka_today(); r record; n int := 0;
+begin
+  if not coalesce(public.auth_role() in ('admin', 'manager', 'owner', 'teacher'), false) then raise exception 'Not allowed'; end if;
+  for r in select * from public.daily_reports d where d.report_date = day and d.status = 'draft' and public.cka_report_has_content(d)
+              and (p_children is null or d.child_id = any (p_children)) and public.cka_door_allowed(d.child_id) loop
+    perform public.cka_report_send_one(r.id, auth.uid());
+    n := n + 1;
+  end loop;
+  return n;
+end $$;
+
 -- ---------------------------------------------------------------------------
 -- Grants
 -- ---------------------------------------------------------------------------
