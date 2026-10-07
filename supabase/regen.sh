@@ -15,3 +15,8 @@ echo "regenerated: $(ls migrations | wc -l) migrations"
   echo "-- Only for a project that already ran an earlier catch-up-migrations.sql (one that did NOT include 20261006121500_attendance.sql)."
   echo "-- Generated from supabase/migrations/*.sql: do not edit; run  bash regen.sh"
   for f in $(ls migrations/*.sql | sort | awk -F/ '$2 >= "20261006121500"'); do echo; echo "-- ============================================================"; echo "-- $f"; echo "-- ============================================================"; cat "$f"; done; } > catch-up-2-attendance.sql
+# CATCH-UP 3: only daily reports and later, hardening last. For a project that already ran catch-up 1 or 2 WITH attendance but before daily reports.
+{ echo "-- CATCH-UP 3: daily reports (Prompt 13) and any later migrations, plus the security hardening. Paste into the Supabase SQL editor and run ONCE."
+  echo "-- Only for a project that already ran an earlier catch-up that included 20261006121500_attendance.sql but NOT 20261006121600_daily_reports.sql."
+  echo "-- Generated from supabase/migrations/*.sql: do not edit; run  bash regen.sh"
+  for f in $(ls migrations/*.sql | sort | awk -F/ '$2 >= "20261006121600"'); do echo; echo "-- ============================================================"; echo "-- $f"; echo "-- ============================================================"; cat "$f"; done; } > catch-up-3-daily-reports.sql
