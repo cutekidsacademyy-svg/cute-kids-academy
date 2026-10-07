@@ -145,15 +145,16 @@ console.log('\n== Security audit: structure ==');
     'investigation_name_warnings', 'staff_investigations', 'staff_investigation', 'staff_report', 'record_staff_attendance', 'staff_attendance_day', 'submit_staff_complaint',
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
     'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies', 'parent_update_health', 'parent_save_pickup',
+    'report_sheet', 'report_save_many', 'report_send', 'send_request_save', 'report_edit_sent', 'report_overview', 'report_settings_save',
     'cka_door_file', 'door_list', 'door_pickups', 'door_parents', 'door_check_in', 'door_check_out', 'door_undo', 'door_log_call', 'parent_report_attendance', 'parent_cancel_attendance_notice', 'attendance_report'].sort();
   const reach = definers.filter((f) => !f.is_trigger && f.auth).map((f) => f.name).sort();
   check('the ONLY security-definer functions a logged-in user can run are the intended screens/helpers (nothing new slipped in)',
     JSON.stringify(reach) === JSON.stringify(ALLOWED), JSON.stringify({ extra: reach.filter((x) => !ALLOWED.includes(x)), missing: ALLOWED.filter((x) => !reach.includes(x)) }));
   const svc = await q(`select has_function_privilege('service_role', 'public.cka_run_deadline_check(timestamptz)', 'execute') as a, has_function_privilege('service_role', 'public.cka_run_owner_reminders(timestamptz)', 'execute') as b,
-      has_function_privilege('service_role', 'public.cka_run_attendance_check(timestamptz)', 'execute') as f, has_function_privilege('authenticated', 'public.cka_run_attendance_check(timestamptz)', 'execute') as g, has_function_privilege('authenticated', 'public.cka_now()', 'execute') as h,
+      has_function_privilege('service_role', 'public.cka_run_attendance_check(timestamptz)', 'execute') as f, has_function_privilege('authenticated', 'public.cka_run_attendance_check(timestamptz)', 'execute') as g, has_function_privilege('authenticated', 'public.cka_now()', 'execute') as h, has_function_privilege('service_role', 'public.cka_run_report_check(timestamptz)', 'execute') as i, has_function_privilege('authenticated', 'public.cka_run_report_check(timestamptz)', 'execute') as j,
       has_function_privilege('authenticated', 'public.cka_enqueue_email(uuid,text,jsonb,text)', 'execute') as c, has_function_privilege('anon', 'public.cka_enqueue_email(uuid,text,jsonb,text)', 'execute') as d,
       has_function_privilege('authenticated', 'public.cka_person_name(uuid)', 'execute') as e`);
-  check('the server key can run the scheduled jobs; nobody else can queue emails or look up names', svc[0].a && svc[0].b && svc[0].f && !svc[0].g && !svc[0].h && !svc[0].c && !svc[0].d && !svc[0].e, JSON.stringify(svc[0]));
+  check('the server key can run the scheduled jobs; nobody else can queue emails or look up names', svc[0].a && svc[0].b && svc[0].f && svc[0].i && !svc[0].j && !svc[0].g && !svc[0].h && !svc[0].c && !svc[0].d && !svc[0].e, JSON.stringify(svc[0]));
   const pure = fns.filter((f) => !f.definer && !f.is_trigger && f.anon).map((f) => f.name).sort().join(',');
   check('the only functions anonymous visitors can run are pure date and arithmetic helpers (they read no data)',
     pure === 'cka_add_business_days,cka_add_working_hours,cka_case_payload,cka_deadlines,cka_in_working_hours,cka_is_email,cka_is_happy,cka_is_phone,cka_is_work_day,cka_next_work_day,cka_threshold,cka_working_start', pure);
@@ -182,6 +183,10 @@ console.log('\n== Security audit: who can read what (seed data) ==');
     child_health:           [D, 1, 2, 1, 0, 0, 3, 3, 3],
     child_pickups:          [D, 1, 1, 1, 0, 0, 2, 2, 2],
     checklist_checks:       [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    daily_report_edits:     [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    daily_reports:          [D, 1, 0, 1, 2, 0, 2, 2, 2],
+    report_settings:        [D, 0, 0, 0, 0, 0, 1, 1, 1],
+    send_requests:          [D, 1, 0, 1, 2, 0, 2, 2, 2],
     checklist_items:        [D, 0, 0, 0, 0, 0, 0, 0, 10],
     children:               [D, 1, 2, 2, 2, 2, 4, 4, 4],
     classes:                [D, 1, 2, 2, 1, 1, 2, 2, 2],
@@ -233,7 +238,7 @@ console.log('\n== Security audit: who can read what (seed data) ==');
       const r = await as(who, `select coalesce(string_agg(to_jsonb(x)::text, ' '), '') as s from public.${t} x`);
       if (!r.error) parts.push(r.rows[0].s);
     }
-    for (const fn of ['parent_cases', 'parent_incidents', 'list_staff_names', 'staff_queue', 'staff_list', 'staff_ratings', 'class_allergies']) {
+    for (const fn of ['parent_cases', 'parent_incidents', 'list_staff_names', 'staff_queue', 'staff_list', 'staff_ratings', 'class_allergies', 'report_sheet']) {
       const r = await as(who, `select coalesce(string_agg(to_jsonb(x)::text, ' '), '') as s from public.${fn}() x`);
       if (!r.error) parts.push(r.rows[0].s);
     }
@@ -251,17 +256,17 @@ console.log('\n== Security audit: who can read what (seed data) ==');
   };
   const staffPhones = ['+20 100 000 0001', '+20 100 000 0002', '+20 100 000 0003', '+20 100 000 0004', '+20 100 000 0005'];
   const INTERNAL = ['SEED INTERNAL NOTE', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT'];
-  await scan(U.parentA, 'Parent A', ['SEED NOTICE', 'SEED DOOR LOG', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'Mariam Testson', 'Parent B (seed)', 'Parent C (seed)', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'Seed rating comment', 'other.jpg', '+20 100 000 0102', '+20 100 000 0103'].concat(INTERNAL, staffPhones),
-    ['Omar Testson', 'lunch concern', 'seed-photo.jpg', 'Peanut allergy (seed)', 'Grandma Seed']);
-  await scan(U.parentB, 'Parent B', ['SEED DOOR LOG', 'Peanut allergy', 'Grandma Seed', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Omar Testson', 'Mariam Testson', 'lunch concern', 'Parent A (seed)', 'Parent C (seed)', 'mark on arm', 'Seed findings', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
+  await scan(U.parentA, 'Parent A', ['SEED DRAFT NOTE', 'SEED NOTICE', 'SEED DOOR LOG', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'Mariam Testson', 'Parent B (seed)', 'Parent C (seed)', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'Seed rating comment', 'other.jpg', '+20 100 000 0102', '+20 100 000 0103'].concat(INTERNAL, staffPhones),
+    ['Omar Testson', 'lunch concern', 'seed-photo.jpg', 'Peanut allergy (seed)', 'Grandma Seed', 'SEED REPORT NOTE']);
+  await scan(U.parentB, 'Parent B', ['SEED REPORT NOTE', 'SEED DRAFT NOTE', 'SEED DOOR LOG', 'Peanut allergy', 'Grandma Seed', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Omar Testson', 'Mariam Testson', 'lunch concern', 'Parent A (seed)', 'Parent C (seed)', 'mark on arm', 'Seed findings', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
     ['Salma Testson', 'Youssef Testson', 'tripped on the path', 'Seed rating comment', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'SEED NOTICE']);
-  await scan(U.parentC, 'Parent C', ['SEED NOTICE', 'SEED DOOR LOG', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'lunch concern', 'Parent A (seed)', 'Parent B (seed)', 'tripped on the path', 'Seed rating comment', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
-    ['Omar Testson', 'Mariam Testson', 'mark on arm', 'Seed findings', 'Peanut allergy (seed)', 'Grandma Seed']);
+  await scan(U.parentC, 'Parent C', ['SEED DRAFT NOTE', 'SEED NOTICE', 'SEED DOOR LOG', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'lunch concern', 'Parent A (seed)', 'Parent B (seed)', 'tripped on the path', 'Seed rating comment', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
+    ['Omar Testson', 'Mariam Testson', 'mark on arm', 'Seed findings', 'Peanut allergy (seed)', 'Grandma Seed', 'SEED REPORT NOTE']);
   await scan(U.hana, 'Teacher Hana', ['SEED DOOR LOG', 'SEED HEALTH SECRET', 'asthma', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Youssef Testson', 'Mariam Testson', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'],
-    ['Omar Testson', 'lunch concern', 'SEED INTERNAL NOTE', 'Peanut allergy (seed)', 'Grandma Seed', 'SEED NOTICE']);
-  await scan(U.mariam, 'Teacher Mariam', ['SEED NOTICE', 'SEED DOOR LOG', 'Peanut allergy', 'SEED HEALTH SECRET', 'Grandma Seed', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Omar Testson', 'Salma Testson', 'lunch concern', 'concern about Teacher Hana', 'SEED INTERNAL NOTE', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed findings', 'Seed rating comment'],
+    ['Omar Testson', 'lunch concern', 'SEED INTERNAL NOTE', 'Peanut allergy (seed)', 'Grandma Seed', 'SEED NOTICE', 'SEED REPORT NOTE', 'SEED DRAFT NOTE']);
+  await scan(U.mariam, 'Teacher Mariam', ['SEED REPORT NOTE', 'SEED DRAFT NOTE', 'SEED NOTICE', 'SEED DOOR LOG', 'Peanut allergy', 'SEED HEALTH SECRET', 'Grandma Seed', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Omar Testson', 'Salma Testson', 'lunch concern', 'concern about Teacher Hana', 'SEED INTERNAL NOTE', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed findings', 'Seed rating comment'],
     ['Youssef Testson', 'Mariam Testson', 'mark on arm', 'tripped on the path', 'None known (seed)']);
-  await scan(U.admin, 'Admin', ['SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'], ['SEED INTERNAL NOTE', 'Seed findings', 'concern about Teacher Hana', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'SEED APPLICANT ALLERGY', 'SEED LOG', 'SEED DOOR LOG', 'SEED NOTICE']);
+  await scan(U.admin, 'Admin', ['SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'], ['SEED INTERNAL NOTE', 'Seed findings', 'concern about Teacher Hana', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'SEED APPLICANT ALLERGY', 'SEED LOG', 'SEED DOOR LOG', 'SEED NOTICE', 'SEED REPORT NOTE', 'SEED DRAFT NOTE']);
   await scan(U.manager, 'The manager', [], ['SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment', 'SEED INTERNAL NOTE']);
   await db.exec(`delete from storage.objects`);
 }
@@ -1810,6 +1815,136 @@ console.log('\n== Attendance and pickup ==');
     && r6.overtime.length === 1 && r6.overtime[0].minutes === 20 && /Parent A \(seed\)/.test(r6.overtime[0].parents) && /Parent C \(seed\)/.test(r6.overtime[0].parents), JSON.stringify(r6.overtime));
   check('only management can run the report; bad periods are refused', !!res[7].error && !!res[8].error && !!res[9].error && !!res[10].error && !res[12].error);
   check('a day still in progress is not counted as "not reported"', res[12].rows[0].r.by_child.find((x) => x.child_id === G).school_days === 2 && res[13].rows[0].r.by_child.every((x) => x.school_days === 0));
+}
+
+// ---------------------------------------------------------------------------
+console.log('\n== Daily reports ==');
+{
+  const T = (local) => [null, `select set_config('app.now', ((timestamp '${local}') at time zone 'Africa/Cairo')::text, true)`];
+  const A = alpha, B = beta;
+  const D = '2026-10-11';
+  const rep = (child) => `select * from public.daily_reports where child_id = '${child}' and report_date = '${D}'`;
+  let res = await flow([
+    T('2026-10-11 08:30'),                                                                                                 // 0
+    [U.hana, `select public.report_save_many(array['${A}']::uuid[], '{"lunch":"all"}')`],                                  // 1 not checked in yet
+    [U.hana, `select public.door_check_in('${A}')`], [U.hana, `select public.door_check_in('${B}')`],                       // 2, 3
+    [U.hana, `select public.report_save_many(array['${A}','${B}']::uuid[], '{"lunch":"all","mood":"happy"}')`],            // 4 the whole group
+    [U.hana, `select public.report_save_many(array['${A}']::uuid[], '{"water_cups":4,"milk_ml":200,"sleep_minutes":90,"diaper_changes":3,"stool_count":1,"personal_note":"Painted today"}')`], // 5
+    [U.mariam, `select public.report_save_many(array['${A}']::uuid[], '{"lunch":"none"}')`],                               // 6 not her class
+    [U.parentA, `select public.report_save_many(array['${A}']::uuid[], '{"lunch":"none"}')`],                              // 7 a parent
+    [U.parentA, `select count(*)::int as n from public.daily_reports where report_date = '${D}'`],                         // 8 drafts are private
+    [U.hana, `select child_id, allergies, lunch, mood, water_cups, personal_note, status from public.report_sheet() order by child_name`], // 9
+    [U.mariam, `select child_id from public.report_sheet()`],                                                              // 10
+    [U.parentA, `select * from public.report_sheet()`],                                                                    // 11
+  ]);
+  check('a teacher can fill in the report of children who are checked in (several at once); not before check-in, not other classes, not parents', !!res[1].error && /not_checked_in/.test(res[1].error) && res[4].rows[0].report_save_many === 2 && !res[5].error && !!res[6].error && !!res[7].error);
+  check('drafts are private: parents see nothing until a report is sent', res[8].rows[0].n === 0);
+  const sheet = res[9].rows;
+  check('the teacher sheet shows the checked-in children with their entries and any allergy (for the meal screen); other classes and parents get nothing', sheet.length === 2 && sheet[0].child_id === A && sheet[0].lunch === 'all' && sheet[0].water_cups === 4 && sheet[0].personal_note === 'Painted today' && /Peanut/.test(sheet[0].allergies || '') && sheet[1].allergies === null && res[10].rows.length === 0 && res[11].rows.length === 0, JSON.stringify(sheet));
+
+  const bad = ['{"lunch":"lots"}', '{"water_cups":99}', '{"temperature":50}', '{"temperature":"hot"}', '{"mood":"angry"}', '{"milk_ml":"abc"}', '{"sleep_minutes":-5}', '[1,2]'];
+  res = await flow([T('2026-10-11 08:30'), [U.hana, `select public.door_check_in('${A}')`], ...bad.map((b) => [U.hana, `select public.report_save_many(array['${A}']::uuid[], '${b}')`])]);
+  check('impossible values are refused (bad meal, mood, numbers, temperature)', bad.every((_, i) => !!res[2 + i].error), JSON.stringify(res.slice(2).map((x) => x.error)));
+
+  // sending, privacy of sent reports, edits after sending
+  res = await flow([
+    T('2026-10-11 08:30'), [U.hana, `select public.door_check_in('${A}')`], [U.hana, `select public.door_check_in('${B}')`],
+    [U.hana, `select public.report_save_many(array['${A}']::uuid[], '{"lunch":"all","mood":"happy","personal_note":"Painted today"}')`], // 3
+    [U.hana, `select public.report_save_many(array['${B}']::uuid[], '{"lunch":"half"}')`],                                  // 4
+    [U.hana, `select public.report_send(array['${A}']::uuid[])`],                                                           // 5 -> 1
+    [U.parentA, `select lunch, mood, personal_note, status from public.daily_reports where report_date = '${D}'`],         // 6
+    [U.parentB, `select count(*)::int as n from public.daily_reports where report_date = '${D}'`],                          // 7 B is still a draft
+    [U.parentC, `select count(*)::int as n from public.daily_reports where report_date = '${D}'`],                          // 8 second parent of A
+    [null, `select user_id, template, payload::text as p from public.email_outbox where template = 'daily_report_ready'`], // 9
+    [U.hana, `select public.report_save_many(array['${A}']::uuid[], '{"mood":"tired"}')`],                                  // 10 sent: teachers cannot change it
+    [U.hana, `select public.report_edit_sent((select id from public.daily_reports where child_id = '${A}' and report_date = '${D}'), '{"mood":"tired"}', 'Corrected')`], // 11
+    [U.admin, `select public.report_edit_sent((select id from public.daily_reports where child_id = '${A}' and report_date = '${D}'), '{"mood":"tired"}', 'x')`],        // 12 reason too short
+    [U.admin, `select public.report_edit_sent((select id from public.daily_reports where child_id = '${A}' and report_date = '${D}'), '{"mood":"tired","water_cups":6}', 'Teacher mixed up the children')`], // 13
+    [U.admin, `select public.report_edit_sent((select id from public.daily_reports where child_id = '${A}' and report_date = '${D}'), '{"mood":"tired"}', 'Same again')`], // 14 no change: nothing logged
+    [U.admin, `select reason, editor_name, before ->> 'mood' as b, after ->> 'mood' as a, after ->> 'water_cups' as w from public.daily_report_edits`], // 15
+    [U.hana, `select count(*)::int as n from public.daily_report_edits`],                                                   // 16
+    [U.parentA, `select count(*)::int as n from public.daily_report_edits`],                                                // 17
+    [U.parentA, `select mood, water_cups from public.daily_reports where report_date = '${D}'`],                           // 18
+    [U.admin, `select public.report_edit_sent((select id from public.daily_reports where child_id = '${B}' and report_date = '${D}'), '{"mood":"calm"}', 'Draft cannot be edited here')`], // 19
+    [U.hana, `select public.report_send()`],                                                                                // 20 B has content -> 1
+    [U.hana, `select public.report_send()`],                                                                                // 21 nothing left
+  ]);
+  check('sending makes the report visible to the child\'s parents only, and a draft stays private', !res[5].error && res[5].rows[0].report_send === 1 && res[6].rows.length === 1 && res[6].rows[0].mood === 'happy' && res[6].rows[0].status === 'sent' && res[7].rows[0].n === 0 && res[8].rows[0].n === 1, JSON.stringify([res[5], res[6], res[7], res[8]]));
+  const mails = res[9].rows;
+  check('both parents are emailed that a report is ready (no details in the email)', mails.map((x) => x.user_id).sort().join() === [U.parentA, U.parentC].sort().join() && !mails.some((x) => /Painted|happy|lunch/.test(x.p)), JSON.stringify(mails));
+  check('after sending, a teacher cannot change a report; admin can, with a reason, and the change is recorded', !!res[10].error && /already_sent/.test(res[10].error) && !!res[11].error && !!res[12].error && !res[13].error && !res[14].error, JSON.stringify([res[10].error, res[11].error, res[12].error, res[13].error]));
+  check('...the record shows who, why, and before and after; only management can read it; the parent sees the corrected report', res[15].rows.length === 1 && res[15].rows[0].reason === 'Teacher mixed up the children' && res[15].rows[0].b === 'happy' && res[15].rows[0].a === 'tired' && res[15].rows[0].w === '6' && res[16].rows[0].n === 0 && res[17].rows[0].n === 0 && res[18].rows[0].mood === 'tired' && res[18].rows[0].water_cups === 6, JSON.stringify(res[15].rows));
+  check('an unsent report cannot go through the edit-after-sending route; sending twice sends nothing new', !!res[19].error && res[20].rows[0].report_send === 1 && res[21].rows[0].report_send === 0);
+
+  // fever alert
+  res = await flow([
+    T('2026-10-11 09:00'), [U.hana, `select public.door_check_in('${A}')`],
+    [U.hana, `select public.report_save_many(array['${A}']::uuid[], '{"temperature":37.5}')`],                                // 2 normal
+    [null, `select count(*)::int as n from public.email_outbox where template = 'fever_alert'`],                              // 3
+    [U.hana, `select public.report_save_many(array['${A}']::uuid[], '{"temperature":38.2}')`],                                // 4 fever
+    [U.hana, `select public.report_save_many(array['${A}']::uuid[], '{"temperature":38.6}')`],                                // 5 still fever: no second alert
+    [null, `select user_id, payload::text as p from public.email_outbox where template = 'fever_alert'`],                     // 6
+    [U.admin, `select child_name, temperature from (select c.full_name as child_name, r.temperature from public.daily_reports r join public.children c on c.id = r.child_id where r.report_date = '${D}') x`], // 7
+    [U.admin, `select public.report_overview('${D}') as o`],                                                                  // 8
+    [U.hana, `select public.report_overview('${D}')`],                                                                        // 9
+  ]);
+  const fe = res[6].rows;
+  check('a temperature of 38 or more alerts the class staff and the admins once; a normal temperature alerts nobody; the email has no name or number', res[3].rows[0].n === 0 && fe.length === 2 && fe.map((x) => x.user_id).includes(U.hana) && fe.map((x) => x.user_id).includes(U.admin) && !fe.some((x) => /38|Testson/.test(x.p)), JSON.stringify(fe));
+  check('the admin overview lists the fever; teachers cannot open it', res[8].rows[0].o.fever.length === 1 && Number(res[8].rows[0].o.fever[0].temperature) === 38.6 && !!res[9].error, JSON.stringify(res[8].rows[0].o));
+
+  // "Kindly send for tomorrow"
+  res = await flow([
+    T('2026-10-11 09:00'), [U.hana, `select public.door_check_in('${A}')`],
+    [U.hana, `select public.send_request_save('${A}', array['diapers','other'], null)`],                                      // 2 needs text
+    [U.hana, `select public.send_request_save('${A}', array['diapers','other'], 'Spare shoes')`],                             // 3
+    [U.hana, `select public.send_request_save('${A}', array['toys'], null)`],                                                 // 4 unknown item
+    [U.mariam, `select public.send_request_save('${A}', array['wipes'], null)`],                                              // 5 other class
+    [U.parentA, `select public.send_request_save('${A}', array['wipes'], null)`],                                             // 6 a parent
+    [U.parentA, `select count(*)::int as n from public.send_requests where for_date = '2026-10-12'`],                        // 7 not published yet
+    [U.hana, `select child_id, send_items, send_other from public.report_sheet() where child_id = '${A}'`],                  // 8
+    [U.hana, `select public.report_save_many(array['${A}']::uuid[], '{"mood":"happy"}')`], [U.hana, `select public.report_send(array['${A}']::uuid[])`], // 9, 10
+    [U.parentA, `select items, other_text, for_date::text as d from public.send_requests where for_date = '2026-10-12'`],  // 11 published with the report
+    [U.parentB, `select count(*)::int as n from public.send_requests where for_date = '2026-10-12'`],                        // 12
+    [U.hana, `select public.send_request_save('${A}', array[]::text[], null)`],                                               // 13 clear
+    [U.parentA, `select count(*)::int as n from public.send_requests where for_date = '2026-10-12'`],                        // 14
+    T('2026-10-15 09:00'), [U.hana, `select public.door_check_in('${A}')`], [U.hana, `select public.send_request_save('${A}', array['wipes'], null)`], // 15, 16, 17 Thursday
+    [null, `select for_date::text as d from public.send_requests where child_id = '${A}' and items = array['wipes']`],      // 18
+  ]);
+  check('"kindly send" needs text for "other", only known items, only the child\'s own class staff; families see it only after the report is sent', !!res[2].error && !res[3].error && !!res[4].error && !!res[5].error && !!res[6].error && res[7].rows[0].n === 0 && res[8].rows[0].send_items.includes('diapers') && res[8].rows[0].send_other === 'Spare shoes', JSON.stringify([res[2].error, res[3].error, res[7], res[8]]));
+  check('...then the family (and only that family) sees it, for the next school day; it can be cleared', !res[10].error && res[11].rows.length === 1 && res[11].rows[0].other_text === 'Spare shoes' && res[12].rows[0].n === 0 && !res[13].error && res[14].rows[0].n === 0, JSON.stringify([res[10].error, res[11], res[12], res[14]]));
+  check('on a Thursday the request is for Sunday', res[18].rows[0].d === '2026-10-18', JSON.stringify(res[18]));
+
+  // scheduler: the 4 pm nudge and the automatic send
+  res = await flow([
+    T('2026-10-11 08:30'), [U.hana, `select public.door_check_in('${A}')`], [U.hana, `select public.door_check_in('${B}')`],
+    [U.hana, `select public.report_save_many(array['${A}']::uuid[], '{"lunch":"all","personal_note":"Great day"}')`],       // 3
+    [U.hana, `select public.report_save_many(array['${B}']::uuid[], '{"lunch":"half"}')`],                                  // 4 no personal note
+    [null, `select public.cka_run_report_check((timestamp '2026-10-11 15:59') at time zone 'Africa/Cairo') as r`],          // 5 too early
+    [null, `select public.cka_run_report_check((timestamp '2026-10-11 16:00') at time zone 'Africa/Cairo') as r`],          // 6 nudge only
+    [null, `select user_id, payload::text as p from public.email_outbox where template = 'report_note_reminder'`],          // 7
+    [null, `select count(*)::int as n from public.daily_reports where report_date = '${D}' and status = 'sent'`],           // 8
+    [U.admin, `select public.report_settings_save(true, '09:00')`],                                                          // 9 too early a time
+    [U.hana, `select public.report_settings_save(false, '16:30')`],                                                          // 10 teachers cannot
+    [null, `select public.cka_run_report_check((timestamp '2026-10-11 16:30') at time zone 'Africa/Cairo') as r`],          // 11 auto send
+    [null, `select count(*)::int as n from public.daily_reports where report_date = '${D}' and status = 'sent' and sent_by is null`], // 12
+    [null, `select user_id from public.email_outbox where template = 'daily_report_ready'`],                                 // 13
+    [null, `select public.cka_run_report_check((timestamp '2026-10-11 16:45') at time zone 'Africa/Cairo') as r`],          // 14 nothing more
+    [null, `select count(*)::int as n from public.email_outbox where template in ('daily_report_ready', 'report_note_reminder')`], // 15
+    [null, `select public.cka_run_report_check((timestamp '2026-10-16 16:30') at time zone 'Africa/Cairo') as r`],          // 16 Friday
+  ]);
+  const r5 = res[5].rows[0].r, r6 = res[6].rows[0].r, r11 = res[11].rows[0].r, r14 = res[14].rows[0].r;
+  check('at 4 pm the teachers with children still missing a personal note get one reminder (a count only); nothing earlier, and nothing is sent yet', r5.checked === false && r6.reminders === 1 && res[7].rows.length === 1 && res[7].rows[0].user_id === U.hana && !/Testson/.test(res[7].rows[0].p) && res[8].rows[0].n === 0, JSON.stringify([r5, r6, res[7].rows]));
+  check('only admin, manager or owner can change the automatic-send setting, and only to a sensible time', !!res[9].error && !!res[10].error);
+  check('at the automatic-send time, every report with entries is sent (as "automatic"), parents emailed; later runs and Fridays do nothing', r11.sent === 2 && res[12].rows[0].n === 2 && res[13].rows.length >= 3 && r14.sent === 0 && res[15].rows[0].n === res[13].rows.length + 1 && res[16].rows[0].r.checked === false, JSON.stringify([r11, res[13].rows.length, r14, res[15].rows]));
+
+  // the setting really switches automatic sending off
+  res = await flow([
+    T('2026-10-11 08:30'), [U.hana, `select public.door_check_in('${A}')`], [U.hana, `select public.report_save_many(array['${A}']::uuid[], '{"lunch":"all"}')`],
+    [U.manager, `select public.report_settings_save(false, '16:30')`],
+    [null, `select public.cka_run_report_check((timestamp '2026-10-11 17:00') at time zone 'Africa/Cairo') as r`],
+    [U.admin, `select public.report_overview('${D}') as o`], [U.hana, `select count(*)::int as n from public.report_settings`],
+  ]);
+  check('with automatic sending off nothing is sent by the scheduler; the overview shows the setting and who is not done; teachers cannot read the setting', !res[3].error && res[4].rows[0].r.sent === 0 && res[5].rows[0].o.settings.auto_send === false && res[5].rows[0].o.ready === 1 && res[5].rows[0].o.present === 1 && res[6].rows[0].n === 0, JSON.stringify(res[5].rows[0].o));
 }
 
 // ---------------------------------------------------------------------------

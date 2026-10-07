@@ -89,6 +89,7 @@ function world({ resendOk = true, claimRace = false, rows } = {}) {
       return resendOk ? json(200, { id: "re_1" }) : json(422, { message: "domain not verified" });
     }
     if (u.pathname === "/rest/v1/rpc/cka_run_owner_reminders") return json(200, { sent: 1, working_day: true, late_tasks: 2 });
+    if (u.pathname === "/rest/v1/rpc/cka_run_report_check") return json(200, { checked: true, reminders: 1, sent: 4 });
     if (u.pathname === "/rest/v1/rpc/cka_run_attendance_check") return json(200, { flagged: 2, emails: 1, checked: true });
     if (u.pathname === "/rest/v1/rpc/cka_run_deadline_check") return json(200, { warned: 1, escalated: 0, overdue_at_top: 0, requeued: 0, in_working_hours: true });
     if (u.pathname === "/rest/v1/email_outbox" && opts.method === "GET") return json(200, state.outbox.filter((r) => r.status === "pending"));
@@ -171,6 +172,7 @@ test("sender: with check=true it runs the deadline clock first and reports it", 
   assert.equal(r.deadlines.warned, 1);
   assert.equal(r.owner_reminders.sent, 1);
   assert.equal(r.attendance.flagged, 2);
+  assert.equal(r.reports.sent, 4);
   assert.ok(w.state.calls.findIndex((c) => c.path.includes("cka_run_deadline_check")) < w.state.calls.findIndex((c) => c.path.startsWith("/rest/v1/email_outbox")));
   const plain = await call({ w: world(), body: {} });
   assert.equal(plain.deadlines, undefined);

@@ -140,3 +140,12 @@ insert into public.attendance_notices (child_id, notice_date, kind, reason, repo
   ('00000000-0000-4000-8000-000000000302', current_date + 1, 'absence', 'SEED NOTICE: doctor appointment', 'parent');
 insert into public.attendance_events (child_id, att_date, kind, actor_name, note) values
   ('00000000-0000-4000-8000-000000000301', current_date - 1, 'check_out', 'Admin (seed)', 'SEED DOOR LOG: Grandma Seed (seed)');
+
+-- Daily reports (fake): Omar's report from yesterday was sent; Salma has a private draft for today; one "kindly send" is published, one is not.
+insert into public.daily_reports (child_id, report_date, lunch, water_cups, mood, personal_note, status, sent_at) values
+  ('00000000-0000-4000-8000-000000000301', current_date - 1, 'all', 4, 'happy', 'SEED REPORT NOTE: loved painting', 'sent', now());
+insert into public.daily_reports (child_id, report_date, lunch, mood, personal_note, status) values
+  ('00000000-0000-4000-8000-000000000302', current_date, 'half', 'calm', 'SEED DRAFT NOTE: a bit shy today', 'draft');
+insert into public.send_requests (child_id, for_date, items, published) values
+  ('00000000-0000-4000-8000-000000000301', current_date + 1, array['diapers'], true),
+  ('00000000-0000-4000-8000-000000000302', current_date + 1, array['wipes'], false);

@@ -31,6 +31,9 @@ delete from public.registration_documents   where application_id in (select id f
 delete from public.registration_pickups     where application_id in (select id from public.registration_applications where child_name like '%(seed)');
 delete from public.registration_parents     where application_id in (select id from public.registration_applications where child_name like '%(seed)');
 delete from public.registration_applications where child_name like '%(seed)';
+delete from public.daily_report_edits      where report_id in (select id from public.daily_reports where child_id in (select id from seed_children));
+delete from public.daily_reports           where child_id in (select id from seed_children);
+delete from public.send_requests           where child_id in (select id from seed_children);
 delete from public.attendance_flags         where child_id in (select id from seed_children);
 delete from public.attendance_events        where child_id in (select id from seed_children);
 delete from public.attendance_notices       where child_id in (select id from seed_children);

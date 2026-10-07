@@ -75,6 +75,16 @@ const T = {
   review_monthly: (p, l) => l === "ar"
     ? { subject: "مراجعة الشهر", lines: ["بدأ شهر جديد وحان وقت المراجعة الشهرية.", `المهام المتأخرة: ${p.late_tasks}.`], button: ["فتح لوحة المالك", "/staff/#/owner"] }
     : { subject: "Monthly review", lines: ["A new month has started: time for the monthly review.", `Late tasks: ${p.late_tasks}.`], button: ["Open the owner dashboard", "/staff/#/owner"] },
+  // ---- daily reports (no details: just that something is ready)
+  daily_report_ready: (p, l) => l === "ar"
+    ? { subject: "تقرير طفلك اليومي جاهز", lines: ["تقرير اليوم عن طفلك ينتظرك في البوابة."], button: ["قراءة التقرير", "/portal/#/daily"] }
+    : { subject: "Your child's daily report is ready", lines: ["Today's report about your child is waiting in the portal."], button: ["Read the report", "/portal/#/daily"] },
+  fever_alert: (p, l) => l === "ar"
+    ? { subject: "تنبيه: ارتفاع حرارة طفل", lines: ["سُجّلت درجة حرارة 38 أو أكثر لأحد أطفال فصلك. يُرجى مراجعة تقارير اليوم والتواصل مع وليّ الأمر."], button: ["فتح التقارير اليومية", "/staff/#/daily"] }
+    : { subject: "Alert: a child has a high temperature", lines: ["A temperature of 38 or more was recorded for a child in your class. Please check today's reports and contact the parent."], button: ["Open the daily reports", "/staff/#/daily"] },
+  report_note_reminder: (p, l) => l === "ar"
+    ? { subject: `${p.count} أطفال بلا جملة شخصية في تقريرهم`, lines: ["حان وقت كتابة جملة شخصية لكل طفل في تقريره اليومي قبل موعد الاستلام."], button: ["فتح التقارير اليومية", "/staff/#/daily"] }
+    : { subject: `${p.count} child${Number(p.count) === 1 ? "" : "ren"} still need a personal note`, lines: ["It is time to add one personal sentence to each child's daily report before pickup."], button: ["Open the daily reports", "/staff/#/daily"] },
   // ---- attendance and pickup (no names: just that something needs a look)
   pickup_off_list_parent: (p, l) => l === "ar"
     ? { subject: "تم تسليم طفلك لشخص غير مسجّل في قائمة الاستلام", lines: ["سُجّل اليوم استلام طفلك من شخص غير موجود في قائمة الاستلام الخاصة بك. إذا لم تكن تتوقع ذلك فيُرجى الاتصال بنا فوراً على 01063344389."], button: ["فتح البوابة", "/portal/#/attendance"] }
