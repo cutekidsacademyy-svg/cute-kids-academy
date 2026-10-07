@@ -12,7 +12,7 @@ const SITE = "https://site.test";
 const NOW = Date.parse("2026-10-11T07:00:00Z");           // Sunday 10:00 in Cairo
 const CASE = {
   id: "11111111-1111-4111-8111-111111111111", ref_no: 7, title: "Lunch concern", urgency: "urgent", old_urgency: "can_wait",
-  level: 2, count: 3, application_no: 12, child_name: "Nour", status: "missing_documents", note: "the vaccination record", done: 2, total: 6, late_tasks: 3, step: "parent_called", kind: "ack", reason: "Child was hungry two days running",
+  level: 2, count: 3, parent_name: "Pat", child_name: "Kid", text: "Hello", topic: "fees", type: "question", application_no: 12, child_name: "Nour", status: "missing_documents", note: "the vaccination record", done: 2, total: 6, late_tasks: 3, step: "parent_called", kind: "ack", reason: "Child was hungry two days running",
   acknowledge_by: "2026-10-11T09:00:00Z", resolve_by: "2026-10-12T07:00:00Z", deadline: "2026-10-11T08:00:00Z",
 };
 

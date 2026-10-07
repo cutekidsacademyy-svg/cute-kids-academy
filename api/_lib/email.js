@@ -75,6 +75,15 @@ const T = {
   review_monthly: (p, l) => l === "ar"
     ? { subject: "مراجعة الشهر", lines: ["بدأ شهر جديد وحان وقت المراجعة الشهرية.", `المهام المتأخرة: ${p.late_tasks}.`], button: ["فتح لوحة المالك", "/staff/#/owner"] }
     : { subject: "Monthly review", lines: ["A new month has started: time for the monthly review.", `Late tasks: ${p.late_tasks}.`], button: ["Open the owner dashboard", "/staff/#/owner"] },
+  // ---- a new question or missing item (to the academy's inbox and the admins: the text is included, this is internal)
+  question_new: (p, l) => {
+    const what = p.type === "missing_item" ? (l === "ar" ? "غرض مفقود" : "Missing item") : (l === "ar" ? "سؤال جديد" : "New question");
+    const topic = p.topic && p.type === "question" ? ({ fees: ["Fees", "الرسوم"], schedule: ["Schedule", "الجدول"], food: ["Food", "الطعام"], my_childs_day: ["My child's day", "يوم طفلي"], other: ["Other", "أخرى"] }[p.topic] || [""])[l === "ar" ? 1 : 0] : "";
+    const ref = p.ref_no ? L.refLabel(p.ref_no) : "";
+    return l === "ar"
+      ? { subject: `${what} (${ref})${topic ? ": " + topic : ""}`, lines: [`من: ${p.parent_name || ""} · الطفل: ${p.child_name || ""}`, `الأولوية: ${URG.ar[p.urgency] || ""}`, p.text || ""], button: ["فتح الطلب", `/staff/#/case/${p.id}`] }
+      : { subject: `${what} (${ref})${topic ? ": " + topic : ""}`, lines: [`From: ${p.parent_name || ""} · Child: ${p.child_name || ""}`, `Urgency: ${URG.en[p.urgency] || ""}`, p.text || ""], button: ["Open the case", `/staff/#/case/${p.id}`] };
+  },
   // ---- announcements and events (no details: the text itself is only in the portal)
   announcement_new: (p, l) => l === "ar"
     ? { subject: p.important ? "إعلان مهم من الحضانة" : "إعلان جديد من الحضانة", lines: ["يوجد إعلان جديد ينتظرك في البوابة."], button: ["قراءة الإعلان", "/portal/#/news"] }

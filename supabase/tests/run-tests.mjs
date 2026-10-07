@@ -145,7 +145,7 @@ console.log('\n== Security audit: structure ==');
     'investigation_name_warnings', 'staff_investigations', 'staff_investigation', 'staff_report', 'record_staff_attendance', 'staff_attendance_day', 'submit_staff_complaint',
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
     'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies', 'parent_update_health', 'parent_save_pickup',
-    'academy_settings_save', 'admin_home', 'admin_children', 'admin_child_profile', 'child_move_class', 'child_withdraw', 'child_reinstate', 'admin_classes', 'class_save', 'class_staff_set', 'class_staff_remove', 'staff_job_title_save',
+    'parent_month_summary', 'academy_settings_save', 'admin_home', 'admin_children', 'admin_child_profile', 'child_move_class', 'child_withdraw', 'child_reinstate', 'admin_classes', 'class_save', 'class_staff_set', 'class_staff_remove', 'staff_job_title_save',
     'cka_media_visible', 'cka_media_upload_ok', 'cka_media_file', 'media_consent_check', 'media_add', 'media_set_tags', 'media_remove', 'media_mark_post', 'media_settings_save',
     'notification_prefs_save', 'push_subscribe', 'push_unsubscribe', 'cka_announcement_visible', 'cka_announcement_file', 'announcement_post', 'announcement_mark_read', 'announcement_stats', 'announcement_remove', 'cka_event_visible', 'menu_week', 'menu_save', 'schedule_save', 'schedule_delete', 'event_save', 'event_delete', 'event_respond', 'event_responses_summary',
     'report_sheet', 'report_save_many', 'report_send', 'send_request_save', 'report_edit_sent', 'report_overview', 'report_settings_save',
@@ -2369,6 +2369,48 @@ console.log('\n== Admin area ==');
   ]);
   check('only management changes the academy settings (phone, WhatsApp digits with country code, email, address, closing time); everyone logged in can read them', !res[3].error && !!res[4].error && !!res[5].error && !!res[6].error && res[7].rows[0].whatsapp === '201063344389' && res[7].rows[0].c === '17:00:00', JSON.stringify([res[3].error, res[4].error, res[5].error, res[7]]));
   check('the closing time setting drives overtime: a pickup at 17:30 with closing at 17:00 is 30 minutes', !res[10].error && res[11].rows[0].overtime_minutes === 30, JSON.stringify([res[10].error, res[11]]));
+}
+
+// ---------------------------------------------------------------------------
+console.log('\n== Questions, missing items and the month at a glance ==');
+{
+  const T = (local) => [null, `select set_config('app.now', ((timestamp '${local}') at time zone 'Africa/Cairo')::text, true)`];
+  const ask = (who, child, type, topic, urgency, title = 'Fees: when is it due?') => [who, `insert into public.submissions (parent_id, child_id, type, topic, title, description, urgency) values ('${who}', '${child}', '${type}', ${topic ? `'${topic}'` : 'null'}, '${title}', 'Please tell me the date', '${urgency}')`];
+  let res = await flow([
+    ask(U.parentA, alpha, 'question', 'fees', 'can_wait'),                                                      // 0 ok
+    ask(U.parentA, alpha, 'question', 'fees', 'critical'),                                                      // 1 parents cannot pick critical
+    ask(U.parentA, beta, 'question', 'fees', 'can_wait'),                                                       // 2 someone else's child
+    ask(U.parentA, alpha, 'question', 'gossip', 'can_wait'),                                                    // 3 unknown topic
+    ask(U.parentA, alpha, 'rating', null, 'can_wait'),                                                          // 4 unknown type
+    ask(U.parentA, alpha, 'missing_item', null, 'urgent', 'Missing: blue jacket'),                              // 5 ok
+    ask(U.parentA, alpha, 'missing_item', null, 'critical', 'Missing: blue jacket'),                            // 6 critical refused
+    ask(U.hana, alpha, 'question', 'fees', 'can_wait'),                                                         // 7 a teacher cannot raise one as a parent
+    [U.parentA, `select type, topic, urgency, status, escalation_level, acknowledge_by is not null as a from public.submissions where type in ('question', 'missing_item') order by type`], // 8
+    [U.parentB, `select count(*)::int as n from public.submissions where type in ('question', 'missing_item')`], // 9
+    [U.admin, `select count(*)::int as n from public.submissions where type in ('question', 'missing_item')`],  // 10
+    [null, `select user_id, to_email, template, payload::text as p from public.email_outbox where template = 'question_new' order by to_email`], // 11
+    [null, `select template from public.email_outbox where user_id = '${U.parentA}' and template = 'received'`], // 12
+    [U.admin, `select type, title from public.staff_queue() where type in ('question', 'missing_item') order by type`],  // 13
+  ]);
+  check('a parent can ask a question (with a topic) or report a missing item for their own child, with "can wait" or "urgent" but never "critical"', !res[0].error && !!res[1].error && !!res[2].error && !!res[3].error && !!res[4].error && !res[5].error && !!res[6].error && !!res[7].error, JSON.stringify(res.slice(0, 8).map((x) => x.error)));
+  check('...it becomes a normal case at level 1 with a deadline; other families never see it; admin does', res[8].rows.length === 2 && res[8].rows.every((x) => x.status === 'received' && x.escalation_level === 1 && x.a) && res[8].rows.find((x) => x.type === 'question').urgency === 'can_wait' && res[9].rows[0].n === 0 && res[10].rows[0].n === 2 && res[13].rows.length === 2, JSON.stringify([res[8].rows, res[9], res[10], res[13]]));
+  const qm = res[11].rows;
+  check('every new question or missing item is emailed to the academy inbox and to the admins; the parent gets the usual receipt', qm.some((x) => x.user_id === null && String(x.to_email).toLowerCase() === 'cutekidsacademyy@gmail.com') && qm.some((x) => x.user_id === U.admin) && qm.length === 4 && res[12].rows.length === 3 && /Please tell me/.test(qm[0].p), JSON.stringify(qm.map((x) => [x.user_id, x.to_email])));
+
+  // this month at a glance
+  res = await flow([
+    T('2026-10-14 19:00'),
+    [null, `update public.children set created_at = '2026-01-01'`],
+    [null, `delete from public.attendance`], [null, `delete from public.attendance_notices`],
+    [null, `insert into public.attendance (child_id, att_date, checked_in_at, checked_out_at, overtime_minutes) values ('${alpha}', '2026-10-11', '2026-10-11 05:00+00', '2026-10-11 15:20+00', 20), ('${alpha}', '2026-10-12', '2026-10-12 05:00+00', '2026-10-12 12:00+00', 0)`],
+    [null, `insert into public.attendance_notices (child_id, notice_date, kind, reason) values ('${alpha}', '2026-10-13', 'absence', 'Sick')`],
+    [U.parentA, `select public.parent_month_summary('${alpha}') as s`],           // 4
+    [U.parentB, `select public.parent_month_summary('${alpha}')`],                // 5 not their child
+    [U.hana, `select public.parent_month_summary('${alpha}')`],                   // 6 staff use the reports instead
+    [U.parentC, `select public.parent_month_summary('${alpha}') as s`],           // 7 the other parent sees the same
+  ]);
+  const sm = res[6].rows[0].s;
+  check('a parent sees days attended, days absent (told us / not told us) and late pickups for the month, counted in school days only', sm.attended === 2 && sm.absent_reported === 1 && sm.absent_unreported === 7 && sm.late_pickups === 1 && !!res[7].error && !!res[8].error && res[9].rows[0].s.attended === 2, JSON.stringify(sm));
 }
 
 // ---------------------------------------------------------------------------
