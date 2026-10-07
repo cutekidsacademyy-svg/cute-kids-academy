@@ -149,3 +149,21 @@ insert into public.daily_reports (child_id, report_date, lunch, mood, personal_n
 insert into public.send_requests (child_id, for_date, items, published) values
   ('00000000-0000-4000-8000-000000000301', current_date + 1, array['diapers'], true),
   ('00000000-0000-4000-8000-000000000302', current_date + 1, array['wipes'], false);
+
+-- Announcements, menu, schedule, events (fake). One for everyone, one for class 1, one for Youssef's family only.
+insert into public.announcements (id, title_en, body_en, audience, class_id, important) values
+  ('00000000-0000-4000-8000-000000000a01', 'SEED ANNOUNCEMENT ALL', 'Hello everyone (seed)', 'all', null, true),
+  ('00000000-0000-4000-8000-000000000a02', 'SEED CLASS ANNOUNCE', 'Only the first class (seed)', 'class', '00000000-0000-4000-8000-000000000201', false),
+  ('00000000-0000-4000-8000-000000000a03', 'SEED FAMILY ANNOUNCE', 'Only one family (seed)', 'families', null, false);
+insert into public.announcement_targets (announcement_id, child_id) values ('00000000-0000-4000-8000-000000000a03', '00000000-0000-4000-8000-000000000303');
+insert into public.announcement_reads (announcement_id, user_id) values ('00000000-0000-4000-8000-000000000a01', '00000000-0000-4000-8000-000000000101');
+insert into public.menu_items (menu_date, meal, dish_en, allergens) values
+  (current_date, 'breakfast', 'SEED Oatmeal', array['milk']), (current_date, 'lunch', 'SEED Peanut stew', array['peanuts']), (current_date, 'snack', 'SEED Apple slices', '{}');
+insert into public.schedule_items (class_id, start_time, title_en) values
+  (null, '08:00', 'SEED Arrival'), ('00000000-0000-4000-8000-000000000201', '12:00', 'SEED Lunch');
+insert into public.events (id, kind, title_en, starts_at, audience, class_id, needs_approval, approval_deadline, cost) values
+  ('00000000-0000-4000-8000-000000000b01', 'event', 'SEED EVENT ALL', now() + interval '10 days', 'all', null, true, now() + interval '5 days', 50),
+  ('00000000-0000-4000-8000-000000000b02', 'event', 'SEED EVENT CLASS2', now() + interval '12 days', 'class', '00000000-0000-4000-8000-000000000202', true, now() + interval '6 days', null);
+insert into public.event_responses (event_id, child_id, answered_by, answer) values
+  ('00000000-0000-4000-8000-000000000b02', '00000000-0000-4000-8000-000000000303', '00000000-0000-4000-8000-000000000102', 'yes');
+insert into public.notification_prefs (user_id, announcements) values ('00000000-0000-4000-8000-000000000102', false);

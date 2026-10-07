@@ -31,6 +31,7 @@ declare
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
     'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies',
     'parent_update_health', 'parent_save_pickup',
+    'notification_prefs_save', 'push_subscribe', 'push_unsubscribe', 'cka_announcement_visible', 'cka_announcement_file', 'announcement_post', 'announcement_mark_read', 'announcement_stats', 'announcement_remove', 'cka_event_visible', 'menu_week', 'menu_save', 'schedule_save', 'schedule_delete', 'event_save', 'event_delete', 'event_respond', 'event_responses_summary',
     'report_sheet', 'report_save_many', 'report_send', 'send_request_save', 'report_edit_sent', 'report_overview', 'report_settings_save',
     'cka_door_file', 'door_list', 'door_pickups', 'door_parents', 'door_check_in', 'door_check_out', 'door_undo', 'door_log_call', 'parent_report_attendance',
     'parent_cancel_attendance_notice', 'attendance_report'
@@ -55,6 +56,10 @@ begin
   if to_regprocedure('public.cka_run_deadline_check(timestamptz)') is not null then
     revoke all on function public.cka_run_deadline_check(timestamptz) from public, anon, authenticated;
     grant execute on function public.cka_run_deadline_check(timestamptz) to service_role;
+  end if;
+  if to_regprocedure('public.cka_run_content_check(timestamptz)') is not null then
+    revoke all on function public.cka_run_content_check(timestamptz) from public, anon, authenticated;
+    grant execute on function public.cka_run_content_check(timestamptz) to service_role;
   end if;
   if to_regprocedure('public.cka_run_report_check(timestamptz)') is not null then
     revoke all on function public.cka_run_report_check(timestamptz) from public, anon, authenticated;

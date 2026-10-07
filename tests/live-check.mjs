@@ -49,7 +49,7 @@ line(w.status === 401 || w.status === 403, "anonymous visitors cannot write to t
 // 4. Which functions can an anonymous visitor even see? (PostgREST lists only what the key may call.)
 const spec = await (await fetch(`${URL_}/rest/v1/`, { headers: H })).json();
 const rpcs = Object.keys(spec.paths || {}).filter((p) => p.startsWith("/rpc/")).map((p) => p.slice(5));
-const dangerous = ["cka_enqueue_email", "cka_run_deadline_check", "cka_run_owner_reminders", "cka_run_attendance_check", "cka_run_report_check", "cka_report_upsert", "cka_report_send_one", "cka_att_log", "cka_door_allowed", "cka_person_name", "cka_level_assignee", "cka_alert_recipients"];
+const dangerous = ["cka_enqueue_email", "cka_run_deadline_check", "cka_run_owner_reminders", "cka_run_attendance_check", "cka_run_content_check", "cka_announcement_parents", "cka_event_children", "cka_run_report_check", "cka_report_upsert", "cka_report_send_one", "cka_att_log", "cka_door_allowed", "cka_person_name", "cka_level_assignee", "cka_alert_recipients"];
 const exposedDangerous = rpcs.filter((r) => dangerous.includes(r));
 line(exposedDangerous.length === 0, "internal functions (email queue, deadline checker, name lookup) are NOT callable by anonymous visitors", exposedDangerous.join(", "));
 const tablesListed = Object.keys(spec.paths || {}).filter((p) => !p.startsWith("/rpc/") && p !== "/");

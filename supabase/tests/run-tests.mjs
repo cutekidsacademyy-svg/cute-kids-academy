@@ -129,7 +129,7 @@ console.log('\n== Security audit: structure ==');
   check('only these tables allow column-level updates (own name/phone/language, assignee, concern status)', colOnly === 'investigations,profiles,staff_complaints', colOnly);
   const noSel = (await q(`select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r'
                           and not has_table_privilege('authenticated', c.oid, 'SELECT') order by 1`)).map((x) => x.relname).join(',');
-  check('server-only tables cannot be read from the browser at all', noSel === 'deadline_events,email_outbox,registration_rate', noSel);
+  check('server-only tables cannot be read from the browser at all', noSel === 'deadline_events,email_outbox,push_subscriptions,registration_rate', noSel);
 
   // 4. functions: nothing internal is reachable by the wrong person
   const fns = await q(`select p.proname as name, p.prosecdef as definer, p.prorettype = 'trigger'::regtype as is_trigger, coalesce(p.proconfig::text, '') as cfg,
@@ -145,16 +145,17 @@ console.log('\n== Security audit: structure ==');
     'investigation_name_warnings', 'staff_investigations', 'staff_investigation', 'staff_report', 'record_staff_attendance', 'staff_attendance_day', 'submit_staff_complaint',
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
     'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies', 'parent_update_health', 'parent_save_pickup',
+    'notification_prefs_save', 'push_subscribe', 'push_unsubscribe', 'cka_announcement_visible', 'cka_announcement_file', 'announcement_post', 'announcement_mark_read', 'announcement_stats', 'announcement_remove', 'cka_event_visible', 'menu_week', 'menu_save', 'schedule_save', 'schedule_delete', 'event_save', 'event_delete', 'event_respond', 'event_responses_summary',
     'report_sheet', 'report_save_many', 'report_send', 'send_request_save', 'report_edit_sent', 'report_overview', 'report_settings_save',
     'cka_door_file', 'door_list', 'door_pickups', 'door_parents', 'door_check_in', 'door_check_out', 'door_undo', 'door_log_call', 'parent_report_attendance', 'parent_cancel_attendance_notice', 'attendance_report'].sort();
   const reach = definers.filter((f) => !f.is_trigger && f.auth).map((f) => f.name).sort();
   check('the ONLY security-definer functions a logged-in user can run are the intended screens/helpers (nothing new slipped in)',
     JSON.stringify(reach) === JSON.stringify(ALLOWED), JSON.stringify({ extra: reach.filter((x) => !ALLOWED.includes(x)), missing: ALLOWED.filter((x) => !reach.includes(x)) }));
   const svc = await q(`select has_function_privilege('service_role', 'public.cka_run_deadline_check(timestamptz)', 'execute') as a, has_function_privilege('service_role', 'public.cka_run_owner_reminders(timestamptz)', 'execute') as b,
-      has_function_privilege('service_role', 'public.cka_run_attendance_check(timestamptz)', 'execute') as f, has_function_privilege('authenticated', 'public.cka_run_attendance_check(timestamptz)', 'execute') as g, has_function_privilege('authenticated', 'public.cka_now()', 'execute') as h, has_function_privilege('service_role', 'public.cka_run_report_check(timestamptz)', 'execute') as i, has_function_privilege('authenticated', 'public.cka_run_report_check(timestamptz)', 'execute') as j,
+      has_function_privilege('service_role', 'public.cka_run_attendance_check(timestamptz)', 'execute') as f, has_function_privilege('authenticated', 'public.cka_run_attendance_check(timestamptz)', 'execute') as g, has_function_privilege('authenticated', 'public.cka_now()', 'execute') as h, has_function_privilege('service_role', 'public.cka_run_content_check(timestamptz)', 'execute') as k, has_function_privilege('authenticated', 'public.cka_run_content_check(timestamptz)', 'execute') as m, has_function_privilege('authenticated', 'public.cka_allergen_match(text,text)', 'execute') as n, has_function_privilege('service_role', 'public.cka_run_report_check(timestamptz)', 'execute') as i, has_function_privilege('authenticated', 'public.cka_run_report_check(timestamptz)', 'execute') as j,
       has_function_privilege('authenticated', 'public.cka_enqueue_email(uuid,text,jsonb,text)', 'execute') as c, has_function_privilege('anon', 'public.cka_enqueue_email(uuid,text,jsonb,text)', 'execute') as d,
       has_function_privilege('authenticated', 'public.cka_person_name(uuid)', 'execute') as e`);
-  check('the server key can run the scheduled jobs; nobody else can queue emails or look up names', svc[0].a && svc[0].b && svc[0].f && svc[0].i && !svc[0].j && !svc[0].g && !svc[0].h && !svc[0].c && !svc[0].d && !svc[0].e, JSON.stringify(svc[0]));
+  check('the server key can run the scheduled jobs; nobody else can queue emails or look up names', svc[0].a && svc[0].b && svc[0].f && svc[0].i && svc[0].k && !svc[0].m && !svc[0].n && !svc[0].j && !svc[0].g && !svc[0].h && !svc[0].c && !svc[0].d && !svc[0].e, JSON.stringify(svc[0]));
   const pure = fns.filter((f) => !f.definer && !f.is_trigger && f.anon).map((f) => f.name).sort().join(',');
   check('the only functions anonymous visitors can run are pure date and arithmetic helpers (they read no data)',
     pure === 'cka_add_business_days,cka_add_working_hours,cka_case_payload,cka_deadlines,cka_in_working_hours,cka_is_email,cka_is_happy,cka_is_phone,cka_is_work_day,cka_next_work_day,cka_threshold,cka_working_start', pure);
@@ -172,6 +173,9 @@ console.log('\n== Security audit: who can read what (seed data) ==');
   const D = 'denied';
   // columns: anon, parentA, parentB, parentC, hana, mariam, admin, manager, owner
   const EXPECT = {
+    announcement_reads:     [D, 1, 0, 0, 0, 0, 1, 1, 1],
+    announcement_targets:   [D, 0, 0, 0, 0, 0, 1, 1, 1],
+    announcements:          [D, 2, 3, 2, 2, 1, 3, 3, 3],
     attachments:            [D, 1, 0, 0, 1, 0, 1, 1, 1],
     attendance:             [D, 1, 0, 1, 1, 0, 1, 1, 1],
     attendance_events:      [D, 0, 0, 0, 0, 0, 1, 1, 1],
@@ -185,6 +189,12 @@ console.log('\n== Security audit: who can read what (seed data) ==');
     checklist_checks:       [D, 0, 0, 0, 0, 0, 0, 0, 0],
     daily_report_edits:     [D, 0, 0, 0, 0, 0, 0, 0, 0],
     daily_reports:          [D, 1, 0, 1, 2, 0, 2, 2, 2],
+    event_responses:        [D, 0, 1, 0, 0, 1, 1, 1, 1],
+    events:                 [D, 1, 2, 2, 1, 2, 2, 2, 2],
+    menu_items:             [D, 3, 3, 3, 3, 3, 3, 3, 3],
+    notification_prefs:     [D, 0, 1, 0, 0, 0, 0, 0, 0],
+    push_subscriptions:     [D, D, D, D, D, D, D, D, D],
+    schedule_items:         [D, 2, 2, 2, 2, 2, 2, 2, 2],
     report_settings:        [D, 0, 0, 0, 0, 0, 1, 1, 1],
     send_requests:          [D, 1, 0, 1, 2, 0, 2, 2, 2],
     checklist_items:        [D, 0, 0, 0, 0, 0, 0, 0, 10],
@@ -256,15 +266,15 @@ console.log('\n== Security audit: who can read what (seed data) ==');
   };
   const staffPhones = ['+20 100 000 0001', '+20 100 000 0002', '+20 100 000 0003', '+20 100 000 0004', '+20 100 000 0005'];
   const INTERNAL = ['SEED INTERNAL NOTE', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT'];
-  await scan(U.parentA, 'Parent A', ['SEED DRAFT NOTE', 'SEED NOTICE', 'SEED DOOR LOG', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'Mariam Testson', 'Parent B (seed)', 'Parent C (seed)', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'Seed rating comment', 'other.jpg', '+20 100 000 0102', '+20 100 000 0103'].concat(INTERNAL, staffPhones),
+  await scan(U.parentA, 'Parent A', ['SEED FAMILY ANNOUNCE', 'SEED EVENT CLASS2', 'SEED DRAFT NOTE', 'SEED NOTICE', 'SEED DOOR LOG', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'Mariam Testson', 'Parent B (seed)', 'Parent C (seed)', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'Seed rating comment', 'other.jpg', '+20 100 000 0102', '+20 100 000 0103'].concat(INTERNAL, staffPhones),
     ['Omar Testson', 'lunch concern', 'seed-photo.jpg', 'Peanut allergy (seed)', 'Grandma Seed', 'SEED REPORT NOTE']);
-  await scan(U.parentB, 'Parent B', ['SEED REPORT NOTE', 'SEED DRAFT NOTE', 'SEED DOOR LOG', 'Peanut allergy', 'Grandma Seed', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Omar Testson', 'Mariam Testson', 'lunch concern', 'Parent A (seed)', 'Parent C (seed)', 'mark on arm', 'Seed findings', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
+  await scan(U.parentB, 'Parent B', ['SEED EVENT NOBODY', 'SEED REPORT NOTE', 'SEED DRAFT NOTE', 'SEED DOOR LOG', 'Peanut allergy', 'Grandma Seed', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Omar Testson', 'Mariam Testson', 'lunch concern', 'Parent A (seed)', 'Parent C (seed)', 'mark on arm', 'Seed findings', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
     ['Salma Testson', 'Youssef Testson', 'tripped on the path', 'Seed rating comment', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'SEED NOTICE']);
-  await scan(U.parentC, 'Parent C', ['SEED DRAFT NOTE', 'SEED NOTICE', 'SEED DOOR LOG', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'lunch concern', 'Parent A (seed)', 'Parent B (seed)', 'tripped on the path', 'Seed rating comment', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
+  await scan(U.parentC, 'Parent C', ['SEED FAMILY ANNOUNCE', 'SEED DRAFT NOTE', 'SEED NOTICE', 'SEED DOOR LOG', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'lunch concern', 'Parent A (seed)', 'Parent B (seed)', 'tripped on the path', 'Seed rating comment', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
     ['Omar Testson', 'Mariam Testson', 'mark on arm', 'Seed findings', 'Peanut allergy (seed)', 'Grandma Seed', 'SEED REPORT NOTE']);
-  await scan(U.hana, 'Teacher Hana', ['SEED DOOR LOG', 'SEED HEALTH SECRET', 'asthma', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Youssef Testson', 'Mariam Testson', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'],
+  await scan(U.hana, 'Teacher Hana', ['SEED FAMILY ANNOUNCE', 'SEED EVENT CLASS2', 'SEED DOOR LOG', 'SEED HEALTH SECRET', 'asthma', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Youssef Testson', 'Mariam Testson', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'],
     ['Omar Testson', 'lunch concern', 'SEED INTERNAL NOTE', 'Peanut allergy (seed)', 'Grandma Seed', 'SEED NOTICE', 'SEED REPORT NOTE', 'SEED DRAFT NOTE']);
-  await scan(U.mariam, 'Teacher Mariam', ['SEED REPORT NOTE', 'SEED DRAFT NOTE', 'SEED NOTICE', 'SEED DOOR LOG', 'Peanut allergy', 'SEED HEALTH SECRET', 'Grandma Seed', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Omar Testson', 'Salma Testson', 'lunch concern', 'concern about Teacher Hana', 'SEED INTERNAL NOTE', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed findings', 'Seed rating comment'],
+  await scan(U.mariam, 'Teacher Mariam', ['SEED CLASS ANNOUNCE', 'SEED FAMILY ANNOUNCE', 'SEED REPORT NOTE', 'SEED DRAFT NOTE', 'SEED NOTICE', 'SEED DOOR LOG', 'Peanut allergy', 'SEED HEALTH SECRET', 'Grandma Seed', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Omar Testson', 'Salma Testson', 'lunch concern', 'concern about Teacher Hana', 'SEED INTERNAL NOTE', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed findings', 'Seed rating comment'],
     ['Youssef Testson', 'Mariam Testson', 'mark on arm', 'tripped on the path', 'None known (seed)']);
   await scan(U.admin, 'Admin', ['SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment'], ['SEED INTERNAL NOTE', 'Seed findings', 'concern about Teacher Hana', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'SEED APPLICANT ALLERGY', 'SEED LOG', 'SEED DOOR LOG', 'SEED NOTICE', 'SEED REPORT NOTE', 'SEED DRAFT NOTE']);
   await scan(U.manager, 'The manager', [], ['SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT', 'Seed rating comment', 'SEED INTERNAL NOTE']);
@@ -1945,6 +1955,160 @@ console.log('\n== Daily reports ==');
     [U.admin, `select public.report_overview('${D}') as o`], [U.hana, `select count(*)::int as n from public.report_settings`],
   ]);
   check('with automatic sending off nothing is sent by the scheduler; the overview shows the setting and who is not done; teachers cannot read the setting', !res[3].error && res[4].rows[0].r.sent === 0 && res[5].rows[0].o.settings.auto_send === false && res[5].rows[0].o.ready === 1 && res[5].rows[0].o.present === 1 && res[6].rows[0].n === 0, JSON.stringify(res[5].rows[0].o));
+}
+
+// ---------------------------------------------------------------------------
+console.log('\n== Announcements, notification choices, menu and events ==');
+{
+  const T = (local) => [null, `select set_config('app.now', ((timestamp '${local}') at time zone 'Africa/Cairo')::text, true)`];
+  const X = ID(951), Y = ID(952), Z = ID(953), SEEDCLASS2 = ID(202);
+  const post = (id, aud, cls, kids, imp = false, path = 'null') => `select public.announcement_post('${id}', 'Hello', 'مرحبا', 'Body text', null, '${aud}', ${cls ? `'${cls}'` : 'null'}, ${kids ? `array[${kids.map((k) => `'${k}'`).join(',')}]::uuid[]` : 'null'}, ${imp}, 'news', ${path}, null)`;
+  let res = await flow([
+    T('2026-10-11 09:00'),
+    [U.admin, post(X, 'all', null, null, true)],                                                             // 1
+    [U.hana, post(Y, 'all', null, null)],                                                                    // 2 teachers cannot post
+    [U.parentA, post(Y, 'all', null, null)],                                                                 // 3
+    [U.admin, post(Y, 'class', null, null)],                                                                 // 4 class needed
+    [U.admin, post(Y, 'families', null, null)],                                                              // 5 families needed
+    [U.admin, post(Y, 'all', null, null, false, `'${ID(999)}/file.pdf'`)],                                   // 6 attachment of another announcement
+    [U.admin, `select public.announcement_post('${Y}', null, null, 'Body', null, 'all', null, null, false, 'news', null, null)`], // 7 no title
+    [U.admin, post(Y, 'class', SEEDCLASS2, null)],                                                           // 8 ok: second class
+    [U.admin, post(Z, 'families', null, [gamma])],                                                           // 9 ok: one family
+    [U.parentA, `select id from public.announcements where id in ('${X}','${Y}','${Z}') order by id`],      // 10
+    [U.parentB, `select id from public.announcements where id in ('${X}','${Y}','${Z}') order by id`],      // 11
+    [U.parentC, `select id from public.announcements where id in ('${X}','${Y}','${Z}') order by id`],      // 12
+    [U.hana, `select id from public.announcements where id in ('${X}','${Y}','${Z}') order by id`],         // 13
+    [U.mariam, `select id from public.announcements where id in ('${X}','${Y}','${Z}') order by id`],       // 14
+    [null, `select user_id, template, payload::text as p from public.email_outbox where template = 'announcement_new' and dedupe_key like 'ann:${X}:%'`], // 15
+    [null, `select user_id from public.email_outbox where template = 'announcement_new' and dedupe_key like 'ann:${Y}:%' order by user_id`], // 16
+  ]);
+  check('only admin, manager and owner can post an announcement; it needs a class or families when meant for them, a title, and its own attachment folder', !res[1].error && !!res[2].error && !!res[3].error && !!res[4].error && !!res[5].error && !!res[6].error && !!res[7].error && !res[8].error && !res[9].error, JSON.stringify(res.slice(1, 10).map((x) => x.error)));
+  check('families see only what is meant for them: everyone, their child\'s class, or their own family', res[10].rows.length === 1 && res[11].rows.length === 3 && res[12].rows.length === 2 && res[13].rows.length === 1 && res[14].rows.length === 2, JSON.stringify([10, 11, 12, 13, 14].map((i) => res[i].rows.length)));
+  check('teachers see what is for everyone or their class, never a single family\'s', res[13].rows.map((x) => x.id).join() === X && res[14].rows.map((x) => x.id).sort().join() === [X, Y].sort().join());
+  check('announcement emails go to the intended families only, respect their choices (Parent B turned announcements off), and carry no text', res[15].rows.map((x) => x.user_id).sort().join() === [U.parentA, U.parentC].sort().join() && !res[15].rows.some((x) => /Hello|Body/.test(x.p)) && res[16].rows.map((x) => x.user_id).join() === U.parentC, JSON.stringify([res[15].rows, res[16].rows]));
+
+  // read receipts and the 24-hour reminder
+  res = await flow([
+    T('2026-10-11 09:00'), [U.admin, post(X, 'all', null, null, true)], [U.admin, post(Y, 'all', null, null, false)],
+    [U.parentA, `select public.announcement_mark_read('${X}')`], [U.parentA, `select public.announcement_mark_read('${X}')`],  // 3, 4 twice is fine
+    [U.hana, `select public.announcement_mark_read('${X}')`],                                                // 5 staff reads are not counted
+    [U.parentA, `select count(*)::int as n from public.announcement_reads where announcement_id = '${X}'`], // 6
+    [U.parentB, `select count(*)::int as n from public.announcement_reads`],                                 // 7
+    [U.admin, `select public.announcement_stats('${X}') as s`],                                              // 8
+    [U.hana, `select public.announcement_stats('${X}')`], [U.parentA, `select public.announcement_stats('${X}')`], // 9, 10
+    [null, `update public.announcements set created_at = created_at - interval '25 hours' where id in ('${X}','${Y}')`], // 11
+    [null, `select public.cka_run_content_check() as r`],                                                    // 12
+    [null, `select user_id from public.email_outbox where template = 'announcement_reminder' order by user_id`], // 13
+    [null, `select public.cka_run_content_check() as r`],                                                    // 14 only once
+    [U.parentA, `select public.announcement_remove('${X}')`], [U.admin, `select public.announcement_remove('${X}')`], // 15, 16
+    [U.admin, `select count(*)::int as n from public.announcement_reads where announcement_id = '${X}'`],  // 17
+  ]);
+  const st = res[8].rows[0].s;
+  check('read receipts: a parent opening it is counted once; staff and other families do not count; admin sees who has and has not read it (not teachers or parents)', res[6].rows[0].n === 1 && res[7].rows[0].n === 0 && st.read === 1 && st.total === 3 && st.unread.length === 2 && st.readers[0].name === 'Parent A (seed)' && !!res[9].error && !!res[10].error, JSON.stringify(st));
+  check('an important announcement reminds only the families who have not opened it (and who allow announcement emails), once; ordinary ones never', res[12].rows[0].r.announcements === 1 && res[13].rows.map((x) => x.user_id).join() === U.parentC && res[14].rows[0].r.announcements === 0, JSON.stringify([res[12].rows, res[13].rows]));
+  check('only management can delete an announcement; its read receipts go with it', !!res[15].error && !res[16].error && res[17].rows[0].n === 0);
+
+  // notification choices and push
+  res = await flow([
+    [U.parentA, `select public.notification_prefs_save(false, true, true, true)`],                           // 0 reports off
+    [null, `select public.cka_enqueue_email('${U.parentA}', 'daily_report_ready', '{}', 'k1')`],              // 1 skipped
+    [null, `select public.cka_enqueue_email('${U.parentA}', 'accident_report', '{}', 'k2')`],                 // 2 safety always goes out
+    [null, `select public.cka_enqueue_email('${U.parentA}', 'update_added', '{}', 'k3')`],                    // 3 cases on
+    [null, `select public.cka_enqueue_email('${U.parentB}', 'announcement_new', '{}', 'k4')`],               // 4 B has announcements off (seed)
+    [null, `select public.cka_enqueue_email('${U.hana}', 'daily_report_ready', '{}', 'k5')`],                 // 5 staff mail is never filtered
+    [null, `select dedupe_key from public.email_outbox where dedupe_key in ('k1','k2','k3','k4','k5') order by dedupe_key`], // 6
+    [U.parentA, `select reports from public.notification_prefs`],                                             // 7
+    [U.parentB, `select reports from public.notification_prefs`],                                             // 8 own row only
+    [U.parentA, `select public.push_subscribe('https://push.example.test/abc/123456789012345', 'BPublicKeyPublicKeyPublicKey', 'authsecret123')`], // 9
+    [U.parentA, `select public.push_subscribe('http://insecure.example.test/abcdefghijkl', 'BPublicKeyPublicKeyPublicKey', 'authsecret123')`],    // 10
+    [U.parentA, `select * from public.push_subscriptions`],                                                   // 11 not readable
+    [null, `select user_id from public.push_subscriptions`],                                                  // 12
+    [U.parentB, `select public.push_unsubscribe('https://push.example.test/abc/123456789012345')`],           // 13 someone else's: nothing happens
+    [null, `select count(*)::int as n from public.push_subscriptions`],                                       // 14
+    [U.parentA, `select public.push_unsubscribe('https://push.example.test/abc/123456789012345')`],           // 15
+    [null, `select count(*)::int as n from public.push_subscriptions`],                                       // 16
+  ]);
+  check('a family\'s notification choices are respected (reports, announcements); safety, case and staff emails still go out', res[6].rows.map((x) => x.dedupe_key).join() === 'k2,k3,k5', JSON.stringify(res[6].rows));
+  check('each person can read only their own choices', res[7].rows.length === 1 && res[7].rows[0].reports === false && res[8].rows.length === 1 && res[8].rows[0].reports === true);
+  check('push subscriptions: only secure addresses; nobody can read them from the browser; only the owner of a subscription can remove it', !res[9].error && !!res[10].error && !!res[11].error && res[12].rows.length === 1 && res[12].rows[0].user_id === U.parentA && res[14].rows[0].n === 1 && res[16].rows[0].n === 0);
+
+  // menu, schedule and allergen warnings
+  res = await flow([
+    [null, `update public.child_health set allergies = 'حساسية من الفول السوداني' where child_id = '${alpha}'`],  // 0 Arabic wording still matches
+    [U.parentA, `select meal, affected from public.menu_week(current_date, current_date) order by meal`],       // 1
+    [U.parentB, `select meal, affected from public.menu_week(current_date, current_date) order by meal`],       // 2
+    [U.hana, `select meal, affected from public.menu_week(current_date, current_date) where meal = 'lunch'`],   // 3
+    [U.mariam, `select meal, affected from public.menu_week(current_date, current_date) where meal = 'lunch'`], // 4
+    [U.admin, `select meal, affected from public.menu_week(current_date, current_date) where meal = 'lunch'`],  // 5
+    [null, `select public.cka_allergen_match('No eggs please, a little milk', 'eggs') as e, public.cka_allergen_match('nothing', 'eggs') as n, public.cka_allergen_match('Tree nuts', 'tree_nuts') as t`], // 6
+    [U.parentA, `select * from public.menu_week(current_date, current_date + 100)`],                           // 7 too long
+    [U.hana, `select public.menu_save(current_date + 1, 'lunch', 'Rice', null, array['milk'])`],               // 8 teachers cannot
+    [U.admin, `select public.menu_save(current_date + 1, 'lunch', 'Rice', 'أرز', array['milk'])`],             // 9
+    [U.admin, `select public.menu_save(current_date + 1, 'lunch', 'Rice', 'أرز', array['gold'])`],             // 10 unknown allergen
+    [U.admin, `select public.menu_save(current_date + 1, 'dinner', 'Rice', null, '{}')`],                       // 11 unknown meal
+    [U.parentA, `select dish_en, dish_ar from public.menu_week(current_date + 1, current_date + 1)`],          // 12
+    [U.admin, `select public.menu_save(current_date + 1, 'lunch', '', '', '{}')`],                              // 13 clears
+    [U.parentA, `select count(*)::int as n from public.menu_week(current_date + 1, current_date + 1)`],       // 14
+    [U.admin, `select public.schedule_save(null, null, '09:00', 'Circle time', 'حلقة')`],                       // 15
+    [U.hana, `select public.schedule_save(null, null, '09:00', 'Hana tries', null)`],                           // 16
+    [U.parentA, `select count(*)::int as n from public.schedule_items`],                                        // 17 (2 seed + 1)
+    [U.admin, `select public.schedule_delete((select id from public.schedule_items where title_en = 'Circle time'))`], // 18
+  ]);
+  const aff = (r, m) => (r.rows.find((x) => x.meal === m) || {}).affected;
+  check('a parent is warned about dishes containing their own child\'s allergen (matched in English and Arabic) and sees no other child\'s name', aff(res[1], 'lunch').join() === 'Omar Testson (seed)' && aff(res[1], 'breakfast').length === 0 && aff(res[2], 'lunch').length === 0, JSON.stringify([res[1].rows, res[2].rows]));
+  check('a teacher sees the affected children of their own class only; management sees everyone', aff(res[3], 'lunch').join() === 'Omar Testson (seed)' && aff(res[4], 'lunch').length === 0 && aff(res[5], 'lunch').join() === 'Omar Testson (seed)');
+  check('the allergen matcher finds words, and stays internal (no direct access)', res[6].rows[0].e === true && res[6].rows[0].n === false && res[6].rows[0].t === true && !!res[7].error);
+  check('only management edits the menu and schedule, with known meals and allergens; an empty dish removes the entry', !!res[8].error && !res[9].error && !!res[10].error && !!res[11].error && res[12].rows[0].dish_ar === 'أرز' && !res[13].error && res[14].rows[0].n === 0 && !res[15].error && !!res[16].error && res[17].rows[0].n === 3 && !res[18].error, JSON.stringify(res.slice(8, 19).map((x) => x.error)));
+
+  // events, approvals, reminders
+  const E = ID(961), F = ID(962);
+  const ev = (id, kind, aud, cls, approval, start, deadline) => `select public.event_save(${id ? `'${id}'` : 'null'}, '${kind}', 'Trip', 'رحلة', null, null, timestamptz '${start}', null, false, 'Park', '${aud}', ${cls ? `'${cls}'` : 'null'}, 30, ${approval}, ${deadline ? `timestamptz '${deadline}'` : 'null'})`;
+  res = await flow([
+    T('2026-10-11 09:00'),
+    [U.admin, ev(null, 'event', 'class', SEEDCLASS2, true, '2026-10-20 09:00+03', '2026-10-15 12:00+03')],        // 1 returns id
+    [U.hana, ev(null, 'event', 'all', null, false, '2026-10-20 09:00+03', null)],                                  // 2 teachers cannot
+    [U.admin, ev(null, 'event', 'all', null, true, '2026-10-20 09:00+03', '2026-10-25 12:00+03')],                // 3 deadline after the start
+    [U.admin, ev(null, 'event', 'all', null, true, '2026-10-20 09:00+03', null)],                                 // 4 needs a deadline
+    [U.admin, ev(null, 'event', 'class', null, false, '2026-10-20 09:00+03', null)],                              // 5 needs a class
+    [U.admin, ev(null, 'closure', 'all', null, false, '2026-10-22 00:00+03', null)],                               // 6 closure for everyone
+    [U.admin, ev(null, 'session', 'all', null, false, '2026-10-23 10:00+03', null)],                               // 7 session: no email
+    [null, `select id from public.events where title_en = 'Trip' and kind = 'event' and audience = 'class' order by created_at desc limit 1`], // 8
+    [null, `select user_id, template, payload::text as p from public.email_outbox where template = 'event_new' order by template, user_id`], // 9
+    [U.parentB, `select count(*)::int as n from public.events where title_en = 'Trip'`],                           // 10 sees class 2 event + closure + session
+    [U.parentA, `select count(*)::int as n from public.events where title_en = 'Trip'`],                           // 11 not the class-2 event
+    [U.hana, `select count(*)::int as n from public.events where title_en = 'Trip'`],                              // 12
+  ]);
+  check('only management creates events; a class event needs a class, an approval needs a deadline before the event', !res[1].error && !!res[2].error && !!res[3].error && !!res[4].error && !!res[5].error && !res[6].error && !res[7].error, JSON.stringify(res.slice(1, 8).map((x) => x.error)));
+  const evMail = res[9].rows;
+  check('families are emailed about a new event or closure (only the class\'s families for a class event); sessions send nothing; no text in the email', evMail.length === 5 && !evMail.some((x) => /Trip|رحلة/.test(x.p)), JSON.stringify(evMail.map((x) => [x.template, x.user_id, x.p])));
+  check('calendar visibility follows the audience', res[10].rows[0].n === 3 && res[11].rows[0].n === 2 && res[12].rows[0].n === 2, JSON.stringify([res[10], res[11], res[12]]));
+
+  const evId = `(select id from public.events where title_en = 'Trip' and audience = 'class' limit 1)`;
+  res = await flow([
+    T('2026-10-11 09:00'), [U.admin, ev(null, 'event', 'class', SEEDCLASS2, true, '2026-10-20 09:00+03', '2026-10-15 12:00+03')],
+    [U.parentB, `select public.event_respond(${evId}, '${gamma}', 'yes')`],                                    // 2 ok
+    [U.parentB, `select public.event_respond(${evId}, '${beta}', 'yes')`],                                     // 3 beta is in the other class
+    [U.parentA, `select public.event_respond(${evId}, '${gamma}', 'yes')`],                                    // 4 not their child
+    [U.hana, `select public.event_respond(${evId}, '${gamma}', 'yes')`],                                       // 5 staff cannot
+    [U.parentB, `select public.event_respond(${evId}, '${gamma}', 'maybe')`],                                  // 6
+    [U.parentB, `select public.event_respond(${evId}, '${gamma}', 'no')`],                                     // 7 changed their mind
+    [U.parentB, `select answer from public.event_responses where child_id = '${gamma}' and event_id = ${evId}`], // 8
+    [U.parentC, `select answer from public.event_responses where event_id = ${evId}`],                         // 9 other family: nothing
+    [U.admin, `select child_name, answer, answered_by_name, parents from public.event_responses_summary(${evId})`], // 10
+    [U.hana, `select * from public.event_responses_summary(${evId})`],                                         // 11
+    [U.admin, `select public.event_save(null, 'event', 'Fun day', null, null, null, timestamptz '2026-10-20 09:00+03', null, false, null, 'all', null, null, false, null)`], // 12
+    [U.parentB, `select public.event_respond((select id from public.events where title_en = 'Fun day'), '${gamma}', 'yes')`], // 13 needs no answer
+    T('2026-10-14 12:00'),
+    [null, `select public.cka_run_content_check((timestamp '2026-10-14 12:00') at time zone 'Africa/Cairo') as r`],                                                      // 15 within 24 h of the deadline? (deadline 15th 12:00): 24 h before is 14th 12:00 -> yes
+    [null, `select user_id from public.email_outbox where template = 'event_reminder' order by user_id`],      // 16
+    [null, `select public.cka_run_content_check((timestamp '2026-10-14 12:00') at time zone 'Africa/Cairo') as r`],                                                      // 17 once
+    T('2026-10-15 12:01'),
+    [U.parentC, `select public.event_respond(${evId}, '${delta}', 'yes')`],                                    // 19 too late
+  ]);
+  check('a parent answers yes or no for their own child in the event\'s class, can change their mind, and nobody else can answer or see the answer', !res[2].error && !!res[3].error && !!res[4].error && !!res[5].error && !!res[6].error && !res[7].error && res[8].rows[0].answer === 'no' && res[9].rows.length === 0 && !!res[13].error);
+  const sum = res[10].rows;
+  check('admin sees every child in the audience with the answer or a missing answer (missing first); teachers cannot', sum.length === 2 && sum[0].answer === null && sum[0].child_name.startsWith('Mariam') && sum[1].answer === 'no' && sum[1].answered_by_name === 'Parent B (seed)' && !!res[11].error || (res[11].rows.length === 0), JSON.stringify(sum));
+  check('families with an unanswered event get one reminder within 24 hours of the deadline; the family that answered gets none; after the deadline answers are refused', res[15].rows[0].r.events === 1 && res[16].rows.map((x) => x.user_id).join() === U.parentC && res[17].rows[0].r.events === 0 && /deadline_passed/.test(res[19].error), JSON.stringify([res[15].rows, res[16].rows, res[19].error]));
 }
 
 // ---------------------------------------------------------------------------

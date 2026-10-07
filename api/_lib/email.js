@@ -75,6 +75,19 @@ const T = {
   review_monthly: (p, l) => l === "ar"
     ? { subject: "مراجعة الشهر", lines: ["بدأ شهر جديد وحان وقت المراجعة الشهرية.", `المهام المتأخرة: ${p.late_tasks}.`], button: ["فتح لوحة المالك", "/staff/#/owner"] }
     : { subject: "Monthly review", lines: ["A new month has started: time for the monthly review.", `Late tasks: ${p.late_tasks}.`], button: ["Open the owner dashboard", "/staff/#/owner"] },
+  // ---- announcements and events (no details: the text itself is only in the portal)
+  announcement_new: (p, l) => l === "ar"
+    ? { subject: p.important ? "إعلان مهم من الحضانة" : "إعلان جديد من الحضانة", lines: ["يوجد إعلان جديد ينتظرك في البوابة."], button: ["قراءة الإعلان", "/portal/#/news"] }
+    : { subject: p.important ? "An important announcement from the academy" : "A new announcement from the academy", lines: ["There is a new announcement waiting for you in the portal."], button: ["Read it", "/portal/#/news"] },
+  announcement_reminder: (p, l) => l === "ar"
+    ? { subject: "تذكير: إعلان مهم لم تقرأه بعد", lines: ["لديك إعلان مهم لم تطّلع عليه بعد. يُرجى قراءته في البوابة."], button: ["قراءة الإعلان", "/portal/#/news"] }
+    : { subject: "Reminder: an important announcement you have not read", lines: ["You have an important announcement that you have not opened yet. Please read it in the portal."], button: ["Read it", "/portal/#/news"] },
+  event_new: (p, l) => l === "ar"
+    ? { subject: p.needs_approval ? "فعالية جديدة تحتاج إلى موافقتك" : "فعالية جديدة في التقويم", lines: [p.needs_approval ? "هناك فعالية جديدة تحتاج إلى موافقتك قبل موعد محدد. يُرجى الرد في البوابة." : "تمت إضافة فعالية أو إغلاق إلى التقويم."], button: ["فتح التقويم", "/portal/#/calendar"] }
+    : { subject: p.needs_approval ? "A new event needs your answer" : "A new item in the calendar", lines: [p.needs_approval ? "There is a new event that needs your answer before a deadline. Please reply in the portal." : "An event or closure was added to the calendar."], button: ["Open the calendar", "/portal/#/calendar"] },
+  event_reminder: (p, l) => l === "ar"
+    ? { subject: "تذكير: فعالية تنتظر ردّك", lines: ["ينتهي قريباً موعد الرد على فعالية. يُرجى الرد في البوابة."], button: ["فتح التقويم", "/portal/#/calendar"] }
+    : { subject: "Reminder: an event is waiting for your answer", lines: ["The deadline to answer an event is close. Please reply in the portal."], button: ["Open the calendar", "/portal/#/calendar"] },
   // ---- daily reports (no details: just that something is ready)
   daily_report_ready: (p, l) => l === "ar"
     ? { subject: "تقرير طفلك اليومي جاهز", lines: ["تقرير اليوم عن طفلك ينتظرك في البوابة."], button: ["قراءة التقرير", "/portal/#/daily"] }
