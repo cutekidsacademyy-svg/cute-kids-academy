@@ -116,7 +116,33 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 - [ ] On a phone: the home screen shows, for each child, whether they have arrived, today's report, this month at a glance, today's schedule, the latest photos, what is coming up, news, events waiting for an answer, open cases. The bottom menu has Home, Report, Calendar, Photos, More.
 - [ ] **Ask a question** (and **Report a missing item** with a photo): it becomes a case ("can wait" unless the parent ticks urgent), shows in the staff queue, and an email arrives at the academy inbox and to every admin. Reply as staff: the parent sees it in the portal and gets an email.
 - [ ] **WhatsApp**: set the academy's WhatsApp Business number in **Admin > Settings** (digits with country code). The "Ask on WhatsApp" button then opens a chat with the parent's name, child and case reference already typed in. If the number is empty, the button is simply not shown.
-- [ ] The "Payments" button and bottom-menu item arrive with Prompt 20 (payments); until then "More" holds everything else.
+- [ ] The bottom menu is Home, Report, Calendar, Photos, Payments; **More** sits at the top next to the language switch. The home screen has four quick buttons (Ask a question, Report an absence, Report a missing item, Payments).
+
+### Absence follow-up and approval reminders (Prompts 18 and 19)
+
+- [ ] **Staff > Absences**: pick a period. You see total absence days, reported (with reason), not reported, days in a row now, last attended and last reason for each child, plus summary tiles. **Add an absence** (child, date, did the parent tell us, reason) works for any past school day.
+- [ ] A child absent 3 or more school days in a row appears in **Follow-up tasks** at 10:00 on the third day. Send the friendly message from the task (it goes to the Messages page and by email to both parents). If nobody answers within 2 school days a reminder task appears, then a "call the family" task; at 18:00 an unresolved task is escalated to the manager. Mark the outcome (child back, long-term absence, left) and the task closes by itself when the child returns.
+- [ ] **Events that need a yes or no**: parents who have not answered are reminded 24 hours after posting and the day before the deadline (one reminder a day). On the deadline day the **Events** page lists the families to phone, with an "I called" button and a note. No answer counts as "not approved".
+- [ ] Parents see the follow-up notes under **More > Messages from the academy**; the home screen shows an unread card.
+
+### Payments (Prompt 20)  — money is visible only to the family, finance and the owner
+
+- [ ] **Owner > Payments > Payment settings**: fill in the academy's InstaPay address, the bank details (and the bank's InstaPay link if there is one), due day, reminder days. **Confirm with the bank what type of account receives InstaPay** before families start paying. Late fees are OFF; switch them on only after the fee policy every family signed says how much and when.
+- [ ] Give each child a **fee plan** (Payments > Open > Fee plan). Monthly tuition is added automatically (from the 25th, for the coming month, once the plan exists); event costs and transport fees appear as charges. Overtime is charged at the overtime rate in settings (0 until you set it).
+- [ ] Parent: **Payments** shows what is due, the itemised charges, the late-fee rule in plain words, the amount, the InstaPay address and a unique payment note with Copy buttons. After paying they enter the **transaction reference** (and an optional screenshot) and press Send.
+- [ ] Finance: the payment appears under **Payments waiting for confirmation**. Match the reference on the bank statement, then **Confirm** (the parents get a receipt by email and a numbered printable receipt) or **Reject** with a reason (the family sees it). The same reference cannot be used twice.
+- [ ] Finance: **Record cash or a bank transfer** received at the office; it is confirmed straight away with a receipt. Filters and the search bar find a child or a parent instantly. **Download as CSV** gives the accountant the month.
+- [ ] Teachers, the admin and the manager do **not** see any payment page or amount (try it: log in as a teacher; the Payments item is missing).
+- [ ] Owner only: **waive a late fee** (a reason is required and is recorded).
+
+### Birthdays, the birthday wall and transport (Prompt 21)
+
+- [ ] **Staff > Birthdays**: the list by month; edit the message in English and Arabic (use {child}); the switch turns the automatic 8:00 message on or off; **Send now** sends one immediately. Both parents get it under Messages and by email.
+- [ ] **Birthday wall** (public page `/birthdays/`, not listed in search engines): shows only a first name, an initial and the age, only for children whose parents ticked the birthday-wall consent at registration. Untick the consent in the child's record (or ask the parent) and the child disappears at once. Decide where to link it from (it is not linked from the website yet).
+- [ ] **Staff > Transport** (manager, admin, owner, and the staff member who rides a bus): create a route (driver, who rides, monthly fee), add stops with morning and afternoon times, add children (one route per child). On the day, open the run: mark each child On board, Absent or Dropped off; **Bus is 10 minutes away** emails the families at that stop; **Dropped off** emails the family. The monthly fee becomes a Payments charge at the start of each month.
+- [ ] Parents: **More > School bus** shows the route, driver, stop, times and today's status; the home screen shows it when the child rides.
+- [ ] **Admin > a child > Parents and access**: both parents' access is shown; **Resend the invitation**, **Switch off / on** access, and **Invite the other parent** (a child can have two parents at most).
+- [ ] Parent Report tab: the daily report and, below it, **Accident reports** with the "I have read this" button.
 
 ## 7. Staff first (one week)
 
@@ -153,4 +179,6 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 
 ### What is not built yet
 
-Absence follow-up, approval reminders, payments, transport and birthdays (Prompts 12 to 20 and the rest of Prompt 21).
+Nothing from the plan is left to build. What remains is configuration (domain, Resend, scheduler, keys), a native Arabic review, a legal review of the privacy notice and the consents, and the owner's decisions below.
+
+**Decisions for the owner to confirm:** (1) the admin and the manager cannot see payment amounts, only finance and the owner can; (2) late fees stay off until the fee policy says how much; (3) the overtime rate is 0 until set; (4) working hours, answer deadlines, consent wording and email texts are fixed in the system (change them by asking Claude Code); (5) a child can be on one bus route only; (6) the birthday wall is a separate public page that search engines are asked to ignore; (7) the receiving account for InstaPay must be confirmed with the bank.
