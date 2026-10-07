@@ -58,7 +58,7 @@
     var mine = el("input", { type: "checkbox" }); mine.checked = filters.mine;
     mine.addEventListener("change", function () { filters.mine = mine.checked; draw(); });
     var bar = el("div", { class: "filters" }, [
-      sel("type", t("s.f.type"), [["", t("s.f.any")], ["complaint", t("s.type.complaint")], ["safety_concern", t("s.type.safety_concern")]]),
+      sel("type", t("s.f.type"), [["", t("s.f.any")], ["complaint", t("s.type.complaint")], ["safety_concern", t("s.type.safety_concern")], ["question", t("s.type.question")], ["missing_item", t("s.type.missing_item")]]),
       sel("urgency", t("s.f.urgency"), [["", t("s.f.any")], ["critical", t("s.urg.critical")], ["urgent", t("s.urg.urgent")], ["can_wait", t("s.urg.can_wait")]]),
       sel("status", t("s.f.status"), [["open", t("s.f.open")], ["all", t("s.f.all")], ["received", t("s.st.received")], ["acknowledged", t("s.st.acknowledged")],
         ["in_progress", t("s.st.in_progress")], ["resolved", t("s.st.resolved")], ["closed", t("s.st.closed")]]),

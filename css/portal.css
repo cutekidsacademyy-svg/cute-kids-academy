@@ -229,3 +229,15 @@ tr.row-watch td{background:#fff8ee}
 .cal-dots i.dot-session{background:var(--blue)}
 .cal-dots i.dot-deadline{background:#b45309}
 .cal-dots i.dot-menu{background:#17803d}
+
+/* parent home: quick buttons and the bottom menu */
+.quick{display:grid;gap:10px;margin-top:12px}
+.p-bottom{display:none}
+@media (max-width:699px){
+  .p-header .p-nav{display:none}
+  body{padding-bottom:70px}
+  .p-bottom{display:flex;position:fixed;inset-inline:0;bottom:0;z-index:10;background:#fff;border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  .p-bottom a{flex:1;text-align:center;text-decoration:none;font-weight:700;font-size:.8rem;color:var(--muted);padding:8px 2px;border-radius:12px}
+  .p-bottom a.active{background:var(--pink-light);color:var(--pink-dark)}
+}
+a.btn{text-decoration:none}

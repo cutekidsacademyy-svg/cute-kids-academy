@@ -2,7 +2,7 @@
 // Please have a native Arabic speaker review the Arabic before launch.
 (function () {
   var en = {
-    "s.nav.admin": "Admin", "role.finance": "Finance",
+    "s.nav.admin": "Admin", "role.finance": "Finance", "s.type.question": "Question", "s.type.missing_item": "Missing item",
     "jt.teacher": "Teacher", "jt.co_teacher": "Co-teacher", "jt.assistant": "Assistant", "jt.admin": "Admin", "jt.manager": "Manager", "jt.owner": "Owner", "jt.finance_assistant": "Finance assistant", "jt.finance_manager": "Finance manager",
     "staff.jobtitle": "Job title", "staff.titlesaved": "Job title saved.",
     "ad.title": "Admin", "ad.tab.today": "Today", "ad.tab.children": "Children", "ad.tab.classes": "Classes", "ad.tab.settings": "Settings", "ad.tab.people": "Staff accounts",
@@ -26,7 +26,7 @@
     "ad.fixed.change": "These rules, the wording of consents and the text of the emails are fixed in the system. If you want them changed, ask the person who maintains the system.", "ad.fixed.links": "Set elsewhere:", "ad.fixed.reports": "When reports are sent: Daily reports", "ad.fixed.photos": "How long photos are kept: Photos",
   };
   var ar = {
-    "s.nav.admin": "الإدارة", "role.finance": "المالية",
+    "s.nav.admin": "الإدارة", "role.finance": "المالية", "s.type.question": "سؤال", "s.type.missing_item": "غرض مفقود",
     "jt.teacher": "معلمة", "jt.co_teacher": "معلمة مساعدة", "jt.assistant": "مساعدة", "jt.admin": "إدارة", "jt.manager": "مدير", "jt.owner": "المالك", "jt.finance_assistant": "مساعد مالي", "jt.finance_manager": "مدير مالي",
     "staff.jobtitle": "المسمى الوظيفي", "staff.titlesaved": "تم حفظ المسمى الوظيفي.",
     "ad.title": "الإدارة", "ad.tab.today": "اليوم", "ad.tab.children": "الأطفال", "ad.tab.classes": "الفصول", "ad.tab.settings": "الإعدادات", "ad.tab.people": "حسابات الموظفين",

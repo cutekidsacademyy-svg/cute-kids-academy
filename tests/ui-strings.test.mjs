@@ -12,6 +12,7 @@ const read = (f) => readFileSync(join(root, f), "utf8");
 const range = (prefix, list) => list.map((x) => prefix + x);
 
 const SETS = [
+  { name: "parent home, ask forms and More", strings: "js/portal-home-strings.js", scripts: ["js/portal-home.js", "js/portal-ask.js"], prefixes: ["hm", "pq", "mo"], extra: range("pq.t.", ["fees", "schedule", "food", "my_childs_day", "other"]) },
   { name: "admin area and job titles", strings: "js/admin-strings.js", scripts: ["js/admin.js"], prefixes: ["ad", "jt", "staff"],
     extra: [...range("ad.access.", ["active", "invited", "off"]), ...range("ad.c.", ["photos_class", "photos_social", "outings", "emergency_treatment", "birthday_wall"]), ...range("ad.log.", ["created", "health", "pickup", "consent", "contact", "class", "withdrawn", "reinstated"]),
       ...range("ad.cl.r.", ["head", "teacher", "co_teacher", "assistant"]), ...range("ad.tab.", ["today", "children", "classes", "settings", "people"]), ...range("jt.", ["teacher", "co_teacher", "assistant", "admin", "manager", "owner", "finance_assistant", "finance_manager"])] },
@@ -72,4 +73,14 @@ test("photos: links are short-lived, never public, videos are limited to 60 seco
 test("the photos screens are wired in", () => {
   assert.match(read("staff/index.html"), /photos\.js/);
   assert.match(read("portal/index.html"), /portal-photos\.js/);
+});
+
+test("the parent home shows the four quick actions, no accident-reporting button, and the bottom menu exists", () => {
+  const home = read("js/portal-home.js"), portal = read("portal/index.html"), ask = read("js/portal-ask.js");
+  for (const href of ['"#/ask"', '"#/attendance"', '"#/ask/missing"', '"#/new"']) assert.ok(home.includes(href), href);
+  assert.ok(!/report an accident/i.test(home), "parents do not report accidents; staff do");
+  assert.match(portal, /class="p-bottom"/);
+  assert.match(portal, /data-route="more"/);
+  assert.ok(ask.includes("https://wa.me/"));
+  assert.ok(ask.includes('urgency: urgent.checked ? "urgent" : "can_wait"'));
 });

@@ -460,7 +460,7 @@
 
   // Shared with the other parent pages (js/portal-child.js: "My child").
   window.CKAParent = {
-    routes: {}, homeCards: [], show: show, card: card, note: note, pill: pill, link: link, field: field, loadingView: loadingView, failView: failView,
+    routes: {}, homeCards: [], caseItem: caseItem, show: show, card: card, note: note, pill: pill, link: link, field: field, loadingView: loadingView, failView: failView,
     profile: function () { return profile; }, phone: function () { return phone; }, children: function () { return children; }, prepareImage: prepareImage, fmt: fmt, setProfile: function (p) { profile = p; },
   };
 
@@ -468,10 +468,11 @@
   function go() {
     var parts = location.hash.replace(/^#\/?/, "").split("/");
     route = parts[0] || "home";
-    document.querySelectorAll("#nav a").forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-route") === route || (route === "home" && a.getAttribute("data-route") === "home")); });
+    document.querySelectorAll("#nav a, .p-bottom a").forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-route") === route || (route === "home" && a.getAttribute("data-route") === "home")); });
     window.scrollTo(0, 0);
-    var run = { home: home, new: newConcern, done: function () { return done(parts[1]); }, "case": function () { return casePage(parts[1]); }, reports: reports, rate: rate }[route]
-      || (window.CKAParent.routes[route] ? function () { return window.CKAParent.routes[route](parts); } : home);
+    var extra = window.CKAParent.routes[route];
+    var run = extra ? function () { return extra(parts); }
+      : { home: home, new: newConcern, done: function () { return done(parts[1]); }, "case": function () { return casePage(parts[1]); }, reports: reports, rate: rate }[route] || home;
     Promise.resolve(run()).catch(failView);
   }
 
@@ -483,10 +484,10 @@
     children = q.data || [];
     try { var s = await (await fetch("/content/settings.json")).json(); phone = s.phone || ""; } catch (e) { phone = ""; }
     document.getElementById("app").hidden = false;
-    document.querySelectorAll("#nav a").forEach(function (a) { a.textContent = t(a.getAttribute("data-key")); });
+    document.querySelectorAll("#nav a, .p-bottom a").forEach(function (a) { a.textContent = t(a.getAttribute("data-key")); });
     window.addEventListener("hashchange", go);
     document.addEventListener("cka-lang", function () {
-      document.querySelectorAll("#nav a").forEach(function (a) { a.textContent = t(a.getAttribute("data-key")); });
+      document.querySelectorAll("#nav a, .p-bottom a").forEach(function (a) { a.textContent = t(a.getAttribute("data-key")); });
       go();
     });
     go();

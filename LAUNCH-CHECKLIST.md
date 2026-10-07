@@ -111,6 +111,13 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 - [ ] **Staff accounts** (owner or manager): create a **Finance** account. Sign in as them: they see only **Attendance reports** (with overtime), no children, health, cases or HR. Try a few URLs by hand to be sure.
 - [ ] **Admin > Settings**: set the real phone, WhatsApp number (digits with country code), email and address, and the closing time after which pickups count as overtime. Working hours and urgency deadlines are fixed in the system, as is the wording of consents and emails.
 
+### Parent home, questions and the WhatsApp button (Prompt 17)
+
+- [ ] On a phone: the home screen shows, for each child, whether they have arrived, today's report, this month at a glance, today's schedule, the latest photos, what is coming up, news, events waiting for an answer, open cases. The bottom menu has Home, Report, Calendar, Photos, More.
+- [ ] **Ask a question** (and **Report a missing item** with a photo): it becomes a case ("can wait" unless the parent ticks urgent), shows in the staff queue, and an email arrives at the academy inbox and to every admin. Reply as staff: the parent sees it in the portal and gets an email.
+- [ ] **WhatsApp**: set the academy's WhatsApp Business number in **Admin > Settings** (digits with country code). The "Ask on WhatsApp" button then opens a chat with the parent's name, child and case reference already typed in. If the number is empty, the button is simply not shown.
+- [ ] The "Payments" button and bottom-menu item arrive with Prompt 20 (payments); until then "More" holds everything else.
+
 ## 7. Staff first (one week)
 
 - [ ] Staff use the portal with a few pretend cases for a week, so they learn the screens before any family sees them.
@@ -146,4 +153,4 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 
 ### What is not built yet
 
-The parent dashboard and calendar, absence follow-up, approval reminders, payments, transport and birthdays (Prompts 12 to 20 and the rest of Prompt 21).
+Absence follow-up, approval reminders, payments, transport and birthdays (Prompts 12 to 20 and the rest of Prompt 21).
