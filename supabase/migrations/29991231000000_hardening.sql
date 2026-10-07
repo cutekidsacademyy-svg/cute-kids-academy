@@ -31,6 +31,7 @@ declare
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
     'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies',
     'parent_update_health', 'parent_save_pickup',
+    'absence_add', 'absence_tracker', 'parent_message_read', 'absence_followup_list', 'followup_send', 'followup_outcome', 'absence_followup_stats', 'approval_call_log', 'approval_call_list', 'admin_parent_search', 'case_from_email',
     'parent_month_summary', 'academy_settings_save', 'admin_home', 'admin_children', 'admin_child_profile', 'child_move_class', 'child_withdraw', 'child_reinstate', 'admin_classes', 'class_save', 'class_staff_set', 'class_staff_remove', 'staff_job_title_save',
     'cka_media_visible', 'cka_media_upload_ok', 'cka_media_file', 'media_consent_check', 'media_add', 'media_set_tags', 'media_remove', 'media_mark_post', 'media_settings_save',
     'notification_prefs_save', 'push_subscribe', 'push_unsubscribe', 'cka_announcement_visible', 'cka_announcement_file', 'announcement_post', 'announcement_mark_read', 'announcement_stats', 'announcement_remove', 'cka_event_visible', 'menu_week', 'menu_save', 'schedule_save', 'schedule_delete', 'event_save', 'event_delete', 'event_respond', 'event_responses_summary',
@@ -58,6 +59,10 @@ begin
   if to_regprocedure('public.cka_run_deadline_check(timestamptz)') is not null then
     revoke all on function public.cka_run_deadline_check(timestamptz) from public, anon, authenticated;
     grant execute on function public.cka_run_deadline_check(timestamptz) to service_role;
+  end if;
+  if to_regprocedure('public.cka_run_absence_check(timestamptz)') is not null then
+    revoke all on function public.cka_run_absence_check(timestamptz) from public, anon, authenticated;
+    grant execute on function public.cka_run_absence_check(timestamptz) to service_role;
   end if;
   if to_regprocedure('public.cka_media_expired(timestamptz)') is not null then
     revoke all on function public.cka_media_expired(timestamptz), public.cka_media_apply(uuid[], text) from public, anon, authenticated;

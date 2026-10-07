@@ -145,6 +145,7 @@ console.log('\n== Security audit: structure ==');
     'investigation_name_warnings', 'staff_investigations', 'staff_investigation', 'staff_report', 'record_staff_attendance', 'staff_attendance_day', 'submit_staff_complaint',
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
     'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies', 'parent_update_health', 'parent_save_pickup',
+    'absence_add', 'absence_tracker', 'parent_message_read', 'absence_followup_list', 'followup_send', 'followup_outcome', 'absence_followup_stats', 'approval_call_log', 'approval_call_list', 'admin_parent_search', 'case_from_email',
     'parent_month_summary', 'academy_settings_save', 'admin_home', 'admin_children', 'admin_child_profile', 'child_move_class', 'child_withdraw', 'child_reinstate', 'admin_classes', 'class_save', 'class_staff_set', 'class_staff_remove', 'staff_job_title_save',
     'cka_media_visible', 'cka_media_upload_ok', 'cka_media_file', 'media_consent_check', 'media_add', 'media_set_tags', 'media_remove', 'media_mark_post', 'media_settings_save',
     'notification_prefs_save', 'push_subscribe', 'push_unsubscribe', 'cka_announcement_visible', 'cka_announcement_file', 'announcement_post', 'announcement_mark_read', 'announcement_stats', 'announcement_remove', 'cka_event_visible', 'menu_week', 'menu_save', 'schedule_save', 'schedule_delete', 'event_save', 'event_delete', 'event_respond', 'event_responses_summary',
@@ -154,10 +155,10 @@ console.log('\n== Security audit: structure ==');
   check('the ONLY security-definer functions a logged-in user can run are the intended screens/helpers (nothing new slipped in)',
     JSON.stringify(reach) === JSON.stringify(ALLOWED), JSON.stringify({ extra: reach.filter((x) => !ALLOWED.includes(x)), missing: ALLOWED.filter((x) => !reach.includes(x)) }));
   const svc = await q(`select has_function_privilege('service_role', 'public.cka_run_deadline_check(timestamptz)', 'execute') as a, has_function_privilege('service_role', 'public.cka_run_owner_reminders(timestamptz)', 'execute') as b,
-      has_function_privilege('service_role', 'public.cka_run_attendance_check(timestamptz)', 'execute') as f, has_function_privilege('authenticated', 'public.cka_run_attendance_check(timestamptz)', 'execute') as g, has_function_privilege('authenticated', 'public.cka_now()', 'execute') as h, has_function_privilege('service_role', 'public.cka_run_content_check(timestamptz)', 'execute') as k, has_function_privilege('authenticated', 'public.cka_run_content_check(timestamptz)', 'execute') as m, has_function_privilege('authenticated', 'public.cka_allergen_match(text,text)', 'execute') as n, has_function_privilege('service_role', 'public.cka_media_expired(timestamptz)', 'execute') as o, has_function_privilege('authenticated', 'public.cka_media_expired(timestamptz)', 'execute') as p, has_function_privilege('authenticated', 'public.cka_media_names(uuid[],boolean)', 'execute') as q, has_function_privilege('service_role', 'public.cka_run_report_check(timestamptz)', 'execute') as i, has_function_privilege('authenticated', 'public.cka_run_report_check(timestamptz)', 'execute') as j,
+      has_function_privilege('service_role', 'public.cka_run_attendance_check(timestamptz)', 'execute') as f, has_function_privilege('authenticated', 'public.cka_run_attendance_check(timestamptz)', 'execute') as g, has_function_privilege('authenticated', 'public.cka_now()', 'execute') as h, has_function_privilege('service_role', 'public.cka_run_content_check(timestamptz)', 'execute') as k, has_function_privilege('authenticated', 'public.cka_run_content_check(timestamptz)', 'execute') as m, has_function_privilege('authenticated', 'public.cka_allergen_match(text,text)', 'execute') as n, has_function_privilege('service_role', 'public.cka_run_absence_check(timestamptz)', 'execute') as r, has_function_privilege('authenticated', 'public.cka_run_absence_check(timestamptz)', 'execute') as s2, has_function_privilege('service_role', 'public.cka_media_expired(timestamptz)', 'execute') as o, has_function_privilege('authenticated', 'public.cka_media_expired(timestamptz)', 'execute') as p, has_function_privilege('authenticated', 'public.cka_media_names(uuid[],boolean)', 'execute') as q, has_function_privilege('service_role', 'public.cka_run_report_check(timestamptz)', 'execute') as i, has_function_privilege('authenticated', 'public.cka_run_report_check(timestamptz)', 'execute') as j,
       has_function_privilege('authenticated', 'public.cka_enqueue_email(uuid,text,jsonb,text)', 'execute') as c, has_function_privilege('anon', 'public.cka_enqueue_email(uuid,text,jsonb,text)', 'execute') as d,
       has_function_privilege('authenticated', 'public.cka_person_name(uuid)', 'execute') as e`);
-  check('the server key can run the scheduled jobs; nobody else can queue emails or look up names', svc[0].a && svc[0].b && svc[0].f && svc[0].i && svc[0].k && svc[0].o && !svc[0].p && !svc[0].q && !svc[0].m && !svc[0].n && !svc[0].j && !svc[0].g && !svc[0].h && !svc[0].c && !svc[0].d && !svc[0].e, JSON.stringify(svc[0]));
+  check('the server key can run the scheduled jobs; nobody else can queue emails or look up names', svc[0].a && svc[0].b && svc[0].f && svc[0].i && svc[0].k && svc[0].o && svc[0].r && !svc[0].s2 && !svc[0].p && !svc[0].q && !svc[0].m && !svc[0].n && !svc[0].j && !svc[0].g && !svc[0].h && !svc[0].c && !svc[0].d && !svc[0].e, JSON.stringify(svc[0]));
   const pure = fns.filter((f) => !f.definer && !f.is_trigger && f.anon).map((f) => f.name).sort().join(',');
   check('the only functions anonymous visitors can run are pure date and arithmetic helpers (they read no data)',
     pure === 'cka_add_business_days,cka_add_working_hours,cka_case_payload,cka_deadlines,cka_in_working_hours,cka_is_email,cka_is_happy,cka_is_phone,cka_is_work_day,cka_next_work_day,cka_threshold,cka_working_start', pure);
@@ -175,10 +176,13 @@ console.log('\n== Security audit: who can read what (seed data) ==');
   const D = 'denied';
   // columns: anon, parentA, parentB, parentC, hana, mariam, admin, manager, owner
   const EXPECT = {
+    absence_followups:      [D, 0, 0, 0, 0, 0, 0, 0, 0],
     academy_settings:       [D, 1, 1, 1, 1, 1, 1, 1, 1],
     announcement_reads:     [D, 1, 0, 0, 0, 0, 1, 1, 1],
     announcement_targets:   [D, 0, 0, 0, 0, 0, 1, 1, 1],
     announcements:          [D, 2, 3, 2, 2, 1, 3, 3, 3],
+    approval_calls:         [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    approval_reminders:     [D, 0, 0, 0, 0, 0, 0, 0, 0],
     attachments:            [D, 1, 0, 0, 1, 0, 1, 1, 1],
     attendance:             [D, 1, 0, 1, 1, 0, 1, 1, 1],
     attendance_events:      [D, 0, 0, 0, 0, 0, 1, 1, 1],
@@ -219,6 +223,7 @@ console.log('\n== Security audit: who can read what (seed data) ==');
     owner_settings:         [D, 0, 0, 0, 0, 0, 0, 0, 1],
     owner_tasks:            [D, 0, 0, 0, 0, 0, 0, 0, 0],
     parent_children:        [D, 1, 2, 2, 0, 0, 5, 5, 5],
+    parent_messages:        [D, 0, 0, 0, 0, 0, 0, 0, 0],
     profiles:               [D, 1, 1, 1, 4, 3, 8, 8, 8],
     ratings:                [D, 0, 1, 0, 0, 0, 0, 1, 1],
     registration_applications: [D, 0, 0, 0, 0, 0, 1, 1, 1],
@@ -2411,6 +2416,155 @@ console.log('\n== Questions, missing items and the month at a glance ==');
   ]);
   const sm = res[6].rows[0].s;
   check('a parent sees days attended, days absent (told us / not told us) and late pickups for the month, counted in school days only', sm.attended === 2 && sm.absent_reported === 1 && sm.absent_unreported === 7 && sm.late_pickups === 1 && !!res[7].error && !!res[8].error && res[9].rows[0].s.attended === 2, JSON.stringify(sm));
+}
+
+// ---------------------------------------------------------------------------
+console.log('\n== Absence tracker, follow-up, approval reminders and email-to-case ==');
+{
+  const T = (local) => [null, `select set_config('app.now', ((timestamp '${local}') at time zone 'Africa/Cairo')::text, true)`];
+  const P = (local) => `(timestamp '${local}') at time zone 'Africa/Cairo'`;
+  const setup = [
+    [null, `update public.children set created_at = '2026-01-01'`], [null, `delete from public.attendance`], [null, `delete from public.attendance_notices`],
+    [null, `insert into public.attendance (child_id, att_date, checked_in_at) values ('${alpha}', '2026-10-08', '2026-10-08 05:00+00'), ('${beta}', '2026-10-13', '2026-10-13 05:00+00')`],
+    [null, `insert into public.attendance_notices (child_id, notice_date, kind, reason) values ('${alpha}', '2026-10-11', 'absence', 'Fever'), ('${alpha}', '2026-10-12', 'absence', 'Fever')`],
+  ];
+  const row = (r, id) => r.rows.find((x) => x.child_id === id);
+  let res = await flow([T('2026-10-14 10:30'), ...setup,
+    [U.admin, `select * from public.absence_tracker('2026-10-11', '2026-10-14')`],                                           // 6
+    [U.hana, `select * from public.absence_tracker('2026-10-11', '2026-10-14')`],                                            // 7
+    [U.admin, `select * from public.absence_tracker('2026-10-14', '2026-10-11')`],                                           // 8
+    [null, `insert into public.events (kind, title_en, starts_at, audience) values ('holiday', 'Holiday', '2026-10-12 00:00+03', 'all')`], // 9
+    [U.admin, `select * from public.absence_tracker('2026-10-11', '2026-10-14')`],                                           // 10
+    [U.admin, `select public.absence_add('${alpha}', '2026-10-14', true, 'Cold')`],                                          // 11 today
+    [U.admin, `select public.absence_add('${alpha}', '2026-10-16', true, 'Friday')`],                                        // 12
+    [U.admin, `select public.absence_add('${alpha}', '2026-10-15', true, 'Future')`],                                        // 13
+    [U.admin, `select public.absence_add('${beta}', '2026-10-13', true, 'Was here')`],                                       // 14
+    [U.admin, `select public.absence_add('${gamma}', '2026-10-13', true, '')`],                                              // 15 reason needed when a parent reported
+    [U.admin, `select public.absence_add('${gamma}', '2026-10-13', false, null)`],                                           // 16
+    [U.hana, `select public.absence_add('${gamma}', '2026-10-13', false, null)`],                                            // 17
+    [U.admin, `select * from public.absence_tracker('2026-10-13', '2026-10-13')`],                                           // 18
+  ]);
+  const a1 = row(res[6], alpha), b1 = row(res[6], beta), a2 = row(res[10], alpha);
+  check('the tracker counts absence days (reported with reasons, not reported), the current streak, the last day attended and the last reason, per child', a1.absent_days === 3 && a1.reported_days === 2 && a1.not_reported_days === 1 && a1.streak === 3 && JSON.stringify(a1.last_attended).startsWith('"2026-10-08') && a1.last_reason === 'Fever' && b1.absent_days === 2 && b1.streak === 0, JSON.stringify([a1, b1]));
+  check('only management can open the tracker; bad periods are refused', !!res[7].error && !!res[8].error);
+  check('closures and holidays in the calendar are not school days: they are skipped in the counts and do not break a streak', a2.absent_days === 2 && a2.streak === 2, JSON.stringify(a2));
+  check('admin can record an absence (a school day, not in the future, not for a child who was checked in); a reason is needed when a parent reported it; teachers cannot', !res[11].error && !!res[12].error && !!res[13].error && !!res[14].error && !!res[15].error && !res[16].error && !!res[17].error, JSON.stringify([11, 12, 13, 14, 15, 16, 17].map((i) => res[i].error)));
+  check('...a day recorded as "not reported by the parent" counts as not reported', row(res[18], gamma).not_reported_days === 1 && row(res[18], gamma).reported_days === 0, JSON.stringify(res[18].rows));
+
+  // the 10:00 check and the follow-up tasks
+  const tasks = `select child_id, kind, streak_days, due_date::text as due, message_sent_at is not null as sent, escalated_at is not null as esc, closed_reason from public.absence_followups order by child_id, kind`;
+  res = await flow([T('2026-10-14 10:30'), ...setup,
+    [null, `insert into public.attendance (child_id, att_date, checked_in_at) values ('${gamma}', '2026-10-14', '2026-10-14 06:00+00')`],     // 6 gamma is here today
+    [null, `select public.cka_run_absence_check(${P('2026-10-14 09:59')}) as r`],                                                             // 7 too early
+    [null, `select public.cka_run_absence_check(${P('2026-10-16 10:00')}) as r`],                                                             // 8 Friday
+    [null, `select public.cka_run_absence_check(${P('2026-10-14 10:00')}) as r`],                                                             // 9
+    [null, tasks],                                                                                                                             // 10
+    [null, `select public.cka_run_absence_check(${P('2026-10-14 10:15')}) as r`],                                                             // 11 nothing new
+    [null, `select user_id, template, payload::text as p from public.email_outbox where template = 'absence_task'`],                           // 12
+    [U.admin, `select public.absence_followup_list() as l`],                                                                                   // 13
+    [U.hana, `select public.absence_followup_list()`],                                                                                         // 14
+    [U.hana, `select count(*)::int as n from public.absence_followups`],                                                                       // 15
+  ]);
+  check('at 10:00 on a school day, a child absent 3 or more school days in a row (and not here today) gets a check-in task due that day; not earlier, not on a Friday, not twice', res[7].rows[0].r.checked === true && res[7].rows[0].r.created === 0 && res[8].rows[0].r.checked === false && res[9].rows[0].r.created === 2 && res[11].rows[0].r.created === 0, JSON.stringify([res[7], res[8], res[9], res[11]]));
+  check('...the children are alpha (3 days) and delta (since the start); gamma came in today and beta came back, so neither gets one', res[10].rows.map((x) => x.child_id).sort().join() === [alpha, delta].sort().join() && res[10].rows.every((x) => x.kind === 'check_in' && x.due === '2026-10-14' && !x.sent), JSON.stringify(res[10].rows));
+  check('admins get one email with a count (no names); the list shows days missed and the reasons parents gave; teachers see nothing', res[12].rows.length === 1 && res[12].rows[0].user_id === U.admin && !/Testson|Omar/.test(res[12].rows[0].p) && res[13].rows[0].l.length === 2 && JSON.stringify(res[13].rows[0].l).includes('Fever') && !!res[14].error && res[15].rows[0].n === 0, JSON.stringify(res[13].rows[0].l.map((x) => [x.child_name, x.streak_days])));
+
+  // sending the check-in, outcomes, escalation
+  const first = `(select id from public.absence_followups where child_id = '${alpha}' and kind = 'check_in')`;
+  res = await flow([T('2026-10-14 10:30'), ...setup,
+    [null, `select public.cka_run_absence_check(${P('2026-10-14 10:00')})`],                                                                   // 6
+    [U.admin, `select public.followup_outcome(${first}, 'parent_replied', null, null)`],                                                      // 7 message first
+    [U.admin, `select public.followup_send(${first}, 'short')`],                                                                              // 8
+    [U.hana, `select public.followup_send(${first}, 'We miss Omar! We hope he is feeling better.')`],                                         // 9
+    [U.admin, `select public.followup_send(${first}, 'We miss Omar! We hope he is feeling better.') as n`],                                   // 10 -> 2 parents
+    [U.parentA, `select body, kind from public.parent_messages`],                                                                             // 11
+    [U.parentB, `select count(*)::int as n from public.parent_messages`],                                                                     // 12
+    [null, `select user_id, payload::text as p from public.email_outbox where template = 'academy_message' order by user_id`],                // 13
+    [U.parentA, `select public.parent_message_read((select id from public.parent_messages limit 1))`],                                        // 14
+    [U.parentA, `select read_at is not null as r from public.parent_messages`],                                                               // 15
+    [U.admin, `select public.followup_outcome(${first}, 'returning', null, null)`],                                                           // 16 needs a date
+    [U.admin, `select public.followup_outcome(${first}, 'no_reply', null, null)`],                                                            // 17 stays open
+    [U.admin, `select public.followup_outcome(${first}, 'considering_leaving', null, 'Moving?')`],                                            // 18 closes + alerts
+    [null, `select user_id from public.email_outbox where template = 'followup_leaving' order by user_id`],                                   // 19
+    [U.admin, `select public.followup_send(${first}, 'Another message after closing')`],                                                      // 20 closed
+    [null, `select public.cka_run_absence_check(${P('2026-10-14 18:00')}) as r`],                                                             // 21
+    [null, `select child_id, escalated_at is not null as esc from public.absence_followups order by child_id`],                                // 22
+    [null, `select user_id from public.email_outbox where template = 'absence_escalated' order by user_id`],                                  // 23
+    [null, `select public.cka_run_absence_check(${P('2026-10-14 18:15')}) as r`],                                                             // 24 only once
+    [U.owner, `select public.absence_followup_stats('2026-01-01', '2030-01-01') as s`],                                                       // 25
+    [U.admin, `select public.absence_followup_stats('2026-01-01', '2030-01-01')`],                                                            // 26
+  ]);
+  check('a check-in message needs real text; only admin, manager or owner can send it; it reaches BOTH parents in the portal and by email (the email has no text); the outcome needs a message first', !!res[7].error && !!res[8].error && !!res[9].error && !res[10].error && res[10].rows[0].n === 2 && res[11].rows.length === 1 && /miss Omar/.test(res[11].rows[0].body) && res[12].rows[0].n === 0
+    && res[13].rows.length === 2 && !res[13].rows.some((x) => /Omar|miss/.test(x.p)) && res[15].rows[0].r === true, JSON.stringify([res[7].error, res[8].error, res[9].error, res[10], res[13].rows.length]));
+  check('"returning" needs a date; "no reply" keeps the task open; "considering leaving" closes it and alerts the owner and manager the same day; closed tasks cannot be used again', !!res[16].error && !res[17].error && !res[18].error && res[19].rows.map((x) => x.user_id).sort().join() === [U.manager, U.owner].sort().join() && !!res[20].error);
+  check('at 18:00 tasks without a message are escalated to the manager and owner, once', res[21].rows[0].r.escalated === 2 && res[22].rows.find((x) => x.child_id === delta).esc === true && res[22].rows.find((x) => x.child_id === gamma).esc === true && res[22].rows.find((x) => x.child_id === alpha).esc === false && res[23].rows.length === 4 && [...new Set(res[23].rows.map((x) => x.user_id))].sort().join() === [U.manager, U.owner].sort().join() && res[24].rows[0].r.escalated === 0, JSON.stringify([res[21], res[22]]));
+  const st = res[25].rows[0].s;
+  check('the owner sees how many follow-ups there were, how many were sent on time, and the outcomes (admin cannot)', st.created === 3 && st.sent === 1 && st.on_time === 1 && st.considering_leaving === 1 && st.escalated === 2 && !!res[26].error, JSON.stringify(st));
+
+  // second reminder and phone call after no reply; a child who returns closes everything
+  res = await flow([T('2026-10-14 10:30'), ...setup,
+    [null, `select public.cka_run_absence_check(${P('2026-10-14 10:00')})`],                                                                  // 6
+    [U.admin, `select public.followup_send(${first}, 'We have missed Omar for three days. Is everything OK?')`],                              // 7
+    [U.admin, `select public.followup_outcome(${first}, 'no_reply', null, null)`],                                                            // 8
+    [null, `select public.cka_run_absence_check(${P('2026-10-18 10:00')}) as r`],                                                             // 9 only 1 school day since (Thu 15): no
+    [null, `select public.cka_run_absence_check(${P('2026-10-19 10:00')}) as r`],                                                             // 10 two school days (Thu, Sun): reminder
+    [null, `select kind, closed_reason from public.absence_followups where child_id = '${alpha}' order by kind`],                              // 11
+    [U.admin, `select set_config('app.now', ((timestamp '2026-10-19 11:00') at time zone 'Africa/Cairo')::text, true), public.followup_send((select id from public.absence_followups where child_id = '${alpha}' and kind = 'reminder'), 'Second message: is everything OK with Omar?')`], // 12
+    [null, `select public.cka_run_absence_check(${P('2026-10-21 10:00')}) as r`],                                                             // 13 only one school day (Tue 20)
+    [null, `select public.cka_run_absence_check(${P('2026-10-22 10:00')}) as r`],                                                             // 14 Tue, Wed: phone call
+    [null, `select kind, closed_reason from public.absence_followups where child_id = '${alpha}' order by kind`],                              // 15
+    [null, `insert into public.attendance (child_id, att_date, checked_in_at) values ('${alpha}', '2026-10-22', '2026-10-22 05:00+00')`],     // 16 he comes back
+    [null, `select public.cka_run_absence_check(${P('2026-10-22 10:30')}) as r`],                                                             // 17
+    [null, `select kind, closed_reason from public.absence_followups where child_id = '${alpha}' order by kind`],                              // 18
+  ]);
+  check('with no reply after 2 more school days there is a second reminder task, then a phone-call task; fewer days do nothing', res[9].rows[0].r.next_steps === 0 && res[10].rows[0].r.next_steps >= 1 && res[11].rows.map((x) => x.kind).join() === 'check_in,reminder' && res[13].rows[0].r.next_steps === 0 && res[15].rows.map((x) => x.kind).join() === 'call,check_in,reminder', JSON.stringify([res[9], res[10], res[11], res[13], res[15]]));
+  check('when the child comes back, every open task for them is closed', res[18].rows.every((x) => x.closed_reason !== null), JSON.stringify(res[18].rows));
+
+  // approvals: reminders, call list, "no answer"
+  const EV = `(select id from public.events where title_en = 'Trip' order by created_at desc limit 1)`;
+  const rem = `select ar.kind, p.full_name, ar.sent_at::date::text as d from public.approval_reminders ar join public.profiles p on p.id = ar.parent_id where ar.event_id = ${EV} order by ar.sent_at, p.full_name`;
+  res = await flow([[null, `with d as (delete from public.events where title_en like 'SEED %') select set_config('app.now', ((timestamp '2026-10-09 09:00') at time zone 'Africa/Cairo')::text, true)`],
+    [U.admin, `select public.event_save(null, 'event', 'Trip', 'رحلة', null, null, timestamptz '2026-10-20 09:00+03', null, false, 'Park', 'class', '${ID(202)}', 30, true, timestamptz '2026-10-15 12:00+03')`], // 1
+    [U.parentB, `select public.event_respond(${EV}, '${gamma}', 'yes')`],                                                                                // 2 Parent B answers at once
+    [null, `select public.cka_run_content_check(${P('2026-10-10 12:00')}) as r`],                                                                       // 3 24 h after: only the family without an answer
+    [null, `select public.cka_run_content_check(${P('2026-10-10 12:30')}) as r`],                                                                       // 4 no second one that day
+    [null, rem],                                                                                                                                          // 5
+    [null, `select public.cka_run_content_check(${P('2026-10-12 12:00')}) as r`],                                                                       // 6 nothing: not the day before yet, and already reminded
+    [null, `select public.cka_run_content_check(${P('2026-10-14 12:00')}) as r`],                                                                       // 7 the day before the deadline
+    [null, `select public.cka_run_content_check(${P('2026-10-14 15:00')}) as r`],                                                                       // 8 once
+    [null, rem],                                                                                                                                          // 9
+    [null, `select count(*)::int as n from public.email_outbox where template = 'event_reminder' and dedupe_key like 'evrem:' || ${EV} || ':%'`],       // 10
+    [null, `select public.cka_run_content_check(${P('2026-10-15 09:00')}) as r`],                                                                       // 11 deadline day: call list
+    [U.admin, `select child_name, parents, called_at from public.approval_call_list() where event_id = ${EV}`],                                          // 12
+    [U.hana, `select * from public.approval_call_list()`],                                                                                               // 13
+    [U.admin, `select public.approval_call_log(${EV}, '${delta}', 'Mother will answer tonight')`],                                                       // 14
+    [U.admin, `select called_at is not null as c, note from public.approval_call_list() where event_id = ${EV}`],                                        // 15
+    [U.admin, `select child_name, status, reminders from public.event_responses_summary(${EV}) order by child_name`],                                    // 16 before the deadline
+    T('2026-10-15 12:01'),
+    [U.admin, `select child_name, status, reminders from public.event_responses_summary(${EV}) order by child_name`],                                    // 18 after the deadline
+    [U.parentC, `select public.event_respond(${EV}, '${delta}', 'yes')`],                                                                                // 19 too late
+    [U.admin, `select count(*)::int as n from public.approval_call_list() where event_id = ${EV}`],                                                      // 20
+  ]);
+  check('24 hours after an approval request only the families who have not answered get a reminder; the family that answered never does; never more than one a day', res[3].rows[0].r.emails >= 1 && res[4].rows[0].r.emails === 0 && res[5].rows.length === 1 && res[5].rows[0].kind === 'after_24h' && res[5].rows[0].full_name === 'Parent C (seed)', JSON.stringify([res[3], res[4], res[5]]));
+  check('the day before the deadline there is a second reminder (once); nothing in between', res[6].rows[0].r.emails === 0 && res[7].rows[0].r.emails >= 1 && res[8].rows[0].r.emails === 0 && res[9].rows.map((x) => x.kind).join() === 'after_24h,day_before' && res[10].rows[0].n === 2, JSON.stringify([res[6], res[7], res[8], res[9].rows, res[10]]));
+  check('on the deadline day the families without an answer join admin\'s call list (not teachers\'); admin records the call', res[11].rows[0].r.calls_added === 1 && res[12].rows.length === 1 && res[12].rows[0].child_name.startsWith('Mariam') && res[12].rows[0].called_at === null && res[13].rows.length === 0 && !res[14].error && res[15].rows[0].c === true && /tonight/.test(res[15].rows[0].note), JSON.stringify([res[11], res[12], res[13], res[15]]));
+  const before = Object.fromEntries(res[16].rows.map((x) => [x.child_name.split(' ')[0], x])), after = Object.fromEntries(res[18].rows.map((x) => [x.child_name.split(' ')[0], x]));
+  check('staff see per child: yes, no or waiting, with the reminders sent; after the deadline an unanswered child is "no answer" (not approved) and can no longer answer', before.Mariam.status === 'waiting' && before.Mariam.reminders === 2 && before.Youssef.status === 'yes' && before.Youssef.reminders === 0 && after.Mariam.status === 'no_answer' && /deadline_passed/.test(res[19].error), JSON.stringify([before, after, res[19].error]));
+
+  // an email in the academy inbox becomes a case
+  res = await flow([
+    [U.admin, `select parent_name, children from public.admin_parent_search('Parent A')`],                                                              // 0
+    [U.hana, `select * from public.admin_parent_search('Parent A')`], [U.parentA, `select * from public.admin_parent_search('Parent A')`],            // 1, 2
+    [U.admin, `select * from public.admin_parent_search('x')`],                                                                                         // 3 too short
+    [U.admin, `select public.case_from_email('${U.parentA}', '${alpha}', 'Question about fees', 'When is the next payment due?', 'can_wait', 'mona@mail.test') as id`], // 4
+    [U.parentA, `select title, description, type, urgency, status from public.submissions where title = 'Question about fees'`],                       // 5
+    [U.parentB, `select count(*)::int as n from public.submissions where title = 'Question about fees'`],                                              // 6
+    [U.admin, `select public.case_from_email('${U.parentA}', '${beta}', 'Wrong child', 'Hello there', 'can_wait', null)`],                              // 7
+    [U.admin, `select public.case_from_email('${U.parentA}', '${alpha}', 'Critical?', 'Hello there', 'critical', null)`],                              // 8
+    [U.hana, `select public.case_from_email('${U.parentA}', '${alpha}', 'Hana tries', 'Hello there', 'can_wait', null)`],                              // 9
+  ]);
+  check('admin finds the family from an email (by parent, email, phone or child), turns it into a case in their name with the sender noted, and the family sees it; others cannot', res[0].rows.length === 1 && res[0].rows[0].children.length === 1 && res[1].rows.length === 0 && res[2].rows.length === 0 && res[3].rows.length === 0 && !res[4].error
+    && res[5].rows.length === 1 && /mona@mail\.test/.test(res[5].rows[0].description) && res[5].rows[0].type === 'question' && res[5].rows[0].status === 'received' && res[6].rows[0].n === 0 && !!res[7].error && !!res[8].error && !!res[9].error, JSON.stringify([res[0], res[4], res[5]]));
 }
 
 // ---------------------------------------------------------------------------

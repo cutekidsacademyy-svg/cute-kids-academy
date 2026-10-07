@@ -75,6 +75,19 @@ const T = {
   review_monthly: (p, l) => l === "ar"
     ? { subject: "مراجعة الشهر", lines: ["بدأ شهر جديد وحان وقت المراجعة الشهرية.", `المهام المتأخرة: ${p.late_tasks}.`], button: ["فتح لوحة المالك", "/staff/#/owner"] }
     : { subject: "Monthly review", lines: ["A new month has started: time for the monthly review.", `Late tasks: ${p.late_tasks}.`], button: ["Open the owner dashboard", "/staff/#/owner"] },
+  // ---- absence follow-up and messages from the academy (parents get only "there is a message"; the text is in the portal)
+  academy_message: (p, l) => l === "ar"
+    ? { subject: "رسالة من الحضانة", lines: ["لديك رسالة من الحضانة. يُرجى قراءتها في البوابة."], button: ["قراءة الرسالة", "/portal/#/messages"] }
+    : { subject: "A message from the academy", lines: ["You have a message from the academy. Please read it in the portal."], button: ["Read the message", "/portal/#/messages"] },
+  absence_task: (p, l) => l === "ar"
+    ? { subject: `${p.count} طفل غائب ٣ أيام أو أكثر`, lines: ["هناك أطفال غابوا ٣ أيام عمل متتالية أو أكثر. يجب إرسال رسالة اطمئنان إلى أسرهم قبل الساعة ٦ مساءً اليوم."], button: ["فتح متابعة الغياب", "/staff/#/absences"] }
+    : { subject: `${p.count} child${Number(p.count) === 1 ? "" : "ren"} absent 3 or more days: check-in needed today`, lines: ["Some children have been absent 3 or more school days in a row. A check-in message to their families must be sent before 6 pm today."], button: ["Open absence follow-up", "/staff/#/absences"] },
+  absence_escalated: (p, l) => l === "ar"
+    ? { subject: "متابعة غياب لم تُرسل قبل السادسة مساءً", lines: ["لم تُرسل رسالة اطمئنان إلى أسرة طفل غائب ٣ أيام أو أكثر قبل الساعة ٦ مساءً."], button: ["فتح متابعة الغياب", "/staff/#/absences"] }
+    : { subject: "An absence check-in was not sent by 6 pm", lines: ["A check-in message to the family of a child absent 3 or more days was not sent by 6 pm."], button: ["Open absence follow-up", "/staff/#/absences"] },
+  followup_leaving: (p, l) => l === "ar"
+    ? { subject: "أسرة تفكر في المغادرة", lines: ["سجّلت الإدارة أن إحدى الأسر تفكر في ترك الحضانة بعد غياب طفلها. يُرجى المتابعة اليوم."], button: ["فتح متابعة الغياب", "/staff/#/absences"] }
+    : { subject: "A family is considering leaving", lines: ["Admin recorded that a family is considering leaving after their child's absence. Please follow up today."], button: ["Open absence follow-up", "/staff/#/absences"] },
   // ---- a new question or missing item (to the academy's inbox and the admins: the text is included, this is internal)
   question_new: (p, l) => {
     const what = p.type === "missing_item" ? (l === "ar" ? "غرض مفقود" : "Missing item") : (l === "ar" ? "سؤال جديد" : "New question");
