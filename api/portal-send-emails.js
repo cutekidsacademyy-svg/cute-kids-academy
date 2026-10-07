@@ -9,6 +9,7 @@
 const crypto = require("crypto");
 const { HttpError, makeClient } = require("./_lib/portal.js");
 const { render } = require("./_lib/email.js");
+const { sendPushes } = require("./_lib/push.js");
 
 const BATCH = 20;           // emails per run (keeps well inside the function time limit)
 const MAX_ATTEMPTS = 5;
@@ -75,6 +76,7 @@ module.exports = async function handler(req, res, env = process.env, fetchImpl =
       out.content = await client.call("/rest/v1/rpc/cka_run_content_check", { method: "POST", body: {} });
     }
     out.emails = await sendEmails(client, env, fetchImpl, now);
+    try { out.push = await sendPushes(client, env, fetchImpl, now); } catch (e) { out.push = { error: true }; }   // push is a bonus: never lets it stop the emails
     send(200, out);
   } catch (e) {
     if (e instanceof HttpError) send(e.status, { ok: false, error: e.message });

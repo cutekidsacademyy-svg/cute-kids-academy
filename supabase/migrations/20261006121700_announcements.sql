@@ -67,6 +67,9 @@ create table public.push_subscriptions (
   auth        text not null,
   created_at  timestamptz not null default now()
 );
+-- Remember which queued notifications have already been pushed to the person's devices.
+alter table public.email_outbox add column pushed_at timestamptz;
+
 alter table public.push_subscriptions enable row level security;
 revoke all on public.push_subscriptions from anon, authenticated;
 

@@ -668,6 +668,7 @@
     document.querySelector('#nav [data-route="attendance"]').hidden = !isMgmt();
     document.querySelector('#nav [data-route="applications"]').hidden = !isMgmt();
     document.querySelector('#nav [data-route="attreport"]').hidden = !isMgmt();
+    ['announcements', 'menu', 'events'].forEach(function (r) { document.querySelector('#nav [data-route="' + r + '"]').hidden = !isMgmt(); });
     document.getElementById("who").textContent = me.full_name + " · " + t("role." + me.role);
     document.getElementById("app").hidden = false;
     labelNav();

@@ -3689,6 +3689,549 @@ grant execute on function public.report_sheet(date), public.report_save_many(uui
 grant execute on function public.cka_run_report_check(timestamptz) to service_role;
 
 -- ============================================================
+-- migrations/20261006121700_announcements.sql
+-- ============================================================
+-- Announcements, notification choices and push (Prompt 14, part 1).
+--
+-- * Admin posts news to everyone, one class, or chosen families, in Arabic and English, with an optional image or PDF
+--   and an "important" flag. Parents see only what is meant for them; admin sees who has read it.
+-- * Important announcements remind the families who have not opened them after 24 hours.
+-- * Every notification is also an email; parents choose which kinds they want. Safety messages (accident reports, safety
+--   reviews) cannot be switched off. Browsers also get a push "You have a new update" with no private details.
+
+-- ---------------------------------------------------------------------------
+-- What each parent wants to hear about
+-- ---------------------------------------------------------------------------
+create table public.notification_prefs (
+  user_id        uuid primary key references public.profiles (id),
+  reports        boolean not null default true,
+  announcements  boolean not null default true,
+  events         boolean not null default true,
+  cases          boolean not null default true,
+  updated_at     timestamptz not null default now()
+);
+alter table public.notification_prefs enable row level security;
+revoke all on public.notification_prefs from anon, authenticated;
+grant select on public.notification_prefs to authenticated;
+create policy prefs_own on public.notification_prefs for select using (user_id = auth.uid());
+
+create function public.notification_prefs_save(p_reports boolean, p_announcements boolean, p_events boolean, p_cases boolean) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if public.auth_role() is null then raise exception 'Not allowed'; end if;
+  insert into public.notification_prefs (user_id, reports, announcements, events, cases)
+  values (auth.uid(), coalesce(p_reports, true), coalesce(p_announcements, true), coalesce(p_events, true), coalesce(p_cases, true))
+  on conflict (user_id) do update set reports = excluded.reports, announcements = excluded.announcements, events = excluded.events,
+         cases = excluded.cases, updated_at = now();
+end $$;
+
+-- The email queue now respects those choices (the kinds that protect a child's safety always go out).
+create or replace function public.cka_enqueue_email(p_user uuid, p_template text, p_payload jsonb, p_dedupe text default null) returns void
+language plpgsql security definer set search_path = public as $$
+declare e text; lang text; cat text; wanted boolean;
+begin
+  select u.email, p.language into e, lang
+    from auth.users u join public.profiles p on p.id = u.id
+   where u.id = p_user and p.active;
+  if e is null then return; end if;
+  cat := case when p_template = 'daily_report_ready' then 'reports'
+              when p_template like 'announcement%' then 'announcements'
+              when p_template like 'event\_%' then 'events'
+              when p_template in ('received', 'acknowledged', 'update_added', 'urgency_changed', 'resolved') then 'cases'
+              else null end;
+  if cat is not null then
+    select case cat when 'reports' then reports when 'announcements' then announcements when 'events' then events else cases end
+      into wanted from public.notification_prefs where user_id = p_user;
+    if found and wanted is false then return; end if;
+  end if;
+  insert into public.email_outbox (user_id, to_email, language, template, payload, dedupe_key)
+  values (p_user, e, lang, p_template, coalesce(p_payload, '{}'), p_dedupe)
+  on conflict (dedupe_key) do nothing;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Push subscriptions (browsers register; only the server reads them to send)
+-- ---------------------------------------------------------------------------
+create table public.push_subscriptions (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references public.profiles (id),
+  endpoint    text not null unique check (length(endpoint) between 20 and 1000),
+  p256dh      text not null,
+  auth        text not null,
+  created_at  timestamptz not null default now()
+);
+-- Remember which queued notifications have already been pushed to the person's devices.
+alter table public.email_outbox add column pushed_at timestamptz;
+
+alter table public.push_subscriptions enable row level security;
+revoke all on public.push_subscriptions from anon, authenticated;
+
+create function public.push_subscribe(p_endpoint text, p_p256dh text, p_auth text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if public.auth_role() is null then raise exception 'Not allowed'; end if;
+  if p_endpoint !~ '^https://' or length(coalesce(p_p256dh, '')) < 20 or length(coalesce(p_auth, '')) < 8 then raise exception 'Invalid subscription'; end if;
+  insert into public.push_subscriptions (user_id, endpoint, p256dh, auth) values (auth.uid(), p_endpoint, p_p256dh, p_auth)
+  on conflict (endpoint) do update set user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth;
+end $$;
+
+create function public.push_unsubscribe(p_endpoint text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  delete from public.push_subscriptions where endpoint = p_endpoint and user_id = auth.uid();
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Announcements
+-- ---------------------------------------------------------------------------
+create table public.announcements (
+  id               uuid primary key default gen_random_uuid(),
+  title_en         text,
+  title_ar         text,
+  body_en          text,
+  body_ar          text,
+  audience         text not null check (audience in ('all', 'class', 'families')),
+  class_id         uuid references public.classes (id),
+  important        boolean not null default false,
+  kind             text not null default 'news' check (kind in ('news', 'weekly_update')),
+  attachment_path  text,
+  attachment_name  text,
+  created_by       uuid references public.profiles (id),
+  created_at       timestamptz not null default now(),
+  reminded_at      timestamptz,
+  check (length(btrim(coalesce(title_en, ''))) > 0 or length(btrim(coalesce(title_ar, ''))) > 0),
+  check (length(btrim(coalesce(body_en, ''))) > 0 or length(btrim(coalesce(body_ar, ''))) > 0),
+  check ((audience = 'class') = (class_id is not null))
+);
+create table public.announcement_targets (
+  announcement_id  uuid not null references public.announcements (id) on delete cascade,
+  child_id         uuid not null references public.children (id),
+  primary key (announcement_id, child_id)
+);
+create table public.announcement_reads (
+  announcement_id  uuid not null references public.announcements (id) on delete cascade,
+  user_id          uuid not null references public.profiles (id),
+  read_at          timestamptz not null default now(),
+  primary key (announcement_id, user_id)
+);
+
+-- Who may see an announcement: management all; a teacher what is for everyone or their class; a parent what is for
+-- everyone, their child's class, or their own family.
+create function public.cka_announcement_visible(p_id uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.announcements a where a.id = p_id and (
+    public.is_management()
+    or (public.auth_role() = 'teacher' and (a.audience = 'all' or (a.audience = 'class' and public.teaches_class(a.class_id))))
+    or (public.auth_role() = 'parent' and (a.audience = 'all'
+        or (a.audience = 'class' and exists (select 1 from public.parent_children pc join public.children c on c.id = pc.child_id
+                                              where pc.parent_id = auth.uid() and c.class_id = a.class_id and c.active))
+        or (a.audience = 'families' and exists (select 1 from public.announcement_targets t join public.parent_children pc on pc.child_id = t.child_id
+                                                 where t.announcement_id = a.id and pc.parent_id = auth.uid()))))))
+$$;
+
+-- The active parents an announcement is meant for.
+create function public.cka_announcement_parents(p_id uuid) returns setof uuid
+language sql stable security definer set search_path = public as $$
+  select distinct pc.parent_id
+    from public.announcements a
+    join public.parent_children pc on true
+    join public.children c on c.id = pc.child_id and c.active
+    join public.profiles p on p.id = pc.parent_id and p.active
+   where a.id = p_id and (a.audience = 'all'
+      or (a.audience = 'class' and c.class_id = a.class_id)
+      or (a.audience = 'families' and exists (select 1 from public.announcement_targets t where t.announcement_id = a.id and t.child_id = c.id)))
+$$;
+
+alter table public.announcements        enable row level security;
+alter table public.announcement_targets enable row level security;
+alter table public.announcement_reads   enable row level security;
+revoke all on public.announcements, public.announcement_targets, public.announcement_reads from anon, authenticated;
+grant select on public.announcements, public.announcement_targets, public.announcement_reads to authenticated;
+create policy ann_select    on public.announcements        for select using (public.cka_announcement_visible(id));
+create policy ann_tg_select on public.announcement_targets for select using (public.is_management());
+create policy ann_rd_select on public.announcement_reads   for select using (public.is_management() or user_id = auth.uid());
+
+-- Private storage for attachments (an image or a PDF); readable by whoever may see the announcement.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values
+  ('announcements', 'announcements', false, 10485760, array['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+on conflict (id) do update set public = false, file_size_limit = 10485760, allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+
+create function public.cka_announcement_file(p_path text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select case when (storage.foldername(p_path))[1] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+              then public.cka_announcement_visible(((storage.foldername(p_path))[1])::uuid) else false end
+$$;
+create policy announcements_read on storage.objects for select to authenticated
+  using (bucket_id = 'announcements' and public.cka_announcement_file(name));
+create policy announcements_upload on storage.objects for insert to authenticated
+  with check (bucket_id = 'announcements' and public.is_management());
+
+-- Post an announcement. The page makes the id first (so the attachment can be uploaded into its own folder).
+create function public.announcement_post(p_id uuid, p_title_en text, p_title_ar text, p_body_en text, p_body_ar text, p_audience text, p_class uuid,
+                                         p_children uuid[], p_important boolean, p_kind text, p_attachment_path text, p_attachment_name text) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare s uuid;
+begin
+  if not public.is_management() then raise exception 'Not allowed'; end if;
+  if p_id is null then raise exception 'Invalid request'; end if;
+  if p_audience not in ('all', 'class', 'families') then raise exception 'Choose who it is for'; end if;
+  if p_audience = 'class' and not exists (select 1 from public.classes where id = p_class) then raise exception 'Choose a class'; end if;
+  if p_audience = 'families' and (p_children is null or cardinality(p_children) = 0) then raise exception 'Choose at least one family'; end if;
+  if p_attachment_path is not null and (p_attachment_path not like p_id::text || '/%' or p_attachment_path like '%..%') then raise exception 'Invalid attachment'; end if;
+  insert into public.announcements (id, title_en, title_ar, body_en, body_ar, audience, class_id, important, kind, attachment_path, attachment_name, created_by)
+  values (p_id, nullif(btrim(coalesce(p_title_en, '')), ''), nullif(btrim(coalesce(p_title_ar, '')), ''), nullif(btrim(coalesce(p_body_en, '')), ''), nullif(btrim(coalesce(p_body_ar, '')), ''),
+          p_audience, case when p_audience = 'class' then p_class end, coalesce(p_important, false), case when p_kind = 'weekly_update' then 'weekly_update' else 'news' end,
+          nullif(p_attachment_path, ''), nullif(left(p_attachment_name, 200), ''), auth.uid());
+  if p_audience = 'families' then
+    insert into public.announcement_targets (announcement_id, child_id) select p_id, c from unnest(p_children) c where exists (select 1 from public.children where id = c);
+  end if;
+  for s in select * from public.cka_announcement_parents(p_id) loop
+    perform public.cka_enqueue_email(s, 'announcement_new', jsonb_build_object('important', coalesce(p_important, false)), 'ann:' || p_id || ':' || s);
+  end loop;
+  return p_id;
+end $$;
+
+create function public.announcement_mark_read(p_id uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if public.auth_role() <> 'parent' or not public.cka_announcement_visible(p_id) then return; end if;
+  insert into public.announcement_reads (announcement_id, user_id) values (p_id, auth.uid()) on conflict do nothing;
+end $$;
+
+-- Admin: who has opened it, and who has not.
+create function public.announcement_stats(p_id uuid) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare out jsonb;
+begin
+  if not public.is_management() then raise exception 'Not allowed'; end if;
+  select jsonb_build_object(
+    'total', (select count(*) from public.cka_announcement_parents(p_id)),
+    'read', (select count(*) from public.announcement_reads r where r.announcement_id = p_id and r.user_id in (select * from public.cka_announcement_parents(p_id))),
+    'readers', coalesce((select jsonb_agg(jsonb_build_object('name', p.full_name, 'read_at', r.read_at) order by r.read_at)
+                from public.announcement_reads r join public.profiles p on p.id = r.user_id where r.announcement_id = p_id), '[]'),
+    'unread', coalesce((select jsonb_agg(jsonb_build_object('name', p.full_name, 'phone', p.phone) order by p.full_name)
+                from public.cka_announcement_parents(p_id) u join public.profiles p on p.id = u
+               where not exists (select 1 from public.announcement_reads r where r.announcement_id = p_id and r.user_id = u)), '[]')) into out;
+  return out;
+end $$;
+
+create function public.announcement_remove(p_id uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_management() then raise exception 'Not allowed'; end if;
+  delete from public.announcements where id = p_id;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Grants
+-- ---------------------------------------------------------------------------
+revoke all on function
+  public.notification_prefs_save(boolean, boolean, boolean, boolean), public.push_subscribe(text, text, text), public.push_unsubscribe(text),
+  public.cka_announcement_visible(uuid), public.cka_announcement_parents(uuid), public.cka_announcement_file(text),
+  public.announcement_post(uuid, text, text, text, text, text, uuid, uuid[], boolean, text, text, text), public.announcement_mark_read(uuid),
+  public.announcement_stats(uuid), public.announcement_remove(uuid)
+from public, anon, authenticated;
+grant execute on function
+  public.notification_prefs_save(boolean, boolean, boolean, boolean), public.push_subscribe(text, text, text), public.push_unsubscribe(text),
+  public.cka_announcement_visible(uuid), public.cka_announcement_file(text),
+  public.announcement_post(uuid, text, text, text, text, text, uuid, uuid[], boolean, text, text, text), public.announcement_mark_read(uuid),
+  public.announcement_stats(uuid), public.announcement_remove(uuid)
+to authenticated;
+
+-- ============================================================
+-- migrations/20261006121800_menu_events.sql
+-- ============================================================
+-- Weekly menu, daily class schedule, events and the calendar (Prompt 14, part 2).
+--
+-- * A menu per day. Each dish lists its allergens; a family is warned when a dish contains something their child is
+--   allergic to (matched against the allergies written in the child's health record, in English or Arabic).
+-- * A daily schedule per class (arrival, activities, meals, nap, pickup).
+-- * Events, closures, holidays and specialist sessions. An event can need approval: parents answer yes or no, per child,
+--   before a deadline; families who have not answered get a reminder; admin sees a live list.
+
+-- ---------------------------------------------------------------------------
+-- Menu
+-- ---------------------------------------------------------------------------
+create table public.menu_items (
+  id          uuid primary key default gen_random_uuid(),
+  menu_date   date not null,
+  meal        text not null check (meal in ('breakfast', 'lunch', 'snack')),
+  dish_en     text,
+  dish_ar     text,
+  allergens   text[] not null default '{}' check (allergens <@ array['peanuts', 'tree_nuts', 'milk', 'eggs', 'wheat', 'soy', 'fish', 'shellfish', 'sesame']),
+  created_by  uuid references public.profiles (id),
+  unique (menu_date, meal),
+  check (length(btrim(coalesce(dish_en, ''))) > 0 or length(btrim(coalesce(dish_ar, ''))) > 0)
+);
+
+create table public.schedule_items (
+  id          uuid primary key default gen_random_uuid(),
+  class_id    uuid references public.classes (id),              -- null = every class
+  start_time  time not null,
+  title_en    text,
+  title_ar    text,
+  check (length(btrim(coalesce(title_en, ''))) > 0 or length(btrim(coalesce(title_ar, ''))) > 0)
+);
+
+create table public.events (
+  id                uuid primary key default gen_random_uuid(),
+  kind              text not null default 'event' check (kind in ('event', 'closure', 'holiday', 'session')),
+  title_en          text,
+  title_ar          text,
+  details_en        text,
+  details_ar        text,
+  starts_at         timestamptz not null,
+  ends_at           timestamptz,
+  all_day           boolean not null default false,
+  place             text check (length(place) <= 200),
+  audience          text not null default 'all' check (audience in ('all', 'class')),
+  class_id          uuid references public.classes (id),
+  cost              numeric(10, 2) check (cost >= 0),
+  needs_approval    boolean not null default false,
+  approval_deadline timestamptz,
+  reminded_at       timestamptz,
+  created_by        uuid references public.profiles (id),
+  created_at        timestamptz not null default now(),
+  check (length(btrim(coalesce(title_en, ''))) > 0 or length(btrim(coalesce(title_ar, ''))) > 0),
+  check ((audience = 'class') = (class_id is not null)),
+  check (not needs_approval or approval_deadline is not null),
+  check (ends_at is null or ends_at >= starts_at)
+);
+create index events_start_idx on public.events (starts_at);
+
+create table public.event_responses (
+  event_id     uuid not null references public.events (id) on delete cascade,
+  child_id     uuid not null references public.children (id),
+  answered_by  uuid references public.profiles (id),
+  answer       text not null check (answer in ('yes', 'no')),
+  answered_at  timestamptz not null default now(),
+  primary key (event_id, child_id)
+);
+
+-- Is an event meant for the caller? (management: all; teacher: everyone's or their class; parent: everyone's or their child's class)
+create function public.cka_event_visible(p_audience text, p_class uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select case public.auth_role()
+    when 'admin' then true when 'manager' then true when 'owner' then true
+    when 'teacher' then p_audience = 'all' or public.teaches_class(p_class)
+    when 'parent' then p_audience = 'all' or exists (select 1 from public.parent_children pc join public.children c on c.id = pc.child_id
+                                                      where pc.parent_id = auth.uid() and c.class_id = p_class and c.active)
+    else false end
+$$;
+
+alter table public.menu_items      enable row level security;
+alter table public.schedule_items  enable row level security;
+alter table public.events          enable row level security;
+alter table public.event_responses enable row level security;
+revoke all on public.menu_items, public.schedule_items, public.events, public.event_responses from anon, authenticated;
+grant select on public.menu_items, public.schedule_items, public.events, public.event_responses to authenticated;
+create policy menu_select  on public.menu_items      for select using (public.auth_role() is not null);
+create policy sched_select on public.schedule_items  for select using (public.auth_role() is not null);
+create policy events_select on public.events         for select using (public.cka_event_visible(audience, class_id));
+create policy evresp_select on public.event_responses for select using (public.can_see_child(child_id));
+
+-- ---------------------------------------------------------------------------
+-- Allergen matching: the allergies are free text typed by parents, so look for common words (English and Arabic)
+-- ---------------------------------------------------------------------------
+create function public.cka_allergen_match(p_text text, p_allergen text) returns boolean
+language sql immutable as $$
+  select coalesce(p_text, '') ~* case p_allergen
+    when 'peanuts'   then 'peanut|groundnut|فول سوداني|فول السوداني'
+    when 'tree_nuts' then 'nut|almond|cashew|walnut|hazelnut|pistachio|pecan|مكسرات|لوز|جوز|بندق|كاجو|فستق'
+    when 'milk'      then 'milk|dairy|lactose|cheese|yogh?urt|butter|cream|حليب|لبن|ألبان|البان|جبن|زبادي|لاكتوز'
+    when 'eggs'      then 'egg|بيض'
+    when 'wheat'     then 'wheat|gluten|flour|bread|قمح|جلوتين|غلوتين|دقيق|خبز'
+    when 'soy'       then 'soy|صويا'
+    when 'fish'      then 'fish|سمك|اسماك|أسماك'
+    when 'shellfish' then 'shellfish|shrimp|prawn|crab|lobster|جمبري|روبيان|محار|كابوريا'
+    when 'sesame'    then 'sesame|tahini|tahina|سمسم|طحينة|طحينه'
+    else '^$a' end
+$$;
+
+-- The menu for a range of days. "affected" lists the children the caller may know about whose allergies match the dish:
+-- a parent sees their own children, a teacher their class, management everyone.
+create function public.menu_week(p_from date, p_to date)
+returns table (menu_date date, meal text, dish_en text, dish_ar text, allergens text[], affected text[])
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if public.auth_role() is null then raise exception 'Not allowed'; end if;
+  if p_from is null or p_to is null or p_to < p_from or p_to - p_from > 62 then raise exception 'Please choose up to two months'; end if;
+  return query
+    select m.menu_date, m.meal, m.dish_en, m.dish_ar, m.allergens,
+           coalesce((select array_agg(distinct c.full_name order by c.full_name)
+                       from public.children c join public.child_health h on h.child_id = c.id
+                      where c.active and public.can_see_child(c.id) and public.auth_role() <> 'finance'
+                        and exists (select 1 from unnest(m.allergens) a where public.cka_allergen_match(h.allergies, a))), '{}')
+      from public.menu_items m where m.menu_date between p_from and p_to
+     order by m.menu_date, case m.meal when 'breakfast' then 1 when 'lunch' then 2 else 3 end;
+end $$;
+
+create function public.menu_save(p_date date, p_meal text, p_en text, p_ar text, p_allergens text[]) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_management() then raise exception 'Not allowed'; end if;
+  if p_date is null or p_meal not in ('breakfast', 'lunch', 'snack') then raise exception 'Invalid request'; end if;
+  if length(btrim(coalesce(p_en, ''))) = 0 and length(btrim(coalesce(p_ar, ''))) = 0 then
+    delete from public.menu_items where menu_date = p_date and meal = p_meal;
+    return;
+  end if;
+  if not (coalesce(p_allergens, '{}') <@ array['peanuts', 'tree_nuts', 'milk', 'eggs', 'wheat', 'soy', 'fish', 'shellfish', 'sesame']) then raise exception 'Unknown allergen'; end if;
+  insert into public.menu_items (menu_date, meal, dish_en, dish_ar, allergens, created_by)
+  values (p_date, p_meal, nullif(btrim(coalesce(p_en, '')), ''), nullif(btrim(coalesce(p_ar, '')), ''), coalesce(p_allergens, '{}'), auth.uid())
+  on conflict (menu_date, meal) do update set dish_en = excluded.dish_en, dish_ar = excluded.dish_ar, allergens = excluded.allergens, created_by = excluded.created_by;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Daily schedule
+-- ---------------------------------------------------------------------------
+create function public.schedule_save(p_id uuid, p_class uuid, p_time time, p_en text, p_ar text) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare rid uuid := p_id;
+begin
+  if not public.is_management() then raise exception 'Not allowed'; end if;
+  if p_time is null or (length(btrim(coalesce(p_en, ''))) = 0 and length(btrim(coalesce(p_ar, ''))) = 0) then raise exception 'Please give a time and a title'; end if;
+  if p_class is not null and not exists (select 1 from public.classes where id = p_class) then raise exception 'Not found'; end if;
+  if rid is null then
+    insert into public.schedule_items (class_id, start_time, title_en, title_ar) values (p_class, p_time, nullif(btrim(coalesce(p_en, '')), ''), nullif(btrim(coalesce(p_ar, '')), '')) returning id into rid;
+  else
+    update public.schedule_items set class_id = p_class, start_time = p_time, title_en = nullif(btrim(coalesce(p_en, '')), ''), title_ar = nullif(btrim(coalesce(p_ar, '')), '') where id = rid;
+  end if;
+  return rid;
+end $$;
+
+create function public.schedule_delete(p_id uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_management() then raise exception 'Not allowed'; end if;
+  delete from public.schedule_items where id = p_id;
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Events and approvals
+-- ---------------------------------------------------------------------------
+create function public.cka_event_children(p_event uuid) returns table (child_id uuid)
+language sql stable security definer set search_path = public as $$
+  select c.id from public.events e join public.children c on c.active and (e.audience = 'all' or c.class_id = e.class_id) where e.id = p_event
+$$;
+
+create function public.event_save(p_id uuid, p_kind text, p_title_en text, p_title_ar text, p_details_en text, p_details_ar text, p_starts timestamptz, p_ends timestamptz,
+                                  p_all_day boolean, p_place text, p_audience text, p_class uuid, p_cost numeric, p_needs_approval boolean, p_deadline timestamptz) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare rid uuid := p_id; s uuid; fresh boolean := false;
+begin
+  if not public.is_management() then raise exception 'Not allowed'; end if;
+  if p_kind not in ('event', 'closure', 'holiday', 'session') or p_audience not in ('all', 'class') then raise exception 'Invalid request'; end if;
+  if p_audience = 'class' and not exists (select 1 from public.classes where id = p_class) then raise exception 'Choose a class'; end if;
+  if p_starts is null then raise exception 'Please choose when it starts'; end if;
+  if coalesce(p_needs_approval, false) and (p_deadline is null or p_deadline > p_starts) then raise exception 'Please choose an approval deadline before the event'; end if;
+  if rid is null then
+    rid := gen_random_uuid(); fresh := true;
+    insert into public.events (id, kind, title_en, title_ar, details_en, details_ar, starts_at, ends_at, all_day, place, audience, class_id, cost, needs_approval, approval_deadline, created_by)
+    values (rid, p_kind, nullif(btrim(coalesce(p_title_en, '')), ''), nullif(btrim(coalesce(p_title_ar, '')), ''), nullif(btrim(coalesce(p_details_en, '')), ''), nullif(btrim(coalesce(p_details_ar, '')), ''),
+            p_starts, p_ends, coalesce(p_all_day, false), nullif(btrim(coalesce(p_place, '')), ''), p_audience, case when p_audience = 'class' then p_class end, p_cost,
+            coalesce(p_needs_approval, false), case when coalesce(p_needs_approval, false) then p_deadline end, auth.uid());
+  else
+    update public.events set kind = p_kind, title_en = nullif(btrim(coalesce(p_title_en, '')), ''), title_ar = nullif(btrim(coalesce(p_title_ar, '')), ''),
+           details_en = nullif(btrim(coalesce(p_details_en, '')), ''), details_ar = nullif(btrim(coalesce(p_details_ar, '')), ''), starts_at = p_starts, ends_at = p_ends,
+           all_day = coalesce(p_all_day, false), place = nullif(btrim(coalesce(p_place, '')), ''), audience = p_audience, class_id = case when p_audience = 'class' then p_class end,
+           cost = p_cost, needs_approval = coalesce(p_needs_approval, false), approval_deadline = case when coalesce(p_needs_approval, false) then p_deadline end
+     where id = rid;
+    if not found then raise exception 'Not found'; end if;
+  end if;
+  -- families are told about a new event, closure or holiday (sessions are only shown in the calendar)
+  if fresh and p_kind <> 'session' then
+    for s in select distinct pc.parent_id from public.cka_event_children(rid) k join public.parent_children pc on pc.child_id = k.child_id
+              join public.profiles p on p.id = pc.parent_id and p.active loop
+      perform public.cka_enqueue_email(s, 'event_new', jsonb_build_object('needs_approval', coalesce(p_needs_approval, false)), 'evnew:' || rid || ':' || s);
+    end loop;
+  end if;
+  return rid;
+end $$;
+
+create function public.event_delete(p_id uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.is_management() then raise exception 'Not allowed'; end if;
+  delete from public.events where id = p_id;
+end $$;
+
+-- A parent answers yes or no for one child, until the deadline.
+create function public.event_respond(p_event uuid, p_child uuid, p_answer text) returns void
+language plpgsql security definer set search_path = public as $$
+declare e public.events;
+begin
+  if public.auth_role() <> 'parent' or not public.can_see_child(p_child) then raise exception 'Not allowed'; end if;
+  if p_answer not in ('yes', 'no') then raise exception 'Invalid request'; end if;
+  select * into e from public.events where id = p_event;
+  if e.id is null or not e.needs_approval then raise exception 'Not found'; end if;
+  if not exists (select 1 from public.cka_event_children(p_event) k where k.child_id = p_child) then raise exception 'This event is not for your child'; end if;
+  if public.cka_now() > e.approval_deadline then raise exception 'deadline_passed'; end if;
+  insert into public.event_responses (event_id, child_id, answered_by, answer) values (p_event, p_child, auth.uid(), p_answer)
+  on conflict (event_id, child_id) do update set answer = excluded.answer, answered_by = excluded.answered_by, answered_at = now();
+end $$;
+
+-- Admin: the live list of answers and missing answers.
+create function public.event_responses_summary(p_event uuid)
+returns table (child_id uuid, child_name text, class_name text, answer text, answered_by_name text, answered_at timestamptz, parents text)
+language sql stable security definer set search_path = public as $$
+  select c.id, c.full_name, coalesce(cl.name, ''), r.answer, p.full_name, r.answered_at,
+         coalesce((select string_agg(pp.full_name, ', ' order by pp.full_name) from public.parent_children pc join public.profiles pp on pp.id = pc.parent_id where pc.child_id = c.id), '')
+    from public.cka_event_children(p_event) k
+    join public.children c on c.id = k.child_id
+    left join public.classes cl on cl.id = c.class_id
+    left join public.event_responses r on r.event_id = p_event and r.child_id = c.id
+    left join public.profiles p on p.id = r.answered_by
+   where public.is_management()
+   order by (r.answer is null) desc, cl.name, c.full_name
+$$;
+
+-- ---------------------------------------------------------------------------
+-- The scheduler (server only): reminders for unread important announcements and unanswered approvals
+-- ---------------------------------------------------------------------------
+create function public.cka_run_content_check(p_now timestamptz default now()) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare a record; e record; s uuid; ann int := 0; ev int := 0; sent int := 0;
+begin
+  for a in select id from public.announcements where important and reminded_at is null and created_at <= p_now - interval '24 hours' loop
+    for s in select * from public.cka_announcement_parents(a.id) u
+              where not exists (select 1 from public.announcement_reads r where r.announcement_id = a.id and r.user_id = u) loop
+      perform public.cka_enqueue_email(s, 'announcement_reminder', '{}'::jsonb, 'annrem:' || a.id || ':' || s);
+      sent := sent + 1;
+    end loop;
+    update public.announcements set reminded_at = p_now where id = a.id;
+    ann := ann + 1;
+  end loop;
+  for e in select id from public.events where needs_approval and reminded_at is null and approval_deadline > p_now and approval_deadline <= p_now + interval '24 hours' loop
+    for s in select distinct pc.parent_id from public.cka_event_children(e.id) k join public.parent_children pc on pc.child_id = k.child_id
+              join public.profiles p on p.id = pc.parent_id and p.active
+              where not exists (select 1 from public.event_responses r where r.event_id = e.id and r.child_id = k.child_id) loop
+      perform public.cka_enqueue_email(s, 'event_reminder', '{}'::jsonb, 'evrem:' || e.id || ':' || s);
+      sent := sent + 1;
+    end loop;
+    update public.events set reminded_at = p_now where id = e.id;
+    ev := ev + 1;
+  end loop;
+  return jsonb_build_object('announcements', ann, 'events', ev, 'emails', sent);
+end $$;
+
+-- ---------------------------------------------------------------------------
+-- Grants
+-- ---------------------------------------------------------------------------
+revoke all on function
+  public.cka_event_visible(text, uuid), public.cka_allergen_match(text, text), public.menu_week(date, date), public.menu_save(date, text, text, text, text[]),
+  public.schedule_save(uuid, uuid, time, text, text), public.schedule_delete(uuid), public.cka_event_children(uuid),
+  public.event_save(uuid, text, text, text, text, text, timestamptz, timestamptz, boolean, text, text, uuid, numeric, boolean, timestamptz),
+  public.event_delete(uuid), public.event_respond(uuid, uuid, text), public.event_responses_summary(uuid), public.cka_run_content_check(timestamptz)
+from public, anon, authenticated;
+grant execute on function
+  public.cka_event_visible(text, uuid), public.menu_week(date, date), public.menu_save(date, text, text, text, text[]),
+  public.schedule_save(uuid, uuid, time, text, text), public.schedule_delete(uuid),
+  public.event_save(uuid, text, text, text, text, text, timestamptz, timestamptz, boolean, text, text, uuid, numeric, boolean, timestamptz),
+  public.event_delete(uuid), public.event_respond(uuid, uuid, text), public.event_responses_summary(uuid)
+to authenticated;
+grant execute on function public.cka_run_content_check(timestamptz) to service_role;
+
+-- ============================================================
 -- migrations/29991231000000_hardening.sql
 -- ============================================================
 -- Security hardening (Prompt 10).
@@ -3724,6 +4267,7 @@ declare
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
     'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies',
     'parent_update_health', 'parent_save_pickup',
+    'notification_prefs_save', 'push_subscribe', 'push_unsubscribe', 'cka_announcement_visible', 'cka_announcement_file', 'announcement_post', 'announcement_mark_read', 'announcement_stats', 'announcement_remove', 'cka_event_visible', 'menu_week', 'menu_save', 'schedule_save', 'schedule_delete', 'event_save', 'event_delete', 'event_respond', 'event_responses_summary',
     'report_sheet', 'report_save_many', 'report_send', 'send_request_save', 'report_edit_sent', 'report_overview', 'report_settings_save',
     'cka_door_file', 'door_list', 'door_pickups', 'door_parents', 'door_check_in', 'door_check_out', 'door_undo', 'door_log_call', 'parent_report_attendance',
     'parent_cancel_attendance_notice', 'attendance_report'
@@ -3748,6 +4292,10 @@ begin
   if to_regprocedure('public.cka_run_deadline_check(timestamptz)') is not null then
     revoke all on function public.cka_run_deadline_check(timestamptz) from public, anon, authenticated;
     grant execute on function public.cka_run_deadline_check(timestamptz) to service_role;
+  end if;
+  if to_regprocedure('public.cka_run_content_check(timestamptz)') is not null then
+    revoke all on function public.cka_run_content_check(timestamptz) from public, anon, authenticated;
+    grant execute on function public.cka_run_content_check(timestamptz) to service_role;
   end if;
   if to_regprocedure('public.cka_run_report_check(timestamptz)') is not null then
     revoke all on function public.cka_run_report_check(timestamptz) from public, anon, authenticated;

@@ -1,0 +1,15 @@
+{
+  "name": "Cute Kids Academy",
+  "short_name": "Cute Kids",
+  "description": "The private parent portal of Cute Kids Academy",
+  "start_url": "/portal/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFBF5",
+  "theme_color": "#E6197F",
+  "icons": [
+    { "src": "/images/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/images/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

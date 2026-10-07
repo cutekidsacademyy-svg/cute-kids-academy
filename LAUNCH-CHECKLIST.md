@@ -86,6 +86,14 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 - [ ] Tap **Save and send**: the parent sees the report in **Daily report**, gets an email, and "Kindly send for tomorrow" appears on their home screen. The teacher can no longer change it; admin can, with a reason (it is recorded).
 - [ ] After 4 pm the teacher sees who still needs a personal sentence; at the automatic-send time (default 16:30, changeable by admin on the same page) every report with entries goes out by itself. This needs the scheduler (step 3).
 
+### Announcements, menu, events and notifications (Prompt 14)
+
+- [ ] **Announcements**: post one to everyone (important), one to a class, one to a single family; on a parent phone check each parent sees only theirs, open it, and see "1 of 3 read" in the admin list. After 24 hours the unread families get a reminder email.
+- [ ] **Menu & schedule**: enter a week's menu with allergens. A parent whose child's allergy matches sees a warning on that dish (the allergies are matched by common words in English and Arabic: check a few real examples, because parents write them in their own way).
+- [ ] **Events**: create one needing approval with a deadline; answer it as a parent; admin sees answers and missing answers. Families who have not answered get one reminder 24 hours before the deadline.
+- [ ] **Parents' choices**: in **Settings** a parent can switch off reports, announcements, events or case emails. Safety emails (accident reports, safety reviews) always go out.
+- [ ] **Push notifications and the installable app** (optional, needs the domain and HTTPS): run `node tools/make-vapid-keys.js`, put the PUBLIC key into `js/portal-config.js` (vapidPublicKey), and put VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT in Vercel. Then on a phone: open the portal, **Settings > Turn on notifications**, and add it to the home screen. The phone only ever shows "You have a new update".
+
 ## 7. Staff first (one week)
 
 - [ ] Staff use the portal with a few pretend cases for a week, so they learn the screens before any family sees them.
@@ -121,5 +129,5 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 
 ### What is not built yet
 
-Announcements and events, photos and videos, the admin area,
+Photos and videos, the admin area,
 the parent dashboard and calendar, absence follow-up, approval reminders, payments, transport and birthdays (Prompts 12 to 20 and the rest of Prompt 21).

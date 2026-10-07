@@ -214,3 +214,18 @@ tr.row-watch td{background:#fff8ee}
 .yn{display:flex;gap:10px}
 .yn .choice{flex:1;margin:0;align-items:center}
 .hp{position:absolute;inset-inline-start:-9999px;width:1px;height:1px;overflow:hidden}
+
+/* calendar */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-head{text-align:center;font-weight:700;font-size:.78rem;color:var(--muted);padding:4px 0}
+.cal-cell{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;min-height:52px;padding:6px 2px;border:2px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;font-weight:700}
+.cal-cell.out{opacity:.45}
+.cal-cell.today{border-color:var(--blue)}
+.cal-cell.sel{background:var(--pink-light);border-color:var(--pink)}
+.cal-dots{display:flex;gap:3px;flex-wrap:wrap;justify-content:center}
+.cal-dots i{width:8px;height:8px;border-radius:50%;background:var(--muted);display:block}
+.cal-dots i.dot-event{background:var(--pink)}
+.cal-dots i.dot-closure,.cal-dots i.dot-holiday{background:#b3261e}
+.cal-dots i.dot-session{background:var(--blue)}
+.cal-dots i.dot-deadline{background:#b45309}
+.cal-dots i.dot-menu{background:#17803d}
