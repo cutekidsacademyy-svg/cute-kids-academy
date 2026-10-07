@@ -169,7 +169,7 @@ create function public.media_mark_post(p_id uuid, p_ok boolean) returns void
 language plpgsql security definer set search_path = public as $$
 declare names text; kids uuid[];
 begin
-  if public.auth_role() not in ('admin', 'owner') then raise exception 'Not allowed'; end if;
+  if not coalesce(public.auth_role() in ('admin', 'owner'), false) then raise exception 'Not allowed'; end if;
   if not exists (select 1 from public.media_items where id = p_id and not removed) then raise exception 'Not found'; end if;
   if coalesce(p_ok, false) then
     select array_agg(child_id) into kids from public.media_tags where media_id = p_id;

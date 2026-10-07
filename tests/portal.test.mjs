@@ -99,8 +99,8 @@ test("sessions expire after 30 minutes of inactivity", () => {
 });
 
 test("who may create which staff roles", () => {
-  assert.deepEqual(L.staffRolesCallerCanCreate("owner"), ["teacher", "admin", "manager", "owner"]);
-  assert.deepEqual(L.staffRolesCallerCanCreate("manager"), ["teacher", "admin"]);
+  assert.deepEqual(L.staffRolesCallerCanCreate("owner"), ["teacher", "admin", "manager", "owner", "finance"]);
+  assert.deepEqual(L.staffRolesCallerCanCreate("manager"), ["teacher", "admin", "finance"]);
   assert.deepEqual(L.staffRolesCallerCanCreate("admin"), []);
   assert.deepEqual(L.staffRolesCallerCanCreate("parent"), []);
 });

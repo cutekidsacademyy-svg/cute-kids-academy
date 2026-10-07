@@ -4,7 +4,7 @@
   if (typeof module === "object" && module.exports) module.exports = factory();
   else root.CKALogic = factory();
 })(this, function () {
-  const STAFF_ROLES = ["teacher", "admin", "manager", "owner"];
+  const STAFF_ROLES = ["teacher", "admin", "manager", "owner", "finance"];
   const ALL_ROLES = ["parent"].concat(STAFF_ROLES);
   const INACTIVITY_MS = 30 * 60 * 1000;
 
@@ -40,7 +40,7 @@
   // so a manager cannot grant themselves more power than they have.
   function staffRolesCallerCanCreate(callerRole) {
     if (callerRole === "owner") return STAFF_ROLES.slice();
-    if (callerRole === "manager") return ["teacher", "admin"];
+    if (callerRole === "manager") return ["teacher", "admin", "finance"];
     return [];
   }
 

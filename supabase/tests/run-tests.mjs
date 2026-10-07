@@ -145,6 +145,7 @@ console.log('\n== Security audit: structure ==');
     'investigation_name_warnings', 'staff_investigations', 'staff_investigation', 'staff_report', 'record_staff_attendance', 'staff_attendance_day', 'submit_staff_complaint',
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
     'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies', 'parent_update_health', 'parent_save_pickup',
+    'academy_settings_save', 'admin_home', 'admin_children', 'admin_child_profile', 'child_move_class', 'child_withdraw', 'child_reinstate', 'admin_classes', 'class_save', 'class_staff_set', 'class_staff_remove', 'staff_job_title_save',
     'cka_media_visible', 'cka_media_upload_ok', 'cka_media_file', 'media_consent_check', 'media_add', 'media_set_tags', 'media_remove', 'media_mark_post', 'media_settings_save',
     'notification_prefs_save', 'push_subscribe', 'push_unsubscribe', 'cka_announcement_visible', 'cka_announcement_file', 'announcement_post', 'announcement_mark_read', 'announcement_stats', 'announcement_remove', 'cka_event_visible', 'menu_week', 'menu_save', 'schedule_save', 'schedule_delete', 'event_save', 'event_delete', 'event_respond', 'event_responses_summary',
     'report_sheet', 'report_save_many', 'report_send', 'send_request_save', 'report_edit_sent', 'report_overview', 'report_settings_save',
@@ -174,6 +175,7 @@ console.log('\n== Security audit: who can read what (seed data) ==');
   const D = 'denied';
   // columns: anon, parentA, parentB, parentC, hana, mariam, admin, manager, owner
   const EXPECT = {
+    academy_settings:       [D, 1, 1, 1, 1, 1, 1, 1, 1],
     announcement_reads:     [D, 1, 0, 0, 0, 0, 1, 1, 1],
     announcement_targets:   [D, 0, 0, 0, 0, 0, 1, 1, 1],
     announcements:          [D, 2, 3, 2, 2, 1, 3, 3, 3],
@@ -2228,6 +2230,145 @@ console.log('\n== Class photos and videos ==');
   check('only management sets the retention period; bad settings are refused; "keep for ever" is allowed', !res[5].error && !!res[6].error && !!res[7].error && !!res[8].error && res[21].rows[0].retention_months === 6 && res[21].rows[0].action === 'archive' && !res[22].error && res[23].rows[0].retention_months === null);
   check('items older than the retention period are listed for the server with the chosen action, and removed items are purged after 30 days', res[11].rows.some((x) => x.id === ID(990) && x.action === 'archive') && !res[11].rows.some((x) => x.id === M1) && res[13].rows.some((x) => x.id === M1), JSON.stringify([res[11].rows, res[13].rows]));
   check('archiving hides an item from parents but management keeps it; deleting removes the item and its tags; browsers cannot run the clean-up', res[15].rows.length === 0 && res[16].rows[0].archived === true && !!res[17].error && res[19].rows[0].n === 0 && res[20].rows[0].n === 0);
+}
+
+// ---------------------------------------------------------------------------
+console.log('\n== Admin area ==');
+{
+  const T = (local) => [null, `select set_config('app.now', ((timestamp '${local}') at time zone 'Africa/Cairo')::text, true)`];
+  const FIN = ID(9100), C1 = ID(201), C2 = ID(202), D = '2026-10-11';
+  const finance = [null, `with u as (insert into auth.users (id, email) values ('${FIN}', 'fin@seed.cka.test') returning id) insert into public.profiles (id, full_name, role, job_title) select id, 'Finance Fatma', 'finance', 'finance_assistant' from u`];
+  let res = await flow([
+    finance, T('2026-10-11 10:00'),
+    [U.hana, `select public.door_check_in('${alpha}')`],
+    [FIN, `select public.attendance_report('2026-10-04', '2026-10-11') as r`],                    // 3 finance may open the attendance and overtime report
+    [FIN, `select count(*)::int as n from public.children`],                                     // 4
+    [FIN, `select count(*)::int as n from public.child_health`],                                 // 5
+    [FIN, `select count(*)::int as n from public.submissions`],                                  // 6
+    [FIN, `select count(*)::int as n from public.hr_log`],                                       // 7
+    [FIN, `select count(*)::int as n from public.daily_reports`],                                // 8
+    [FIN, `select count(*)::int as n from public.attendance`],                                   // 9 (the report is the way in, not the raw table)
+    [FIN, `select * from public.door_list()`],                                                   // 10
+    [FIN, `select * from public.class_allergies()`],                                             // 11
+    [FIN, `select public.report_overview('${D}')`],                                              // 12
+    [FIN, `select public.admin_home()`],                                                         // 13
+    [FIN, `select count(*)::int as n from public.profiles`],                                     // 14 only themselves
+    [FIN, `select public.owner_dashboard('2026-10-01', '2026-10-31')`],                          // 15
+    [FIN, `select * from public.menu_week(current_date, current_date)`],                         // 16 the menu is not sensitive, but names of affected children are not shown
+    [U.hana, `select public.attendance_report('2026-10-04', '2026-10-11')`],                     // 17 teachers still cannot
+    [FIN, `select count(*)::int as n from public.registration_applications`],                    // 18
+  ]);
+  const fr = res[3].rows[0].attendance_report || res[3].rows[0].r;
+  check('the finance role can open the attendance and overtime report (and only that)', !res[3].error && Array.isArray((fr || {}).by_child) && fr.by_child.length >= 4 && !!res[17].error, JSON.stringify([res[3].error, res[17].error]));
+  check('...finance sees no children, health, cases, HR, daily reports, door list, allergies, registrations or owner figures', [4, 5, 6, 7, 8, 9, 18].every((i) => res[i].rows && res[i].rows[0].n === 0) && res[10].rows.length === 0 && res[11].rows.length === 0 && !!res[12].error && !!res[13].error && res[14].rows[0].n === 1 && !!res[15].error, JSON.stringify([res[4], res[5], res[6], res[7], res[8], res[9], res[10].rows.length, res[14]]));
+  check('...and the menu shows finance no child\'s name', res[16].rows.every((x) => x.affected.length === 0));
+
+  // a person whose access was switched off (or who has no profile) is refused everywhere, not just hidden
+  const off = await flow([
+    [null, `update public.profiles set active = false where id in ('${U.admin}', '${U.hana}')`],
+    [U.admin, `select public.media_mark_post('${ID(1)}', true)`], [U.admin, `select public.report_send()`], [U.admin, `select public.attendance_report('2026-10-04', '2026-10-11')`],
+    [U.admin, `select public.admin_home()`], [U.admin, `select public.announcement_post('${ID(9200)}', 'x', null, 'y', null, 'all', null, null, false, 'news', null, null)`],
+    [U.hana, `select public.door_check_in('${alpha}')`], [U.hana, `select public.report_save_many(array['${alpha}']::uuid[], '{"lunch":"all"}')`],
+    [U.hana, `select public.media_add('${ID(9201)}', '${ID(201)}', null, current_date, 'photo', '${ID(201)}/x.jpg', 'x', 'image/jpeg', 10, null, array['${alpha}']::uuid[])`],
+    [U.hana, `select public.notification_prefs_save(true, true, true, true)`],
+  ]);
+  check('an account that has been switched off can run none of the new actions (not even ones that look harmless)', off.slice(1).every((x) => !!x.error), JSON.stringify(off.slice(1).map((x) => x.error || 'RAN')));
+
+  // today at a glance
+  res = await flow([
+    T('2026-10-11 10:00'), [U.hana, `select public.door_check_in('${alpha}')`],
+    [U.parentA, `select public.parent_report_attendance('${gamma}', '2026-10-12', 'absence', 'x')`],                       // not their child
+    [U.admin, `select public.admin_home() as h`], [U.manager, `select public.admin_home() as h`], [U.owner, `select public.admin_home() as h`],
+    [U.hana, `select public.admin_home()`], [U.parentA, `select public.admin_home()`],
+  ]);
+  const h = res[3].rows[0].h;
+  check('the admin home counts present children, reports, cases, applications and more; only management can open it', h.present === 1 && h.children === 4 && h.applications_new === 1 && h.cases_open === 3 && typeof h.cases_overdue === 'number' && typeof h.events_waiting === 'number' && !res[4].error && !res[5].error && !!res[6].error && !!res[7].error, JSON.stringify(h));
+
+  // children
+  res = await flow([
+    [null, `update auth.users set last_sign_in_at = now() where id = '${U.parentA}'`],
+    [U.admin, `select child_name, active, has_allergy, parents from public.admin_children() order by child_name`],           // 1
+    [U.hana, `select * from public.admin_children()`], [U.parentA, `select * from public.admin_children()`],                // 2, 3
+    [U.admin, `select public.admin_child_profile('${alpha}') as p`],                                                         // 4
+    [U.hana, `select public.admin_child_profile('${alpha}')`], [U.parentA, `select public.admin_child_profile('${alpha}')`], // 5, 6
+    [U.admin, `select public.child_move_class('${alpha}', '${C2}')`],                                                        // 7
+    [U.admin, `select public.child_move_class('${alpha}', '${ID(999)}')`],                                                   // 8
+    [U.hana, `select public.child_move_class('${alpha}', '${C1}')`],                                                         // 9
+    [U.hana, `select count(*)::int as n from public.children where id = '${alpha}'`],                                        // 10 the old class teacher no longer sees the child
+    [U.mariam, `select count(*)::int as n from public.children where id = '${alpha}'`],                                      // 11 the new one does
+    [U.admin, `select summary from public.child_change_log where kind = 'class'`],                                           // 12
+    [U.admin, `select public.child_move_class('${alpha}', '${C2}')`],                                                        // 13 same class: nothing more
+    [U.admin, `select count(*)::int as n from public.child_change_log where kind = 'class'`],                               // 14
+  ]);
+  const cs = Object.fromEntries(res[1].rows.map((x) => [x.child_name, x]));
+  check('admin sees every child with parents and their access (signed in, invited, or off); teachers and parents cannot', res[1].rows.length === 4 && cs['Omar Testson (seed)'].parents.some((p) => p.access === 'active') && cs['Omar Testson (seed)'].parents.some((p) => p.access === 'invited') && cs['Omar Testson (seed)'].has_allergy === true && !!res[2].error === false && res[2].rows.length === 0 && res[3].rows.length === 0, JSON.stringify(cs['Omar Testson (seed)']));
+  const prof = res[4].rows[0].p;
+  check('a child\'s profile brings together class, parents, pickup people, health, consents, documents and the change log (management only)', prof.child.name.startsWith('Omar') && prof.parents.length === 2 && prof.pickups.length >= 1 && /Peanut/.test(prof.health.allergies) && prof.consents.photos_class === true && prof.documents.length === 1 && prof.log.length >= 1 && !!res[5].error && !!res[6].error, JSON.stringify(Object.keys(prof)));
+  check('moving a child changes who can see them, is recorded, and needs a real class; a teacher cannot do it', !res[7].error && !!res[8].error && !!res[9].error && res[10].rows[0].n === 0 && res[11].rows[0].n === 1 && /Butterflies.*Ducklings/.test(res[12].rows[0].summary) && !res[13].error && res[14].rows[0].n === 1);
+
+  // withdraw and re-enrol
+  res = await flow([
+    [U.admin, `select public.child_withdraw('${alpha}', 'x')`],                                                              // 0 reason too short
+    [U.hana, `select public.child_withdraw('${alpha}', 'Moved abroad')`],                                                    // 1
+    [U.admin, `select public.child_withdraw('${alpha}', 'Moved abroad') as n`],                                              // 2 -> 1 parent switched off (Parent A); Parent C still has another child
+    [null, `select p.full_name, p.active from public.profiles p where p.id in ('${U.parentA}', '${U.parentC}') order by p.full_name`], // 3
+    [U.parentA, `select count(*)::int as n from public.children`],                                                           // 4 no access any more
+    [U.admin, `select count(*)::int as n from public.children where id = '${alpha}' and not active`],                        // 5 history kept
+    [U.admin, `select count(*)::int as n from public.submissions where child_id = '${alpha}'`],                              // 6
+    [U.hana, `select count(*)::int as n from public.door_list() where child_id = '${alpha}'`],                               // 7 off the door list
+    [U.admin, `select public.child_withdraw('${alpha}', 'Again')`],                                                          // 8 already withdrawn
+    [U.admin, `select summary from public.child_change_log where kind = 'withdrawn'`],                                       // 9
+    [U.hana, `select public.child_reinstate('${alpha}', '${C1}')`],                                                          // 10
+    [U.admin, `select public.child_reinstate('${alpha}', '${C1}')`],                                                         // 11
+    [null, `select count(*)::int as n from public.profiles where id = '${U.parentA}' and active`],                           // 12
+    [U.parentA, `select count(*)::int as n from public.children`],                                                           // 13
+  ]);
+  check('withdrawing needs a reason, keeps all history, switches off only the parents who have no other child, and is recorded', !!res[0].error && !!res[1].error && res[2].rows[0].n === 1 && res[3].rows.map((x) => x.active).join() === 'true,false' === false || (res[3].rows.find((x) => x.full_name.startsWith('Parent A')).active === false && res[3].rows.find((x) => x.full_name.startsWith('Parent C')).active === true), JSON.stringify(res[3].rows));
+  check('...a withdrawn child disappears from the door list and from the parent\'s view but stays in the records; withdrawing twice is refused; the log says why', res[4].rows[0].n === 0 && res[5].rows[0].n === 1 && res[6].rows[0].n === 1 && res[7].rows[0].n === 0 && !!res[8].error && /Moved abroad/.test(res[9].rows[0].summary));
+  check('re-enrolling (management only) puts the child back and restores their parents\' access', !!res[10].error && !res[11].error && res[12].rows[0].n === 1 && res[13].rows[0].n === 1);
+
+  // classes and staff
+  res = await flow([
+    [null, `select 1`],
+    [U.admin, `select name, capacity, enrolled, head_teacher_name, staff from public.admin_classes() order by name`],         // 1
+    [U.hana, `select * from public.admin_classes()`],                                                                         // 2
+    [U.admin, `select public.class_save(null, 'Bees', '0-1 years', 8) as id`],                                                 // 3
+    [U.admin, `select public.class_save(null, 'B', '', 8)`], [U.admin, `select public.class_save(null, 'Wasps', '1 year', 500)`], [U.hana, `select public.class_save(null, 'Mine', '1 year', 5)`], // 4, 5, 6
+    [U.admin, `select public.class_staff_set('${C1}', '${U.mariam}', 'assistant')`],                                          // 7
+    [U.mariam, `select count(*)::int as n from public.children where class_id = '${C1}'`],                                    // 8 an assistant sees the class she was given
+    [U.admin, `select public.class_staff_set('${C1}', '${U.admin}', 'teacher')`],                                             // 9 only teaching staff
+    [U.admin, `select public.class_staff_set('${C1}', '${U.mariam}', 'head')`],                                               // 10
+    [U.admin, `select head_teacher_name from public.admin_classes() where class_id = '${C1}'`],                              // 11
+    [U.admin, `select public.class_staff_remove('${C1}', '${U.mariam}')`],                                                    // 12
+    [U.admin, `select head_teacher_name from public.admin_classes() where class_id = '${C1}'`],                              // 13
+    [U.mariam, `select count(*)::int as n from public.children where class_id = '${C1}'`],                                    // 14
+    [U.hana, `select public.class_staff_set('${C1}', '${U.mariam}', 'teacher')`],                                             // 15
+    [U.manager, `select public.staff_job_title_save('${U.mariam}', 'co_teacher')`],                                           // 16
+    [U.admin, `select public.staff_job_title_save('${U.mariam}', 'assistant')`],                                              // 17 admins cannot change titles
+    [U.manager, `select public.staff_job_title_save('${U.mariam}', 'finance_manager')`],                                      // 18 does not fit
+    [U.manager, `select public.staff_job_title_save('${U.owner}', 'manager')`],                                               // 19 the owner's title is fixed
+    [null, `select job_title from public.profiles where id = '${U.mariam}'`],                                                 // 20
+  ]);
+  const cls = Object.fromEntries(res[1].rows.map((x) => [x.name, x]));
+  check('admin sees each class with capacity, how many are enrolled, the head teacher and the staff with their class roles; others cannot', res[1].rows.length === 2 && cls['Butterflies (seed)'].enrolled === 2 && cls['Butterflies (seed)'].head_teacher_name === 'Teacher Hana (seed)' && cls['Butterflies (seed)'].staff.length === 1 && res[2].rows.length === 0, JSON.stringify(cls['Butterflies (seed)']));
+  check('admin creates classes (name, age range, sensible capacity); teachers cannot', !res[3].error && !!res[4].error && !!res[5].error && !!res[6].error);
+  check('assigning staff to a class (head, teacher, co-teacher, assistant) gives them that class and removing takes it away; only teaching staff qualify', !res[7].error && res[8].rows[0].n === 2 && !!res[9].error && !res[10].error && res[11].rows[0].head_teacher_name === 'Teacher Mariam (seed)' && !res[12].error && res[13].rows[0].head_teacher_name === null && res[14].rows[0].n === 0 && !!res[15].error, JSON.stringify([res[8], res[11], res[13]]));
+  check('job titles: manager or owner only, they must fit the role, and the owner\'s title cannot be changed', !res[16].error && !!res[17].error && !!res[18].error && !!res[19].error && res[20].rows[0].job_title === 'co_teacher');
+
+  // academy settings and the overtime closing time
+  res = await flow([
+    T('2026-10-11 08:00'), [U.hana, `select public.door_check_in('${alpha}')`], [null, `select 1`],
+    [U.admin, `select public.academy_settings_save('01063344389', '201063344389', 'a@b.test', 'Sheikh Zayed', 'الشيخ زايد', '17:00')`],  // 3
+    [U.admin, `select public.academy_settings_save('01063344389', 'call me', 'a@b.test', null, null, '17:00')`],                       // 4
+    [U.admin, `select public.academy_settings_save('01063344389', '201063344389', 'a@b.test', null, null, '03:00')`],                  // 5
+    [U.hana, `select public.academy_settings_save('1', null, null, null, null, '18:00')`],                                             // 6
+    [U.parentA, `select phone, whatsapp, overtime_close::text as c from public.academy_settings`],                                      // 7 anyone logged in may read
+    [null, `select count(*)::int as n from public.academy_settings`],                                                                  // 8
+    T('2026-10-11 17:30'), [U.hana, `select public.door_check_out('${alpha}', (select id from public.door_pickups('${alpha}') limit 1))`], // 9, 10
+    [null, `select overtime_minutes from public.attendance where child_id = '${alpha}' and att_date = '${D}'`],                         // 11
+  ]);
+  check('only management changes the academy settings (phone, WhatsApp digits with country code, email, address, closing time); everyone logged in can read them', !res[3].error && !!res[4].error && !!res[5].error && !!res[6].error && res[7].rows[0].whatsapp === '201063344389' && res[7].rows[0].c === '17:00:00', JSON.stringify([res[3].error, res[4].error, res[5].error, res[7]]));
+  check('the closing time setting drives overtime: a pickup at 17:30 with closing at 17:00 is 30 minutes', !res[10].error && res[11].rows[0].overtime_minutes === 30, JSON.stringify([res[10].error, res[11]]));
 }
 
 // ---------------------------------------------------------------------------
