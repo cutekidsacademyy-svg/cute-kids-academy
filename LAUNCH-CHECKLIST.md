@@ -94,6 +94,14 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 - [ ] **Parents' choices**: in **Settings** a parent can switch off reports, announcements, events or case emails. Safety emails (accident reports, safety reviews) always go out.
 - [ ] **Push notifications and the installable app** (optional, needs the domain and HTTPS): run `node tools/make-vapid-keys.js`, put the PUBLIC key into `js/portal-config.js` (vapidPublicKey), and put VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT in Vercel. Then on a phone: open the portal, **Settings > Turn on notifications**, and add it to the home screen. The phone only ever shows "You have a new update".
 
+### Photos and videos (Prompt 15)
+
+- [ ] As a teacher on a phone: **Photos**: choose two photos and a short video, tag children, upload. Try tagging a child whose parents did NOT agree to class photos: the child shows a warning and cannot be ticked. (To test the block, record a "no" for class photos on a pretend child.)
+- [ ] As the parent of a tagged child: **Photos** shows only their child's items, grouped by day, with a download button. A different family sees nothing of it. Open a link, wait 5 minutes, and see that it has expired.
+- [ ] As admin: remove an item (families stop seeing it at once; the file is deleted for good after 30 days). Mark one "OK to post" as admin or owner: it is refused if any child in it has no social media consent.
+- [ ] Set how long photos are kept (default 12 months, then delete). The clean-up runs with the scheduler (step 3).
+- [ ] **Videos are checked in the browser (60 seconds, 50 MB)**: the phone does not shrink videos. If storage use grows, tell me and we can lower the limit.
+
 ## 7. Staff first (one week)
 
 - [ ] Staff use the portal with a few pretend cases for a week, so they learn the screens before any family sees them.
@@ -129,5 +137,5 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 
 ### What is not built yet
 
-Photos and videos, the admin area,
+The admin area,
 the parent dashboard and calendar, absence follow-up, approval reminders, payments, transport and birthdays (Prompts 12 to 20 and the rest of Prompt 21).

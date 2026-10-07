@@ -12,6 +12,7 @@ const read = (f) => readFileSync(join(root, f), "utf8");
 const range = (prefix, list) => list.map((x) => prefix + x);
 
 const SETS = [
+  { name: "photos (staff and parent)", strings: "js/photos-strings.js", scripts: ["js/photos.js", "js/portal-photos.js"], prefixes: ["ph", "pp"], extra: ["ph.a.delete", "ph.a.archive"] },
   { name: "announcements, menu and events (staff)", strings: "js/staff-comm-strings.js", scripts: ["js/comm-admin.js"], prefixes: ["ca", "cm", "ce", "al"],
     extra: [...range("ca.a.", ["all", "class", "families"]), ...range("cm.", ["breakfast", "lunch", "snack"]), ...range("al.", ["peanuts", "tree_nuts", "milk", "eggs", "wheat", "soy", "fish", "shellfish", "sesame"]),
       ...range("ce.k.", ["event", "closure", "holiday", "session"]), "ce.yes", "ce.no"] },
@@ -49,4 +50,21 @@ test("the announcement and calendar pages are wired into the staff page and the 
 
 test("the parent calendar and news pages only ever read through the database (no direct writes)", () => {
   for (const f of ["js/portal-news.js", "js/portal-calendar.js"]) assert.ok(!/\.(insert|update|delete)\(/.test(read(f)), f);
+});
+
+test("photos: links are short-lived, never public, videos are limited to 60 seconds and 50 MB", () => {
+  for (const f of ["js/photos.js", "js/portal-photos.js"]) {
+    const text = read(f);
+    assert.ok(!/getPublicUrl/.test(text), f);
+    for (const m of text.matchAll(/createSignedUrls?(([^;]*?));?/g)) { const secs = [...m[1].matchAll(/,s*(d+)/g)].map((x) => Number(x[1])).filter((n) => n >= 60); assert.ok(secs.length && secs.every((n) => n <= 600), f + ": " + m[1].slice(0, 60)); }
+  }
+  const staff = read("js/photos.js");
+  assert.match(staff, /MAX_VIDEO_SECONDS = 60/);
+  assert.match(staff, /MAX_BYTES = 52428800/);
+  assert.match(staff, /media_consent_check/);
+  assert.match(read("supabase/migrations/20261006121900_media.sql"), /video_too_long/);
+});
+test("the photos screens are wired in", () => {
+  assert.match(read("staff/index.html"), /photos.js/);
+  assert.match(read("portal/index.html"), /portal-photos.js/);
 });
