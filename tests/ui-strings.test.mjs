@@ -56,7 +56,9 @@ test("photos: links are short-lived, never public, videos are limited to 60 seco
   for (const f of ["js/photos.js", "js/portal-photos.js"]) {
     const text = read(f);
     assert.ok(!/getPublicUrl/.test(text), f);
-    for (const m of text.matchAll(/createSignedUrls?(([^;]*?));?/g)) { const secs = [...m[1].matchAll(/,s*(d+)/g)].map((x) => Number(x[1])).filter((n) => n >= 60); assert.ok(secs.length && secs.every((n) => n <= 600), f + ": " + m[1].slice(0, 60)); }
+    const calls = [...text.matchAll(/createSignedUrls?\(([^\n]*)/g)];
+    assert.ok(calls.length > 0, f);
+    for (const m of calls) { const secs = [...m[1].matchAll(/,\s*(\d+)/g)].map((x) => Number(x[1])).filter((n) => n >= 60); assert.ok(secs.length && secs.every((n) => n <= 600), f + ": " + m[1].slice(0, 80)); }
   }
   const staff = read("js/photos.js");
   assert.match(staff, /MAX_VIDEO_SECONDS = 60/);
@@ -65,6 +67,6 @@ test("photos: links are short-lived, never public, videos are limited to 60 seco
   assert.match(read("supabase/migrations/20261006121900_media.sql"), /video_too_long/);
 });
 test("the photos screens are wired in", () => {
-  assert.match(read("staff/index.html"), /photos.js/);
-  assert.match(read("portal/index.html"), /portal-photos.js/);
+  assert.match(read("staff/index.html"), /photos\.js/);
+  assert.match(read("portal/index.html"), /portal-photos\.js/);
 });
