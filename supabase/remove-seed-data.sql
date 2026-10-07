@@ -31,6 +31,13 @@ delete from public.registration_documents   where application_id in (select id f
 delete from public.registration_pickups     where application_id in (select id from public.registration_applications where child_name like '%(seed)');
 delete from public.registration_parents     where application_id in (select id from public.registration_applications where child_name like '%(seed)');
 delete from public.registration_applications where child_name like '%(seed)';
+delete from public.transport_status         where child_id in (select id from seed_children);
+delete from public.route_children           where child_id in (select id from seed_children);
+delete from public.birthday_sent            where child_id in (select id from seed_children);
+delete from public.payment_log             where child_id in (select id from seed_children);
+delete from public.payments                where child_id in (select id from seed_children);
+delete from public.charges                 where child_id in (select id from seed_children);
+delete from public.fee_plans               where child_id in (select id from seed_children);
 delete from public.approval_calls            where child_id in (select id from seed_children);
 delete from public.approval_reminders      where parent_id in (select id from seed_users);
 delete from public.absence_followups       where child_id in (select id from seed_children);

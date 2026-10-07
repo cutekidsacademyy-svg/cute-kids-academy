@@ -92,6 +92,9 @@ function world({ resendOk = true, claimRace = false, rows } = {}) {
     if (u.pathname === "/rest/v1/rpc/cka_run_report_check") return json(200, { checked: true, reminders: 1, sent: 4 });
     if (u.pathname === "/rest/v1/rpc/cka_media_expired") return json(200, []);
     if (u.pathname === "/rest/v1/rpc/cka_run_absence_check") return json(200, { checked: true, created: 2, next_steps: 0, closed: 0, escalated: 0 });
+    if (u.pathname === "/rest/v1/rpc/cka_run_billing") return json(200, { tuition: 5, overtime: 1, reminders: 2, late_fees: 0 });
+    if (u.pathname === "/rest/v1/rpc/cka_run_birthdays") return json(200, { checked: true, children: 1, messages: 2 });
+    if (u.pathname === "/rest/v1/rpc/cka_run_transport_billing") return json(200, 3);
     if (u.pathname === "/rest/v1/rpc/cka_run_content_check") return json(200, { announcements: 1, events: 1, emails: 3 });
     if (u.pathname === "/rest/v1/rpc/cka_run_attendance_check") return json(200, { flagged: 2, emails: 1, checked: true });
     if (u.pathname === "/rest/v1/rpc/cka_run_deadline_check") return json(200, { warned: 1, escalated: 0, overdue_at_top: 0, requeued: 0, in_working_hours: true });
@@ -178,6 +181,9 @@ test("sender: with check=true it runs the deadline clock first and reports it", 
   assert.equal(r.reports.sent, 4);
   assert.equal(r.content.emails, 3);
   assert.equal(r.absences.created, 2);
+  assert.equal(r.billing.tuition, 5);
+  assert.equal(r.birthdays.messages, 2);
+  assert.equal(r.transport_billing, 3);
   assert.ok(w.state.calls.findIndex((c) => c.path.includes("cka_run_deadline_check")) < w.state.calls.findIndex((c) => c.path.startsWith("/rest/v1/email_outbox")));
   const plain = await call({ w: world(), body: {} });
   assert.equal(plain.deadlines, undefined);

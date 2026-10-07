@@ -31,6 +31,8 @@ declare
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
     'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies',
     'parent_update_health', 'parent_save_pickup',
+    'birthday_settings_save', 'birthdays_list', 'birthday_send_now', 'cka_route_staff', 'route_save', 'stop_save', 'stop_delete', 'route_child_set', 'route_child_remove', 'transport_run', 'transport_set_status', 'transport_near', 'parent_transport',
+    'cka_pay_access', 'cka_pay_staff', 'cka_pay_file_ok', 'payment_settings_save', 'fee_plan_save', 'charge_add', 'charge_remove', 'late_fee_waive', 'payment_balances', 'payments_month', 'payments_list', 'payment_submit', 'payment_confirm', 'payment_reject', 'payment_record', 'payment_receipt', 'payments_owner_summary',
     'absence_add', 'absence_tracker', 'parent_message_read', 'absence_followup_list', 'followup_send', 'followup_outcome', 'absence_followup_stats', 'approval_call_log', 'approval_call_list', 'admin_parent_search', 'case_from_email',
     'parent_month_summary', 'academy_settings_save', 'admin_home', 'admin_children', 'admin_child_profile', 'child_move_class', 'child_withdraw', 'child_reinstate', 'admin_classes', 'class_save', 'class_staff_set', 'class_staff_remove', 'staff_job_title_save',
     'cka_media_visible', 'cka_media_upload_ok', 'cka_media_file', 'media_consent_check', 'media_add', 'media_set_tags', 'media_remove', 'media_mark_post', 'media_settings_save',
@@ -59,6 +61,14 @@ begin
   if to_regprocedure('public.cka_run_deadline_check(timestamptz)') is not null then
     revoke all on function public.cka_run_deadline_check(timestamptz) from public, anon, authenticated;
     grant execute on function public.cka_run_deadline_check(timestamptz) to service_role;
+  end if;
+  if to_regprocedure('public.cka_run_birthdays(timestamptz)') is not null then
+    revoke all on function public.cka_run_birthdays(timestamptz), public.cka_run_transport_billing(timestamptz), public.birthday_wall() from public, anon, authenticated;
+    grant execute on function public.cka_run_birthdays(timestamptz), public.cka_run_transport_billing(timestamptz), public.birthday_wall() to service_role;
+  end if;
+  if to_regprocedure('public.cka_run_billing(timestamptz)') is not null then
+    revoke all on function public.cka_run_billing(timestamptz) from public, anon, authenticated;
+    grant execute on function public.cka_run_billing(timestamptz) to service_role;
   end if;
   if to_regprocedure('public.cka_run_absence_check(timestamptz)') is not null then
     revoke all on function public.cka_run_absence_check(timestamptz) from public, anon, authenticated;

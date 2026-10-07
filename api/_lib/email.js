@@ -75,6 +75,32 @@ const T = {
   review_monthly: (p, l) => l === "ar"
     ? { subject: "مراجعة الشهر", lines: ["بدأ شهر جديد وحان وقت المراجعة الشهرية.", `المهام المتأخرة: ${p.late_tasks}.`], button: ["فتح لوحة المالك", "/staff/#/owner"] }
     : { subject: "Monthly review", lines: ["A new month has started: time for the monthly review.", `Late tasks: ${p.late_tasks}.`], button: ["Open the owner dashboard", "/staff/#/owner"] },
+  // ---- birthdays and the bus (nothing private: the wish itself is in the portal)
+  birthday_message: (p, l) => l === "ar"
+    ? { subject: "تهنئة بعيد الميلاد من الحضانة", lines: ["لدينا تهنئة لك بمناسبة عيد ميلاد طفلك. اقرأها في البوابة."], button: ["قراءة التهنئة", "/portal/#/messages"] }
+    : { subject: "A birthday wish from the academy", lines: ["We have a birthday wish for your family. Read it in the portal."], button: ["Read it", "/portal/#/messages"] },
+  bus_near: (p, l) => l === "ar"
+    ? { subject: "الحافلة على بعد ١٠ دقائق", lines: ["الحافلة ستصل إلى محطة طفلك خلال نحو ١٠ دقائق."], button: ["فتح البوابة", "/portal/#/"] }
+    : { subject: "The bus is about 10 minutes away", lines: ["The bus will reach your child's stop in about 10 minutes."], button: ["Open the portal", "/portal/#/"] },
+  bus_dropped_off: (p, l) => l === "ar"
+    ? { subject: "نزل طفلك من الحافلة", lines: ["نزل طفلك من الحافلة عند المحطة."], button: ["فتح البوابة", "/portal/#/"] }
+    : { subject: "Your child was dropped off", lines: ["Your child was dropped off from the bus at the stop."], button: ["Open the portal", "/portal/#/"] },
+  // ---- payments (no amounts or names: the figures are in the portal)
+  payment_waiting: (p, l) => l === "ar"
+    ? { subject: "دفعة بانتظار التأكيد", lines: ["أرسلت أسرة مرجع دفع. يُرجى مطابقته مع كشف الحساب البنكي."], button: ["فتح المدفوعات", "/staff/#/payments"] }
+    : { subject: "A payment is waiting for confirmation", lines: ["A family sent a payment reference. Please match it against the bank statement."], button: ["Open payments", "/staff/#/payments"] },
+  payment_confirmed: (p, l) => l === "ar"
+    ? { subject: "تم تأكيد دفعتك", lines: ["تم تأكيد دفعتك وإصدار إيصال. يمكنك تنزيله من البوابة."], button: ["فتح المدفوعات", "/portal/#/payments"] }
+    : { subject: "Your payment was confirmed", lines: ["Your payment was confirmed and a receipt was issued. You can download it in the portal."], button: ["Open payments", "/portal/#/payments"] },
+  payment_rejected: (p, l) => l === "ar"
+    ? { subject: "تعذّر تأكيد دفعتك", lines: ["لم نتمكن من تأكيد الدفعة التي أرسلتها. افتح البوابة لمعرفة السبب."], button: ["فتح المدفوعات", "/portal/#/payments"] }
+    : { subject: "We could not confirm your payment", lines: ["We could not confirm the payment you sent. Open the portal to see why."], button: ["Open payments", "/portal/#/payments"] },
+  payment_reminder: (p, l) => l === "ar"
+    ? { subject: "تذكير بالرسوم المستحقة", lines: ["لديك رسوم مستحقة. يمكنك الدفع عبر إنستاباي من البوابة."], button: ["فتح المدفوعات", "/portal/#/payments"] }
+    : { subject: "A reminder about fees due", lines: ["You have fees due. You can pay with InstaPay from the portal."], button: ["Open payments", "/portal/#/payments"] },
+  late_fee_added: (p, l) => l === "ar"
+    ? { subject: "أُضيفت غرامة تأخير", lines: ["أُضيفت غرامة تأخير إلى رصيدك غير المسدد. التفاصيل في البوابة."], button: ["فتح المدفوعات", "/portal/#/payments"] }
+    : { subject: "A late fee was added", lines: ["A late fee was added to your unpaid balance. See the details in the portal."], button: ["Open payments", "/portal/#/payments"] },
   // ---- absence follow-up and messages from the academy (parents get only "there is a message"; the text is in the portal)
   academy_message: (p, l) => l === "ar"
     ? { subject: "رسالة من الحضانة", lines: ["لديك رسالة من الحضانة. يُرجى قراءتها في البوابة."], button: ["قراءة الرسالة", "/portal/#/messages"] }

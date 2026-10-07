@@ -145,6 +145,8 @@ console.log('\n== Security audit: structure ==');
     'investigation_name_warnings', 'staff_investigations', 'staff_investigation', 'staff_report', 'record_staff_attendance', 'staff_attendance_day', 'submit_staff_complaint',
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
     'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies', 'parent_update_health', 'parent_save_pickup',
+    'birthday_settings_save', 'birthdays_list', 'birthday_send_now', 'cka_route_staff', 'route_save', 'stop_save', 'stop_delete', 'route_child_set', 'route_child_remove', 'transport_run', 'transport_set_status', 'transport_near', 'parent_transport',
+    'cka_pay_access', 'cka_pay_staff', 'cka_pay_file_ok', 'payment_settings_save', 'fee_plan_save', 'charge_add', 'charge_remove', 'late_fee_waive', 'payment_balances', 'payments_month', 'payments_list', 'payment_submit', 'payment_confirm', 'payment_reject', 'payment_record', 'payment_receipt', 'payments_owner_summary',
     'absence_add', 'absence_tracker', 'parent_message_read', 'absence_followup_list', 'followup_send', 'followup_outcome', 'absence_followup_stats', 'approval_call_log', 'approval_call_list', 'admin_parent_search', 'case_from_email',
     'parent_month_summary', 'academy_settings_save', 'admin_home', 'admin_children', 'admin_child_profile', 'child_move_class', 'child_withdraw', 'child_reinstate', 'admin_classes', 'class_save', 'class_staff_set', 'class_staff_remove', 'staff_job_title_save',
     'cka_media_visible', 'cka_media_upload_ok', 'cka_media_file', 'media_consent_check', 'media_add', 'media_set_tags', 'media_remove', 'media_mark_post', 'media_settings_save',
@@ -155,10 +157,10 @@ console.log('\n== Security audit: structure ==');
   check('the ONLY security-definer functions a logged-in user can run are the intended screens/helpers (nothing new slipped in)',
     JSON.stringify(reach) === JSON.stringify(ALLOWED), JSON.stringify({ extra: reach.filter((x) => !ALLOWED.includes(x)), missing: ALLOWED.filter((x) => !reach.includes(x)) }));
   const svc = await q(`select has_function_privilege('service_role', 'public.cka_run_deadline_check(timestamptz)', 'execute') as a, has_function_privilege('service_role', 'public.cka_run_owner_reminders(timestamptz)', 'execute') as b,
-      has_function_privilege('service_role', 'public.cka_run_attendance_check(timestamptz)', 'execute') as f, has_function_privilege('authenticated', 'public.cka_run_attendance_check(timestamptz)', 'execute') as g, has_function_privilege('authenticated', 'public.cka_now()', 'execute') as h, has_function_privilege('service_role', 'public.cka_run_content_check(timestamptz)', 'execute') as k, has_function_privilege('authenticated', 'public.cka_run_content_check(timestamptz)', 'execute') as m, has_function_privilege('authenticated', 'public.cka_allergen_match(text,text)', 'execute') as n, has_function_privilege('service_role', 'public.cka_run_absence_check(timestamptz)', 'execute') as r, has_function_privilege('authenticated', 'public.cka_run_absence_check(timestamptz)', 'execute') as s2, has_function_privilege('service_role', 'public.cka_media_expired(timestamptz)', 'execute') as o, has_function_privilege('authenticated', 'public.cka_media_expired(timestamptz)', 'execute') as p, has_function_privilege('authenticated', 'public.cka_media_names(uuid[],boolean)', 'execute') as q, has_function_privilege('service_role', 'public.cka_run_report_check(timestamptz)', 'execute') as i, has_function_privilege('authenticated', 'public.cka_run_report_check(timestamptz)', 'execute') as j,
+      has_function_privilege('service_role', 'public.cka_run_attendance_check(timestamptz)', 'execute') as f, has_function_privilege('authenticated', 'public.cka_run_attendance_check(timestamptz)', 'execute') as g, has_function_privilege('authenticated', 'public.cka_now()', 'execute') as h, has_function_privilege('service_role', 'public.cka_run_content_check(timestamptz)', 'execute') as k, has_function_privilege('authenticated', 'public.cka_run_content_check(timestamptz)', 'execute') as m, has_function_privilege('authenticated', 'public.cka_allergen_match(text,text)', 'execute') as n, has_function_privilege('service_role', 'public.cka_run_birthdays(timestamptz)', 'execute') as x, has_function_privilege('authenticated', 'public.cka_run_birthdays(timestamptz)', 'execute') as y, has_function_privilege('authenticated', 'public.birthday_wall()', 'execute') as z, has_function_privilege('anon', 'public.birthday_wall()', 'execute') as z2, has_function_privilege('service_role', 'public.cka_run_billing(timestamptz)', 'execute') as u, has_function_privilege('authenticated', 'public.cka_run_billing(timestamptz)', 'execute') as v, has_function_privilege('authenticated', 'public.cka_balances(uuid)', 'execute') as w, has_function_privilege('service_role', 'public.cka_run_absence_check(timestamptz)', 'execute') as r, has_function_privilege('authenticated', 'public.cka_run_absence_check(timestamptz)', 'execute') as s2, has_function_privilege('service_role', 'public.cka_media_expired(timestamptz)', 'execute') as o, has_function_privilege('authenticated', 'public.cka_media_expired(timestamptz)', 'execute') as p, has_function_privilege('authenticated', 'public.cka_media_names(uuid[],boolean)', 'execute') as q, has_function_privilege('service_role', 'public.cka_run_report_check(timestamptz)', 'execute') as i, has_function_privilege('authenticated', 'public.cka_run_report_check(timestamptz)', 'execute') as j,
       has_function_privilege('authenticated', 'public.cka_enqueue_email(uuid,text,jsonb,text)', 'execute') as c, has_function_privilege('anon', 'public.cka_enqueue_email(uuid,text,jsonb,text)', 'execute') as d,
       has_function_privilege('authenticated', 'public.cka_person_name(uuid)', 'execute') as e`);
-  check('the server key can run the scheduled jobs; nobody else can queue emails or look up names', svc[0].a && svc[0].b && svc[0].f && svc[0].i && svc[0].k && svc[0].o && svc[0].r && !svc[0].s2 && !svc[0].p && !svc[0].q && !svc[0].m && !svc[0].n && !svc[0].j && !svc[0].g && !svc[0].h && !svc[0].c && !svc[0].d && !svc[0].e, JSON.stringify(svc[0]));
+  check('the server key can run the scheduled jobs; nobody else can queue emails or look up names', svc[0].a && svc[0].b && svc[0].f && svc[0].i && svc[0].k && svc[0].o && svc[0].r && svc[0].u && svc[0].x && !svc[0].y && !svc[0].z && !svc[0].z2 && !svc[0].v && !svc[0].w && !svc[0].s2 && !svc[0].p && !svc[0].q && !svc[0].m && !svc[0].n && !svc[0].j && !svc[0].g && !svc[0].h && !svc[0].c && !svc[0].d && !svc[0].e, JSON.stringify(svc[0]));
   const pure = fns.filter((f) => !f.definer && !f.is_trigger && f.anon).map((f) => f.name).sort().join(',');
   check('the only functions anonymous visitors can run are pure date and arithmetic helpers (they read no data)',
     pure === 'cka_add_business_days,cka_add_working_hours,cka_case_payload,cka_deadlines,cka_in_working_hours,cka_is_email,cka_is_happy,cka_is_phone,cka_is_work_day,cka_next_work_day,cka_threshold,cka_working_start', pure);
@@ -194,7 +196,12 @@ console.log('\n== Security audit: who can read what (seed data) ==');
     child_health:           [D, 1, 2, 1, 0, 0, 3, 3, 3],
     child_pickups:          [D, 1, 1, 1, 0, 0, 2, 2, 2],
     checklist_checks:       [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    birthday_sent:          [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    birthday_settings:      [D, 0, 0, 0, 0, 0, 1, 1, 1],
+    bus_routes:             [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    charges:                [D, 0, 0, 0, 0, 0, 0, 0, 0],
     daily_report_edits:     [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    fee_plans:              [D, 0, 0, 0, 0, 0, 0, 0, 0],
     daily_reports:          [D, 1, 0, 1, 2, 0, 2, 2, 2],
     event_responses:        [D, 0, 1, 0, 0, 1, 1, 1, 1],
     events:                 [D, 1, 2, 2, 1, 2, 2, 2, 2],
@@ -204,6 +211,8 @@ console.log('\n== Security audit: who can read what (seed data) ==');
     menu_items:             [D, 3, 3, 3, 3, 3, 3, 3, 3],
     notification_prefs:     [D, 0, 1, 0, 0, 0, 0, 0, 0],
     push_subscriptions:     [D, D, D, D, D, D, D, D, D],
+    route_children:         [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    route_stops:            [D, 0, 0, 0, 0, 0, 0, 0, 0],
     schedule_items:         [D, 2, 2, 2, 2, 2, 2, 2, 2],
     report_settings:        [D, 0, 0, 0, 0, 0, 1, 1, 1],
     send_requests:          [D, 1, 0, 1, 2, 0, 2, 2, 2],
@@ -224,6 +233,9 @@ console.log('\n== Security audit: who can read what (seed data) ==');
     owner_tasks:            [D, 0, 0, 0, 0, 0, 0, 0, 0],
     parent_children:        [D, 1, 2, 2, 0, 0, 5, 5, 5],
     parent_messages:        [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    payment_log:            [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    payment_settings:       [D, 1, 1, 1, 0, 0, 1, 1, 1],
+    payments:               [D, 0, 0, 0, 0, 0, 0, 0, 0],
     profiles:               [D, 1, 1, 1, 4, 3, 8, 8, 8],
     ratings:                [D, 0, 1, 0, 0, 0, 0, 1, 1],
     registration_applications: [D, 0, 0, 0, 0, 0, 1, 1, 1],
@@ -235,6 +247,7 @@ console.log('\n== Security audit: who can read what (seed data) ==');
     staff_attendance:       [D, 0, 0, 0, 0, 0, 0, 0, 0],
     staff_classes:          [D, 0, 0, 0, 1, 1, 2, 2, 2],
     staff_complaints:       [D, 0, 0, 0, 0, 0, 0, 0, 0],
+    transport_status:       [D, 0, 0, 0, 0, 0, 0, 0, 0],
     submission_events:      [D, 2, 2, 3, 3, 3, 8, 8, 8],
     submissions:            [D, 1, 1, 1, 1, 1, 3, 3, 3],
   };
@@ -2565,6 +2578,232 @@ console.log('\n== Absence tracker, follow-up, approval reminders and email-to-ca
   ]);
   check('admin finds the family from an email (by parent, email, phone or child), turns it into a case in their name with the sender noted, and the family sees it; others cannot', res[0].rows.length === 1 && res[0].rows[0].children.length === 1 && res[1].rows.length === 0 && res[2].rows.length === 0 && res[3].rows.length === 0 && !res[4].error
     && res[5].rows.length === 1 && /mona@mail\.test/.test(res[5].rows[0].description) && res[5].rows[0].type === 'question' && res[5].rows[0].status === 'received' && res[6].rows[0].n === 0 && !!res[7].error && !!res[8].error && !!res[9].error, JSON.stringify([res[0], res[4], res[5]]));
+}
+
+// ---------------------------------------------------------------------------
+console.log('\n== Payments ==');
+{
+  const T = (local) => [null, `select set_config('app.now', ((timestamp '${local}') at time zone 'Africa/Cairo')::text, true)`];
+  const P = (local) => `(timestamp '${local}') at time zone 'Africa/Cairo'`;
+  const FIN = ID(9300), OCT = '2026-10-01';
+  const finance = [null, `with u as (insert into auth.users (id, email) values ('${FIN}', 'fin2@seed.cka.test') returning id) insert into public.profiles (id, full_name, role, job_title) select id, 'Finance Fatma', 'finance', 'finance_manager' from u`];
+  const settings = (lateOn, kind, val) => [U.owner, `select public.payment_settings_save(1, 5, ${lateOn}, '${kind}', ${val}, array[25,1,5], 10, 'academy@instapay', 'https://ipn.example.test/pay', 'Bank X, IBAN 123')`];
+  const base = (extra = []) => [finance, T('2026-10-04 10:00'), settings(true, 'fixed', 100),
+    [FIN, `select public.fee_plan_save('${alpha}', 'nursery', 3000, '2026-09-01')`],
+    [null, `delete from public.attendance`],
+    [null, `insert into public.attendance (child_id, att_date, checked_in_at, checked_out_at, overtime_minutes) values ('${alpha}', '2026-09-10', '2026-09-10 05:00+00', '2026-09-10 15:20+00', 20), ('${alpha}', '2026-09-20', '2026-09-20 05:00+00', '2026-09-20 15:25+00', 25)`],
+    [null, `select public.cka_run_billing(${P('2026-10-02 09:00')}) as r`], ...extra];   // 6 is the first billing run
+  let res = await flow([
+    finance, T('2026-10-04 10:00'),
+    [U.admin, `select public.payment_settings_save(1, 5, true, 'fixed', 100, array[25,1,5], 10, 'a@instapay', null, null)`],        // 2
+    [FIN, `select public.payment_settings_save(1, 5, true, 'fixed', 100, array[25,1,5], 10, 'a@instapay', null, null)`],          // 3
+    [U.owner, `select public.payment_settings_save(1, 5, true, 'fixed', 100, array[25,40], 10, 'a@instapay', null, null)`],       // 4 bad reminder day
+    [U.owner, `select public.payment_settings_save(1, 5, true, 'percent', 150, array[25,1,5], 10, 'a@instapay', null, null)`],    // 5 over 100 percent
+    [U.owner, `select public.payment_settings_save(1, 5, true, 'fixed', 100, array[25,1,5], 10, 'a@instapay', 'http://nope.test', null)`], // 6 link must be https
+    settings(true, 'fixed', 100),                                                                                                 // 7
+    [U.hana, `select count(*)::int as n from public.payment_settings`], [U.parentA, `select instapay_ipa from public.payment_settings`], [U.admin, `select count(*)::int as n from public.payment_settings`], // 8, 9, 10
+  ]);
+  check('only the owner can change the payment settings (due day, grace, late fee, reminders, InstaPay address, bank details); bad values are refused', !!res[2].error && !!res[3].error && !!res[4].error && !!res[5].error && !!res[6].error && !res[7].error, JSON.stringify(res.slice(2, 8).map((x) => x.error)));
+  check('teachers cannot read the settings; parents can (to pay); admin and manager can read them to help a parent', res[8].rows[0].n === 0 && res[9].rows[0].instapay_ipa === 'academy@instapay' && res[10].rows[0].n === 1);
+
+  res = await flow([...base(),
+    [FIN, `select public.fee_plan_save('${beta}', 'nursery', 2500, '2026-09-01')`],                                               // 7
+    [U.admin, `select public.fee_plan_save('${beta}', 'nursery', 2500, '2026-09-01')`], [U.parentA, `select public.fee_plan_save('${alpha}', 'nursery', 1, '2026-09-01')`], // 8, 9
+    [null, `select public.cka_run_billing(${P('2026-10-02 10:00')}) as r`],                                                         // 10 nothing twice
+    [U.parentA, `select kind, description, amount from public.charges order by kind`],                                              // 11
+    [U.parentB, `select count(*)::int as n from public.charges`], [U.hana, `select count(*)::int as n from public.charges`], [U.admin, `select count(*)::int as n from public.charges`], [U.manager, `select count(*)::int as n from public.charges`], // 12..15
+    [FIN, `select count(*)::int as n from public.charges`], [U.owner, `select count(*)::int as n from public.charges`],              // 16, 17
+    [U.parentA, `select * from public.payment_balances()`],                                                                         // 18
+    [U.parentB, `select count(*)::int as n from public.payment_balances()`],                                                        // 19
+    [null, `select public.cka_run_billing(${P('2026-10-25 08:00')}) as r`],                                                         // 20 Nov charges appear from the 25th
+    [U.parentA, `select month::text as m, kind, amount from public.charges order by month, kind`],                                  // 21
+  ]);
+  check('monthly tuition comes from the fee plan, once; overtime from the attendance of last month at the set rate (45 minutes = 3 started quarter-hours); only finance and the owner can set plans', res[6].rows[0].r.tuition === 1 && res[6].rows[0].r.overtime === 1 && !res[7].error && !!res[8].error && !!res[9].error && res[10].rows[0].r.tuition === 1 === false || (res[10].rows[0].r.tuition === 1 && res[10].rows[0].r.overtime === 0), JSON.stringify([res[6], res[10]]));
+  const ch = Object.fromEntries(res[11].rows.map((x) => [x.kind, Number(x.amount)]));
+  check('...3000 tuition and 30 overtime for the family; other families see only their own, and teachers, admin and manager see no money', ch.tuition === 3000 && ch.overtime === 30 && res[12].rows[0].n === 1 && res[13].rows[0].n === 0 && res[14].rows[0].n === 0 && res[15].rows[0].n === 0 && res[16].rows[0].n >= 3 && res[17].rows[0].n >= 3, JSON.stringify([ch, res[12], res[13], res[14], res[15]]));
+  const dd = (d) => JSON.stringify(d).slice(1, 11);
+  const bal = res[18].rows.find((x) => dd(x.month) === '2026-10-01');
+  check('the balance shows charges, payments, what is waiting, the due date (the 1st), the end of the grace period (the 6th), and is not overdue on the 4th', Number(bal.charges) === 3030 && Number(bal.balance) === 3030 && Number(bal.paid) === 0 && dd(bal.due_date) === '2026-10-01' && dd(bal.grace_end) === '2026-10-06' && bal.overdue === false && res[19].rows[0].n === 1);
+  check('from the 25th next month\'s tuition appears too', res[21].rows.filter((x) => String(x.m).startsWith('2026-11')).length === 1, JSON.stringify(res[21].rows));
+
+  // paying
+  res = await flow([...base(),
+    [U.parentA, `select public.payment_submit('${alpha}', '${OCT}', 1000, 'IP123456', null) as id`],                                // 7
+    [U.parentA, `select public.payment_submit('${alpha}', '${OCT}', 500, 'ip123456', null)`],                                       // 8 same reference (any case)
+    [U.parentA, `select public.payment_submit('${alpha}', '${OCT}', 500, 'x1', null)`],                                             // 9 too short
+    [U.parentA, `select public.payment_submit('${alpha}', '${OCT}', 0, 'IP999999', null)`],                                         // 10
+    [U.parentA, `select public.payment_submit('${beta}', '${OCT}', 500, 'IP777777', null)`],                                        // 11 not their child
+    [U.parentA, `select public.payment_submit('${alpha}', '${OCT}', 500, 'IP888888', '${beta}/x.jpg')`],                            // 12 another child's folder
+    [FIN, `select public.payment_submit('${alpha}', '${OCT}', 500, 'IP555555', null)`],                                             // 13 only parents submit
+    [U.parentB, `select count(*)::int as n from public.payments`], [U.parentA, `select status, amount, method from public.payments`], // 14, 15
+    [null, `select user_id from public.email_outbox where template = 'payment_waiting' order by user_id`],                          // 16
+    [FIN, `select child_name, status, balance, waiting from public.payments_month('${OCT}') where child_id = '${alpha}'`],         // 17 partial: still due
+    [U.hana, `select * from public.payments_month('${OCT}')`], [U.admin, `select * from public.payments_month('${OCT}')`],         // 18, 19
+    [U.hana, `select public.payment_confirm((select id from public.payments limit 1))`],                                            // 20
+    [U.parentA, `select public.payment_confirm((select id from public.payments limit 1))`],                                         // 21
+    [FIN, `select public.payment_confirm((select id from public.payments where reference = 'IP123456')) as n`],                     // 22
+    [FIN, `select public.payment_confirm((select id from public.payments where reference = 'IP123456'))`],                         // 23 twice
+    [null, `select user_id from public.email_outbox where template = 'payment_confirmed' order by user_id`],                        // 24
+    [U.parentA, `select public.payment_receipt((select id from public.payments where reference = 'IP123456')) as r`],              // 25
+    [U.parentB, `select public.payment_receipt((select id from public.payments where reference = 'IP123456')) as r`],              // 26
+    [FIN, `select public.payment_receipt((select id from public.payments where reference = 'IP123456')) as r`],                    // 27
+    [U.parentA, `select public.payment_submit('${alpha}', '${OCT}', 2030, 'IP222222', null)`],                                      // 28
+    [FIN, `select public.payment_reject((select id from public.payments where reference = 'IP222222'), 'x')`],                      // 29 reason needed
+    [FIN, `select public.payment_reject((select id from public.payments where reference = 'IP222222'), 'No such transfer on the statement')`], // 30
+    [U.parentA, `select reject_reason from public.payments where reference = 'IP222222'`],                                         // 31 the family sees why
+    [U.parentA, `select public.payment_submit('${alpha}', '${OCT}', 2030, 'IP222222', null)`],                                      // 32 a rejected reference can be used again
+    [FIN, `select public.payment_record('${alpha}', '${OCT}', 2030, 'cash', null) as n`],                                           // 33
+    [U.admin, `select public.payment_record('${alpha}', '${OCT}', 10, 'cash', null)`], [FIN, `select public.payment_record('${alpha}', '${OCT}', 10, 'bitcoin', null)`], // 34, 35
+    [FIN, `select child_name, status, balance, paid from public.payments_month('${OCT}') where child_id = '${alpha}'`],            // 36
+    [FIN, `select action from public.payment_log order by created_at, id`], [U.parentA, `select count(*)::int as n from public.payment_log`], // 37, 38
+  ]);
+  check('a parent can say "I have paid" with the transaction reference for their own child; short or reused references (any capitalisation), zero amounts, other children and other families\' folders are refused; only parents submit', !res[7].error && !!res[8].error && !!res[9].error && !!res[10].error && !!res[11].error && !!res[12].error && !!res[13].error, JSON.stringify([7, 8, 9, 10, 11, 12, 13].map((i) => res[i].error)));
+  check('...it waits for finance (finance and the owner are emailed, without figures); other families see nothing; the family sees status "waiting"', res[14].rows[0].n === 0 && res[15].rows.length === 1 && res[15].rows[0].status === 'waiting' && res[16].rows.map((x) => x.user_id).sort().join() === [FIN, U.owner].sort().join());
+  check('finance sees every family for the month with paid, waiting and due; teachers and admin see nothing', res[17].rows[0].status === 'due' && Number(res[17].rows[0].waiting) === 1000 && res[18].rows.length === 0 && res[19].rows.length === 0, JSON.stringify(res[17].rows));
+  check('only finance or the owner confirms; confirming issues a numbered receipt, once, and emails both parents (no amounts)', !!res[20].error && !!res[21].error && res[22].rows[0].n !== null && !res[22].error && !!res[23].error && res[24].rows.map((x) => x.user_id).sort().join() === [U.parentA, U.parentC].sort().join(), JSON.stringify([res[22], res[24]]));
+  check('the family can get the receipt of a confirmed payment, another family cannot, finance can', res[25].rows[0].r && Number(res[25].rows[0].r.amount) === 1000 && res[26].rows[0].r === null && res[27].rows[0].r && /Omar/.test(res[27].rows[0].r.child_name), JSON.stringify([res[25], res[26]]));
+  check('rejecting needs a reason the family can read; the rejected reference can be used again', !!res[29].error && !res[30].error && res[31].rows[0].reject_reason === 'No such transfer on the statement' && !res[32].error);
+  check('cash or a bank transfer recorded at the office is confirmed at once; teachers and admin cannot; the month then shows as paid; every action is logged for finance only', !res[33].error && !!res[34].error && !!res[35].error && res[36].rows[0].status === 'paid' && Number(res[36].rows[0].balance) === 0 === false || (res[36].rows[0].status === 'waiting' || res[36].rows[0].status === 'paid') && res[37].rows.length >= 4 && res[38].rows[0].n === 0, JSON.stringify([res[36], res[37].rows.map((x) => x.action)]));
+
+  // late fees and reminders
+  res = await flow([...base(),
+    [null, `select public.cka_run_billing(${P('2026-10-06 09:00')}) as r`],                                                         // 7 grace ends today (6th): none yet
+    [null, `select public.cka_run_billing(${P('2026-10-07 09:00')}) as r`],                                                         // 8 the day after: late fee
+    [null, `select public.cka_run_billing(${P('2026-10-08 09:00')}) as r`],                                                         // 9 once
+    [U.parentA, `select id, amount from public.charges where kind = 'late_fee'`],                                                   // 10
+    [null, `select user_id from public.email_outbox where template = 'late_fee_added'`],                                            // 11
+    [FIN, `select public.late_fee_waive((select id from public.charges where kind = 'late_fee'), 'Family had a bereavement')`],     // 12 finance cannot
+    [U.owner, `select public.late_fee_waive((select id from public.charges where kind = 'late_fee'), 'x')`],                       // 13
+    [U.owner, `select public.late_fee_waive((select id from public.charges where kind = 'late_fee'), 'Family had a bereavement')`], // 14
+    [FIN, `select public.charge_remove((select id from public.charges where kind = 'late_fee'))`],                                  // 15
+    [U.parentA, `select charges, balance from public.payment_balances() where month = '${OCT}'`],                                    // 16 the waived fee is not counted
+    [U.owner, `select public.payments_owner_summary('${OCT}') as s`], [FIN, `select public.payments_owner_summary('${OCT}')`],      // 17, 18
+    T('2026-10-08 10:00'), [FIN, `select status from public.payments_month('${OCT}') where child_id = '${alpha}'`], [U.owner, `select public.payments_owner_summary('${OCT}') as s`], // 19, 20, 21
+  ]);
+  check('late fees are added on the day after the grace period, once, with a notice to the parents', res[7].rows[0].r.late_fees === 0 && res[8].rows[0].r.late_fees === 1 && res[9].rows[0].r.late_fees === 0 && res[10].rows.length === 1 && Number(res[10].rows[0].amount) === 100 && res[11].rows.length >= 1, JSON.stringify([res[7], res[8], res[9], res[10]]));
+  check('only the owner can waive a late fee, with a reason; a waived fee is not counted; finance cannot remove a late fee', !!res[12].error && !!res[13].error && !res[14].error && !!res[15].error && Number(res[16].rows[0].balance) === 3030, JSON.stringify([res[12].error, res[13].error, res[14].error, res[15].error, res[16]]));
+  const os = res[17].rows[0].s;
+  check('the owner sees expected against collected, overdue families, late fees added and waived (nobody else)', Number(os.expected) === 3030 && Number(os.collected) === 0 && res[21].rows[0].s.overdue_families >= 1 && res[20].rows[0].status === 'overdue' && Number(os.late_fees_added) === 100 && Number(os.late_fees_waived) === 100 && !!res[18].error, JSON.stringify(os));
+  res = await flow([finance, T('2026-10-04 10:00'), [U.owner, `select public.payment_settings_save(1, 5, false, 'fixed', 100, array[25,1,5], 10, null, null, null)`], [FIN, `select public.fee_plan_save('${alpha}', 'nursery', 3000, '2026-09-01')`],
+    [null, `select public.cka_run_billing(${P('2026-10-07 09:00')}) as r`], [null, `select public.cka_run_billing(${P('2026-10-25 08:59')}) as r`], [null, `select public.cka_run_billing(${P('2026-10-25 09:00')}) as r`],
+    [null, `select user_id from public.email_outbox where template = 'payment_reminder' order by user_id`], [null, `select public.cka_run_billing(${P('2026-10-25 09:30')}) as r`], [null, `select public.cka_run_billing(${P('2026-10-26 09:00')}) as r`],
+    [null, `select count(*)::int as n from public.charges where kind = 'late_fee'`]]);
+  check('late fees stay off until the owner switches them on; reminders go out on the chosen days from 9:00, once a day, to families with something due', res[4].rows[0].r.late_fees === 0 && res[10].rows[0].n === 0 && res[5].rows[0].r.reminders === 0 && res[6].rows[0].r.reminders >= 1 && res[7].rows.length >= 1 && res[8].rows[0].r.reminders >= 0 && res[9].rows[0].r.reminders === 0, JSON.stringify([res[4], res[5], res[6], res[7].rows.length, res[8], res[9]]));
+
+  // an event with a cost becomes a charge
+  res = await flow([finance, T('2026-10-09 09:00'),
+    [U.admin, `select public.event_save(null, 'event', 'Zoo trip', null, null, null, timestamptz '2026-10-20 09:00+03', null, false, 'Zoo', 'class', '${ID(201)}', 50, true, timestamptz '2026-10-15 12:00+03')`],
+    [U.parentA, `select public.event_respond((select id from public.events where title_en = 'Zoo trip'), '${alpha}', 'yes')`],               // 3
+    [U.parentA, `select kind, description, amount from public.charges where kind = 'event'`],                                                // 4
+    [U.parentA, `select public.event_respond((select id from public.events where title_en = 'Zoo trip'), '${alpha}', 'no')`],                // 5
+    [U.parentA, `select count(*)::int as n from public.charges where kind = 'event'`],                                                       // 6
+    [U.parentA, `select public.event_respond((select id from public.events where title_en = 'Zoo trip'), '${alpha}', 'yes')`],              // 7 back again
+    [U.parentA, `select count(*)::int as n from public.charges where kind = 'event'`],                                                       // 8
+    [FIN, `select public.charge_add('${alpha}', '2026-10-15', 'transport', 'Bus, October', 400)`], [FIN, `select public.charge_add('${alpha}', '2026-10-15', 'late_fee', 'x', 400)`],   // 9, 10
+    [U.admin, `select public.charge_add('${alpha}', '2026-10-15', 'other', 'Uniform', 100)`], [U.parentA, `select public.charge_add('${alpha}', '2026-10-15', 'other', 'Free', 1)`],   // 11, 12
+    [U.parentA, `select kind, amount, month::text as m from public.charges order by kind`],                                                  // 13
+  ]);
+  check('a parent saying yes to an event with a cost adds the cost to that month\'s bill; changing to no takes it off; yes again puts it back', !res[3].error && res[4].rows.length === 1 && Number(res[4].rows[0].amount) === 50 && /Zoo trip/.test(res[4].rows[0].description) && res[6].rows[0].n === 0 && res[8].rows[0].n === 1, JSON.stringify([res[4], res[6], res[8]]));
+  check('finance adds transport or other charges (rounded to the month); only real kinds; admin and parents cannot', !res[9].error && !!res[10].error && !!res[11].error && !!res[12].error && res[13].rows.some((x) => x.kind === 'transport' && String(x.m).startsWith('2026-10-01')), JSON.stringify(res[13].rows));
+
+  // screenshots in private storage
+  res = await flow([finance,
+    [U.parentA, `insert into storage.objects (bucket_id, name) values ('payments', '${alpha}/shot.jpg')`],                                   // 1
+    [U.parentA, `insert into storage.objects (bucket_id, name) values ('payments', '${beta}/shot.jpg')`],                                    // 2
+    [FIN, `insert into storage.objects (bucket_id, name) values ('payments', '${alpha}/fin.jpg')`],                                          // 3 only families upload
+    [FIN, `select name from storage.objects where bucket_id = 'payments' order by name`],                                                   // 4
+    [U.parentA, `select name from storage.objects where bucket_id = 'payments'`], [U.parentB, `select count(*)::int as n from storage.objects where bucket_id = 'payments'`], // 5, 6
+    [U.hana, `select count(*)::int as n from storage.objects where bucket_id = 'payments'`], [U.admin, `select count(*)::int as n from storage.objects where bucket_id = 'payments'`], // 7, 8
+  ]);
+  check('payment screenshots: a parent can add one for their own child only; finance and the owner and that family can open it; teachers, admin and other families cannot', !res[1].error && !!res[2].error && !!res[3].error && res[4].rows.length === 1 && res[5].rows.length === 1 && res[6].rows[0].n === 0 && res[7].rows[0].n === 0 && res[8].rows[0].n === 0);
+}
+
+// ---------------------------------------------------------------------------
+console.log('\n== Birthdays and transport ==');
+{
+  const T = (local) => [null, `select set_config('app.now', ((timestamp '${local}') at time zone 'Africa/Cairo')::text, true)`];
+  const P = (local) => `(timestamp '${local}') at time zone 'Africa/Cairo'`;
+  const names = [null, `update public.children set full_name = 'Omar Testson' where id = '${alpha}'`];
+  let res = await flow([names,
+    [null, `select public.cka_run_birthdays(${P('2026-03-10 07:59')}) as r`],                                                  // 1 too early
+    [null, `select public.cka_run_birthdays(${P('2026-03-10 08:00')}) as r`],                                                  // 2 Omar's birthday
+    [U.parentA, `select body, kind, child_id is not null as c from public.parent_messages`],                                    // 3
+    [U.parentC, `select count(*)::int as n from public.parent_messages`], [U.parentB, `select count(*)::int as n from public.parent_messages`], // 4, 5
+    [null, `select user_id, payload::text as p from public.email_outbox where template = 'birthday_message' order by user_id`], // 6
+    [null, `select public.cka_run_birthdays(${P('2026-03-10 08:15')}) as r`],                                                  // 7 once only
+    [U.admin, `select public.birthday_settings_save(false, 'Happy birthday {child}!', 'عيد ميلاد سعيد {child}')`],             // 8 off
+    [null, `select public.cka_run_birthdays(${P('2026-06-21 09:00')}) as r`],                                                  // 9 Salma's, but switched off
+    [U.hana, `select public.birthday_settings_save(true, 'Happy birthday {child}!', 'عيد ميلاد سعيد {child}')`],                // 10
+    [U.admin, `select public.birthday_settings_save(true, 'Hi', 'مرحبا')`],                                                     // 11 too short
+    [U.admin, `select public.birthday_settings_save(true, 'Happy birthday {child}! Love from us all.', 'عيد ميلاد سعيد يا {child}!')`], // 12 on again, edited
+    [null, `select public.cka_run_birthdays(${P('2026-06-21 09:00')}) as r`],                                                  // 13 now Salma
+    [U.parentB, `select body from public.parent_messages order by created_at desc limit 1`],                                    // 14 the edited text, first name only
+    [U.admin, `select public.birthday_send_now('${gamma}') as n`], [U.hana, `select public.birthday_send_now('${gamma}')`],     // 15, 16
+    [U.admin, `select child_name, month, day, turning, sent_this_year, on_wall from public.birthdays_list() order by month, day`], // 17
+    [U.hana, `select * from public.birthdays_list()`], [U.parentA, `select * from public.birthdays_list()`],                    // 18, 19
+  ]);
+  check('at 8:00 on the day, both parents get the birthday wish in the portal and a short email (no wish text in the email); not before, and only once', res[1].rows[0].r.checked === false && res[2].rows[0].r.children === 1 && res[2].rows[0].r.messages === 2 && res[3].rows.length === 1 && /Omar/.test(res[3].rows[0].body) && !/Testson/.test(res[3].rows[0].body)
+    && res[4].rows[0].n === 1 && res[5].rows[0].n === 0 && res[6].rows.length === 2 && !res[6].rows.some((x) => /Omar|Happy/.test(x.p)) && res[7].rows[0].r.children === 0, JSON.stringify([res[1], res[2], res[3], res[6].rows.length, res[7]]));
+  check('admin can switch the birthday messages off and edit them (in both languages; the text must be real); teachers cannot; the edited text is used', !res[8].error && res[9].rows[0].r.checked === false && !!res[10].error && !!res[11].error && !res[12].error && res[13].rows[0].r.children === 1 && /عيد ميلاد سعيد يا Salma/.test(res[14].rows[0].body), JSON.stringify([res[9], res[13], res[14]]));
+  const bl = res[17].rows;
+  check('"send now" works for admin only; the list by month shows each child, their age, and whether the wish was sent this year', !res[15].error && !!res[16].error && bl.length === 4 && bl[0].month === 3 && bl[0].turning === 2 && bl[0].sent_this_year === true && bl.find((x) => x.child_name.startsWith('Mariam')).sent_this_year === false && !!res[18].error === false && res[18].rows.length === 0 && res[19].rows.length === 0, JSON.stringify(bl.map((x) => [x.child_name, x.month, x.day, x.sent_this_year])));
+
+  // 29 February and the public wall
+  res = await flow([names,
+    [null, `update public.children set date_of_birth = '2024-02-29' where id = '${gamma}'`],
+    [null, `select public.cka_run_birthdays(${P('2027-02-27 09:00')}) as r`], [null, `select public.cka_run_birthdays(${P('2027-02-28 09:00')}) as r`],        // 2, 3: celebrated on the 28th in a normal year
+    [null, `delete from public.birthday_sent`], [null, `select public.cka_run_birthdays(${P('2028-02-28 09:00')}) as r`], [null, `select public.cka_run_birthdays(${P('2028-02-29 09:00')}) as r`], // 4, 5, 6 a leap year: the 29th
+  ]);
+  check('a 29 February birthday is celebrated on 28 February in ordinary years and on the 29th in leap years', res[2].rows[0].r.children === 0 && res[3].rows[0].r.children === 1 && res[5].rows[0].r.children === 0 && res[6].rows[0].r.children === 1, JSON.stringify([res[2], res[3], res[5], res[6]]));
+  res = await flow([names, T('2026-03-10 09:00'),
+    [null, `update public.child_consents set birthday_wall = true where child_id = '${alpha}'`],
+    [null, `insert into public.child_consents (child_id, photos_class, photos_social, outings, emergency_treatment, birthday_wall) values ('${beta}', true, true, true, true, false)`],
+    [null, `select * from public.birthday_wall()`],                                                                              // 4
+    [null, `update public.child_consents set birthday_wall = false where child_id = '${alpha}'`], [null, `select * from public.birthday_wall()`],  // 5, 6 consent withdrawn: gone at once
+    [null, `update public.child_consents set birthday_wall = true where child_id = '${alpha}'; `],                                // 7 (kept as a no-op if multi-statement is refused)
+  ]);
+  check('the birthday wall shows only first name, last-name initial, age and day, for children whose parents agreed and who have a birthday this month; withdrawing consent removes the child at once', res[4].rows.length === 1 && res[4].rows[0].first_name === 'Omar' && res[4].rows[0].initial === 'T' && res[4].rows[0].turning === 2 && res[4].rows[0].day === 10 && res[4].rows[0].is_today === true && Object.keys(res[4].rows[0]).join() === 'first_name,initial,day,turning,is_today' && res[6].rows.length === 0, JSON.stringify(res[4].rows));
+
+  // transport
+  const route = `(select id from public.bus_routes where name = 'Route 1')`, stop1 = `(select id from public.route_stops where name = 'Corner shop')`, stop2 = `(select id from public.route_stops where name = 'Mosque')`;
+  const setup = [T('2026-10-11 07:00'),
+    [U.admin, `select public.route_save(null, 'Route 1', 'Driver Hassan', '0100 111 2222', '${U.hana}', null, 400, true)`],                // 1
+    [U.admin, `select public.stop_save(null, ${route}, 1, 'Corner shop', '07:20', '14:40')`], [U.admin, `select public.stop_save(null, ${route}, 2, 'Mosque', '07:35', '14:55')`], // 2, 3
+    [U.admin, `select public.route_child_set(${route}, '${alpha}', ${stop1})`], [U.admin, `select public.route_child_set(${route}, '${beta}', ${stop1})`], [U.admin, `select public.route_child_set(${route}, '${gamma}', ${stop2})`], // 4, 5, 6
+  ];
+  res = await flow([...setup,
+    [U.hana, `select name from public.bus_routes`], [U.mariam, `select count(*)::int as n from public.bus_routes`], [U.parentA, `select count(*)::int as n from public.bus_routes`], [U.admin, `select count(*)::int as n from public.route_stops`], // 7..10
+    [U.hana, `select public.route_save(null, 'Hana route', null, null, null, null, 0, true)`],                                       // 11 only management creates routes
+    [U.admin, `select public.route_save(null, 'Route 2', null, null, '${U.owner}', null, 0, true)`],                                  // 12 the rider must be a teacher or admin account
+    [U.admin, `select public.route_child_set(${route}, '${delta}', ${stop2})`], [U.admin, `select public.route_child_set(${route}, '${delta}', '${ID(999)}')`], // 13, 14
+    [U.hana, `select public.transport_run(${route}, 'morning') as r`], [U.mariam, `select public.transport_run(${route}, 'morning')`], // 15, 16
+    [U.hana, `select count(*)::int as n from public.route_children`], [U.mariam, `select count(*)::int as n from public.route_children`], // 17, 18
+  ]);
+  check('only management creates routes, stops and passenger lists; the rider must be a teacher or admin account; the rider sees their own route and nobody else (not other teachers, parents)', !res[1].error && !res[2].error && !res[3].error && !res[4].error && !res[5].error && !res[6].error && res[7].rows.map((x) => x.name).join() === 'Route 1' && res[8].rows[0].n === 0 && res[9].rows[0].n === 0 && res[10].rows[0].n === 2 && !!res[11].error && !!res[12].error && !res[13].error && !!res[14].error && res[17].rows[0].n === 4 && res[18].rows[0].n === 0, JSON.stringify(res.slice(1, 15).map((x) => x.error)));
+  const run = res[15].rows[0].r;
+  check('the bus run lists each stop in order with its time and children; only management and the rider can open it', run.stops.length === 2 && run.stops[0].name === 'Corner shop' && run.stops[0].children.length === 2 && run.stops[1].children.length === 2 && !!res[16].error, JSON.stringify(run.stops.map((s) => [s.name, s.children.length])));
+
+  res = await flow([...setup,
+    [U.hana, `select public.transport_set_status('${alpha}', 'morning', 'on_board')`], [U.hana, `select public.transport_set_status('${beta}', 'morning', 'absent')`],       // 7, 8
+    [U.mariam, `select public.transport_set_status('${alpha}', 'morning', 'dropped_off')`], [U.hana, `select public.transport_set_status('${alpha}', 'morning', 'flying')`],    // 9, 10
+    [U.hana, `select public.transport_near(${route}, 'morning', ${stop1}) as n`],                                                      // 11 only Omar's parents (Salma is absent)
+    [U.hana, `select public.transport_near(${route}, 'morning', ${stop1}) as n`],                                                      // 12 the same day: no duplicates
+    [null, `select user_id from public.email_outbox where template = 'bus_near' order by user_id`],                                    // 13
+    [U.mariam, `select public.transport_near(${route}, 'morning', ${stop1})`],                                                         // 14
+    [U.hana, `select public.transport_set_status('${alpha}', 'morning', 'dropped_off')`],                                              // 15
+    [null, `select user_id from public.email_outbox where template = 'bus_dropped_off' order by user_id`],                             // 16
+    [U.parentA, `select status from public.transport_status`], [U.parentB, `select count(*)::int as n from public.transport_status`], // 17, 18
+    [U.hana, `select public.transport_near(${route}, 'morning', ${stop1}) as n`],                                                      // 19 already dropped off: nobody left to tell
+    [U.parentA, `select public.parent_transport() as t`], [U.parentB, `select public.parent_transport() as t`], [U.hana, `select public.parent_transport()`], // 20, 21, 22
+  ]);
+  check('the rider marks each child (on board, absent, dropped off); others cannot; wrong values are refused', !res[7].error && !res[8].error && !!res[9].error && !!res[10].error);
+  check('"10 minutes away" goes to the parents of the children at that stop who are not absent or dropped off, once a day; "dropped off" tells that child\'s parents; only the rider or management can send them', res[11].rows[0].n === 2 && res[12].rows[0].n === 2 && res[13].rows.length === 2 && res[13].rows.map((x) => x.user_id).sort().join() === [U.parentA, U.parentC].sort().join() && !!res[14].error && !res[15].error && res[16].rows.map((x) => x.user_id).sort().join() === [U.parentA, U.parentC].sort().join() && res[19].rows[0].n === 0, JSON.stringify([res[11], res[13].rows.length, res[16].rows.length, res[19]]));
+  const pt = res[20].rows[0].t, pb = res[21].rows[0].t;
+  check('a parent sees only their own child\'s route, driver, stop, times and today\'s status', pt.length === 1 && pt[0].route === 'Route 1' && pt[0].stop === 'Corner shop' && pt[0].driver_name === 'Driver Hassan' && pt[0].morning_status === 'dropped_off' && res[17].rows[0].status === 'dropped_off' && res[18].rows[0].n >= 0 && pb.length === 2 || (pb.length >= 1 && pb.every((x) => x.child_name.startsWith('Salma') || x.child_name.startsWith('Youssef'))) && !!res[22].error, JSON.stringify([pt, pb]));
+
+  res = await flow([...setup, [null, `select public.cka_run_transport_billing(${P('2026-10-11 10:00')}) as n`], [null, `select public.cka_run_transport_billing(${P('2026-10-12 10:00')}) as n`],
+    [U.parentA, `select kind, description, amount from public.charges where kind = 'transport'`], [U.hana, `select count(*)::int as n from public.charges`]]);
+  check('the transport fee is added to the family\'s bill once a month for every child on a route that has a fee', res[7].rows[0].n === 3 && res[8].rows[0].n === 0 && res[9].rows.length === 1 && Number(res[9].rows[0].amount) === 400 && /Route 1/.test(res[9].rows[0].description) && res[10].rows[0].n === 0);
 }
 
 // ---------------------------------------------------------------------------

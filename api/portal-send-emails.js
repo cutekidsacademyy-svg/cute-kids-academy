@@ -76,6 +76,9 @@ module.exports = async function handler(req, res, env = process.env, fetchImpl =
       out.reports = await client.call("/rest/v1/rpc/cka_run_report_check", { method: "POST", body: {} });
       out.content = await client.call("/rest/v1/rpc/cka_run_content_check", { method: "POST", body: {} });
       out.absences = await client.call("/rest/v1/rpc/cka_run_absence_check", { method: "POST", body: {} });
+      out.billing = await client.call("/rest/v1/rpc/cka_run_billing", { method: "POST", body: {} });
+      out.transport_billing = await client.call("/rest/v1/rpc/cka_run_transport_billing", { method: "POST", body: {} });
+      out.birthdays = await client.call("/rest/v1/rpc/cka_run_birthdays", { method: "POST", body: {} });
       try { out.media = await cleanupMedia(client); } catch (e) { out.media = { error: true }; }
     }
     out.emails = await sendEmails(client, env, fetchImpl, now);
