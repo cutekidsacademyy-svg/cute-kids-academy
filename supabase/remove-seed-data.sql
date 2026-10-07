@@ -31,6 +31,8 @@ delete from public.registration_documents   where application_id in (select id f
 delete from public.registration_pickups     where application_id in (select id from public.registration_applications where child_name like '%(seed)');
 delete from public.registration_parents     where application_id in (select id from public.registration_applications where child_name like '%(seed)');
 delete from public.registration_applications where child_name like '%(seed)';
+delete from public.media_tags              where child_id in (select id from seed_children);
+delete from public.media_items             where file_name like 'SEED %';
 delete from public.event_responses         where child_id in (select id from seed_children);
 delete from public.events                  where title_en like '%(seed)' or title_en like 'SEED %';
 delete from public.announcement_reads      where announcement_id in (select id from public.announcements where title_en like 'SEED %');

@@ -90,6 +90,7 @@ function world({ resendOk = true, claimRace = false, rows } = {}) {
     }
     if (u.pathname === "/rest/v1/rpc/cka_run_owner_reminders") return json(200, { sent: 1, working_day: true, late_tasks: 2 });
     if (u.pathname === "/rest/v1/rpc/cka_run_report_check") return json(200, { checked: true, reminders: 1, sent: 4 });
+    if (u.pathname === "/rest/v1/rpc/cka_media_expired") return json(200, []);
     if (u.pathname === "/rest/v1/rpc/cka_run_content_check") return json(200, { announcements: 1, events: 1, emails: 3 });
     if (u.pathname === "/rest/v1/rpc/cka_run_attendance_check") return json(200, { flagged: 2, emails: 1, checked: true });
     if (u.pathname === "/rest/v1/rpc/cka_run_deadline_check") return json(200, { warned: 1, escalated: 0, overdue_at_top: 0, requeued: 0, in_working_hours: true });

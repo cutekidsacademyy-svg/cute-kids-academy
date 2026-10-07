@@ -145,6 +145,7 @@ console.log('\n== Security audit: structure ==');
     'investigation_name_warnings', 'staff_investigations', 'staff_investigation', 'staff_report', 'record_staff_attendance', 'staff_attendance_day', 'submit_staff_complaint',
     'confirm_investigation_fault', 'investigation_fault', 'owner_dashboard', 'owner_set_check', 'owner_routine',
     'registration_list', 'registration_get', 'registration_set_status', 'approve_registration', 'class_allergies', 'parent_update_health', 'parent_save_pickup',
+    'cka_media_visible', 'cka_media_upload_ok', 'cka_media_file', 'media_consent_check', 'media_add', 'media_set_tags', 'media_remove', 'media_mark_post', 'media_settings_save',
     'notification_prefs_save', 'push_subscribe', 'push_unsubscribe', 'cka_announcement_visible', 'cka_announcement_file', 'announcement_post', 'announcement_mark_read', 'announcement_stats', 'announcement_remove', 'cka_event_visible', 'menu_week', 'menu_save', 'schedule_save', 'schedule_delete', 'event_save', 'event_delete', 'event_respond', 'event_responses_summary',
     'report_sheet', 'report_save_many', 'report_send', 'send_request_save', 'report_edit_sent', 'report_overview', 'report_settings_save',
     'cka_door_file', 'door_list', 'door_pickups', 'door_parents', 'door_check_in', 'door_check_out', 'door_undo', 'door_log_call', 'parent_report_attendance', 'parent_cancel_attendance_notice', 'attendance_report'].sort();
@@ -152,10 +153,10 @@ console.log('\n== Security audit: structure ==');
   check('the ONLY security-definer functions a logged-in user can run are the intended screens/helpers (nothing new slipped in)',
     JSON.stringify(reach) === JSON.stringify(ALLOWED), JSON.stringify({ extra: reach.filter((x) => !ALLOWED.includes(x)), missing: ALLOWED.filter((x) => !reach.includes(x)) }));
   const svc = await q(`select has_function_privilege('service_role', 'public.cka_run_deadline_check(timestamptz)', 'execute') as a, has_function_privilege('service_role', 'public.cka_run_owner_reminders(timestamptz)', 'execute') as b,
-      has_function_privilege('service_role', 'public.cka_run_attendance_check(timestamptz)', 'execute') as f, has_function_privilege('authenticated', 'public.cka_run_attendance_check(timestamptz)', 'execute') as g, has_function_privilege('authenticated', 'public.cka_now()', 'execute') as h, has_function_privilege('service_role', 'public.cka_run_content_check(timestamptz)', 'execute') as k, has_function_privilege('authenticated', 'public.cka_run_content_check(timestamptz)', 'execute') as m, has_function_privilege('authenticated', 'public.cka_allergen_match(text,text)', 'execute') as n, has_function_privilege('service_role', 'public.cka_run_report_check(timestamptz)', 'execute') as i, has_function_privilege('authenticated', 'public.cka_run_report_check(timestamptz)', 'execute') as j,
+      has_function_privilege('service_role', 'public.cka_run_attendance_check(timestamptz)', 'execute') as f, has_function_privilege('authenticated', 'public.cka_run_attendance_check(timestamptz)', 'execute') as g, has_function_privilege('authenticated', 'public.cka_now()', 'execute') as h, has_function_privilege('service_role', 'public.cka_run_content_check(timestamptz)', 'execute') as k, has_function_privilege('authenticated', 'public.cka_run_content_check(timestamptz)', 'execute') as m, has_function_privilege('authenticated', 'public.cka_allergen_match(text,text)', 'execute') as n, has_function_privilege('service_role', 'public.cka_media_expired(timestamptz)', 'execute') as o, has_function_privilege('authenticated', 'public.cka_media_expired(timestamptz)', 'execute') as p, has_function_privilege('authenticated', 'public.cka_media_names(uuid[],boolean)', 'execute') as q, has_function_privilege('service_role', 'public.cka_run_report_check(timestamptz)', 'execute') as i, has_function_privilege('authenticated', 'public.cka_run_report_check(timestamptz)', 'execute') as j,
       has_function_privilege('authenticated', 'public.cka_enqueue_email(uuid,text,jsonb,text)', 'execute') as c, has_function_privilege('anon', 'public.cka_enqueue_email(uuid,text,jsonb,text)', 'execute') as d,
       has_function_privilege('authenticated', 'public.cka_person_name(uuid)', 'execute') as e`);
-  check('the server key can run the scheduled jobs; nobody else can queue emails or look up names', svc[0].a && svc[0].b && svc[0].f && svc[0].i && svc[0].k && !svc[0].m && !svc[0].n && !svc[0].j && !svc[0].g && !svc[0].h && !svc[0].c && !svc[0].d && !svc[0].e, JSON.stringify(svc[0]));
+  check('the server key can run the scheduled jobs; nobody else can queue emails or look up names', svc[0].a && svc[0].b && svc[0].f && svc[0].i && svc[0].k && svc[0].o && !svc[0].p && !svc[0].q && !svc[0].m && !svc[0].n && !svc[0].j && !svc[0].g && !svc[0].h && !svc[0].c && !svc[0].d && !svc[0].e, JSON.stringify(svc[0]));
   const pure = fns.filter((f) => !f.definer && !f.is_trigger && f.anon).map((f) => f.name).sort().join(',');
   check('the only functions anonymous visitors can run are pure date and arithmetic helpers (they read no data)',
     pure === 'cka_add_business_days,cka_add_working_hours,cka_case_payload,cka_deadlines,cka_in_working_hours,cka_is_email,cka_is_happy,cka_is_phone,cka_is_work_day,cka_next_work_day,cka_threshold,cka_working_start', pure);
@@ -191,6 +192,9 @@ console.log('\n== Security audit: who can read what (seed data) ==');
     daily_reports:          [D, 1, 0, 1, 2, 0, 2, 2, 2],
     event_responses:        [D, 0, 1, 0, 0, 1, 1, 1, 1],
     events:                 [D, 1, 2, 2, 1, 2, 2, 2, 2],
+    media_items:            [D, 1, 0, 1, 1, 0, 1, 1, 1],
+    media_settings:         [D, 0, 0, 0, 0, 0, 1, 1, 1],
+    media_tags:             [D, 1, 0, 1, 1, 0, 1, 1, 1],
     menu_items:             [D, 3, 3, 3, 3, 3, 3, 3, 3],
     notification_prefs:     [D, 0, 1, 0, 0, 0, 0, 0, 0],
     push_subscriptions:     [D, D, D, D, D, D, D, D, D],
@@ -266,7 +270,7 @@ console.log('\n== Security audit: who can read what (seed data) ==');
   };
   const staffPhones = ['+20 100 000 0001', '+20 100 000 0002', '+20 100 000 0003', '+20 100 000 0004', '+20 100 000 0005'];
   const INTERNAL = ['SEED INTERNAL NOTE', 'SEED INTERNAL FINDINGS', 'SEED STAFF STATEMENT'];
-  await scan(U.parentA, 'Parent A', ['SEED FAMILY ANNOUNCE', 'SEED EVENT CLASS2', 'SEED DRAFT NOTE', 'SEED NOTICE', 'SEED DOOR LOG', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'Mariam Testson', 'Parent B (seed)', 'Parent C (seed)', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'Seed rating comment', 'other.jpg', '+20 100 000 0102', '+20 100 000 0103'].concat(INTERNAL, staffPhones),
+  await scan(U.parentA, 'Parent A', ['SEED MEDIA SECRET', 'SEED EVENT CLASS2', 'SEED DRAFT NOTE', 'SEED NOTICE', 'SEED DOOR LOG', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Salma Testson', 'Youssef Testson', 'Mariam Testson', 'Parent B (seed)', 'Parent C (seed)', 'concern about Teacher Hana', 'tripped on the path', 'mark on arm', 'Seed findings', 'Seed rating comment', 'other.jpg', '+20 100 000 0102', '+20 100 000 0103'].concat(INTERNAL, staffPhones),
     ['Omar Testson', 'lunch concern', 'seed-photo.jpg', 'Peanut allergy (seed)', 'Grandma Seed', 'SEED REPORT NOTE']);
   await scan(U.parentB, 'Parent B', ['SEED EVENT NOBODY', 'SEED REPORT NOTE', 'SEED DRAFT NOTE', 'SEED DOOR LOG', 'Peanut allergy', 'Grandma Seed', 'Layla Applicant', 'SEED APPLICANT', 'SEED LOG', 'Omar Testson', 'Mariam Testson', 'lunch concern', 'Parent A (seed)', 'Parent C (seed)', 'mark on arm', 'Seed findings', 'seed-photo.jpg'].concat(INTERNAL, staffPhones),
     ['Salma Testson', 'Youssef Testson', 'tripped on the path', 'Seed rating comment', 'SEED HEALTH SECRET', 'Uncle Seed Secret', 'SEED NOTICE']);
@@ -2109,6 +2113,121 @@ console.log('\n== Announcements, notification choices, menu and events ==');
   const sum = res[10].rows;
   check('admin sees every child in the audience with the answer or a missing answer (missing first); teachers cannot', sum.length === 2 && sum[0].answer === null && sum[0].child_name.startsWith('Mariam') && sum[1].answer === 'no' && sum[1].answered_by_name === 'Parent B (seed)' && !!res[11].error || (res[11].rows.length === 0), JSON.stringify(sum));
   check('families with an unanswered event get one reminder within 24 hours of the deadline; the family that answered gets none; after the deadline answers are refused', res[15].rows[0].r.events === 1 && res[16].rows.map((x) => x.user_id).join() === U.parentC && res[17].rows[0].r.events === 0 && /deadline_passed/.test(res[19].error), JSON.stringify([res[15].rows, res[16].rows, res[19].error]));
+}
+
+// ---------------------------------------------------------------------------
+console.log('\n== Class photos and videos ==');
+{
+  const T = (local) => [null, `select set_config('app.now', ((timestamp '${local}') at time zone 'Africa/Cairo')::text, true)`];
+  const C1 = ID(201), C2 = ID(202), D = '2026-10-11';
+  const M1 = ID(971), M2 = ID(972), M3 = ID(973), M4 = ID(974);
+  const add = (id, cls, kind, mime, dur, kids, date = D, path = null) => `select public.media_add('${id}', '${cls}', null, '${date}', '${kind}', '${path || cls + '/' + id + (kind === 'photo' ? '.jpg' : '.mp4')}', 'f.jpg', '${mime}', 1000, ${dur}, array[${kids.map((k) => `'${k}'`).join(',')}]::uuid[])`;
+  let res = await flow([
+    T('2026-10-11 10:00'),
+    [U.hana, `select child_name from public.media_consent_check(array['${alpha}','${beta}']::uuid[])`],                    // 1 Salma's parents never agreed
+    [U.mariam, `select child_name from public.media_consent_check(array['${alpha}','${beta}']::uuid[])`],                  // 2 other class: nothing
+    [U.parentA, `select child_name from public.media_consent_check(array['${alpha}']::uuid[])`],                           // 3 parents: nothing
+    [U.hana, add(M1, C1, 'photo', 'image/jpeg', null, [alpha])],                                                           // 4 ok
+    [U.hana, add(M2, C1, 'photo', 'image/jpeg', null, [alpha, beta])],                                                     // 5 blocked: no consent for Salma
+    [null, `insert into public.child_consents (child_id, photos_class, photos_social, outings, emergency_treatment, birthday_wall) values ('${beta}', true, false, true, true, false)`], // 6
+    [U.hana, add(M2, C1, 'photo', 'image/jpeg', null, [alpha, beta])],                                                     // 7 now ok
+    [U.mariam, add(M3, C1, 'photo', 'image/jpeg', null, [alpha])],                                                         // 8 not her class
+    [U.parentA, add(M3, C1, 'photo', 'image/jpeg', null, [alpha])],                                                        // 9 parent
+    [U.hana, add(M3, C1, 'video', 'video/mp4', 61, [alpha])],                                                              // 10 too long
+    [U.hana, add(M3, C1, 'video', 'video/mp4', 'null', [alpha])],                                                          // 11 no duration
+    [U.hana, add(M3, C1, 'photo', 'video/mp4', null, [alpha])],                                                            // 12 type mismatch
+    [U.hana, add(M3, C1, 'photo', 'image/jpeg', null, [alpha], D, `${C2}/x.jpg`)],                                         // 13 wrong folder
+    [U.hana, `select public.media_add('${M3}', '${C1}', null, '${D}', 'photo', '${C1}/${M3}.jpg', 'f.jpg', 'image/jpeg', 1000, null, array[]::uuid[])`], // 14 nobody tagged
+    [U.hana, add(M3, C1, 'photo', 'image/jpeg', null, [alpha], '2026-10-12')],                                             // 15 future date
+    [U.hana, add(M3, C1, 'photo', 'image/jpeg', null, [alpha], '2026-06-01')],                                             // 16 too old
+    [U.hana, add(M3, C1, 'photo', 'image/jpeg', null, [gamma])],                                                           // 17 child of another class
+    [U.hana, add(M4, C1, 'video', 'video/mp4', 30, [beta])],                                                               // 18 ok video
+  ]);
+  check('a teacher can save photos and short videos of their own class; others cannot, and every bad request is refused', !res[4].error && !res[7].error && !!res[8].error && !!res[9].error && [10, 11, 12, 13, 14, 15, 16, 17].every((i) => !!res[i].error) && !res[18].error, JSON.stringify([4, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18].map((i) => [i, res[i].error])));
+  check('a photo tagged with a child whose parents did not agree is blocked, naming the child; the teacher can check first', /no_photo_consent: Salma/.test(res[5].error) && res[1].rows.map((x) => x.child_name).join().startsWith('Salma') && res[2].rows.length === 0 && res[3].rows.length === 0, JSON.stringify([res[5].error, res[1].rows]));
+  check('a video longer than 60 seconds is refused', /video_too_long/.test(res[10].error));
+
+  // who sees what
+  const baseline = [
+    T('2026-10-11 10:00'), [U.hana, add(M1, C1, 'photo', 'image/jpeg', null, [alpha])], [null, `insert into public.child_consents (child_id, photos_class, photos_social, outings, emergency_treatment, birthday_wall) values ('${beta}', true, false, true, true, false)`],
+    [U.hana, add(M2, C1, 'photo', 'image/jpeg', null, [alpha, beta])], [U.hana, add(M4, C1, 'video', 'video/mp4', 30, [beta])],
+  ];
+  const mine = (u) => [u, `select id from public.media_items where id in ('${M1}','${M2}','${M4}') order by id`];
+  res = await flow([...baseline,
+    mine(U.parentA), mine(U.parentB), mine(U.parentC), mine(U.hana), mine(U.mariam), mine(U.admin),                                // 5..10
+    [U.parentA, `select child_id from public.media_tags where media_id = '${M2}'`],                                                 // 11 only my own child's tag
+    [U.parentB, `select child_id from public.media_tags where media_id = '${M2}'`],                                                 // 12
+    [U.hana, `select count(*)::int as n from public.media_tags where media_id = '${M2}'`],                                          // 13 teacher sees both tags
+    [U.hana, `select public.media_set_tags('${M2}', array['${gamma}']::uuid[])`],                                                   // 14 gamma is not in her class
+    [U.hana, `select public.media_set_tags('${M2}', array['${alpha}']::uuid[])`],                                                   // 15 remove Salma
+    [U.parentB, `select id from public.media_items where id = '${M2}'`],                                                            // 16 Salma's parent no longer sees it
+    [U.mariam, `select public.media_set_tags('${M2}', array['${alpha}']::uuid[])`],                                                 // 17
+  ]);
+  const ids = (r) => r.rows.map((x) => x.id).join();
+  check('a parent sees only photos and videos in which their own child is tagged', ids(res[5]) === [M1, M2].sort().join() && ids(res[6]) === [M2, M4].sort().join() && ids(res[7]) === [M1, M2].sort().join(), JSON.stringify([5, 6, 7].map((i) => ids(res[i]))));
+  check('teachers see their own class\'s items, another class\'s teacher none, management all', res[8].rows.length === 3 && res[9].rows.length === 0 && res[10].rows.length === 3);
+  check('a parent never learns which other children are in a photo (only their own tag is readable); teachers see all tags', res[11].rows.length === 1 && res[11].rows[0].child_id === alpha && res[12].rows.length === 1 && res[12].rows[0].child_id === beta && res[13].rows[0].n === 2);
+  check('tags can be corrected by the class teacher only for their own class\'s children; the photo then disappears for the untagged family', !!res[14].error && !res[15].error && res[16].rows.length === 0 && !!res[17].error);
+
+  // removal and social media
+  res = await flow([...baseline,
+    [U.hana, `select public.media_remove('${M1}')`],                                                                                 // 5 teachers cannot
+    [U.admin, `select public.media_remove('${M1}')`],                                                                                // 6
+    mine(U.parentA), mine(U.hana), mine(U.admin),                                                                                    // 7, 8, 9
+    [U.admin, `select public.media_mark_post('${M2}', true)`],                                                                       // 10 Omar and Salma have no social consent
+    [null, `update public.child_consents set photos_social = true where child_id = '${alpha}'`],                                     // 11
+    [U.admin, `select public.media_mark_post('${M2}', true)`],                                                                       // 12 Salma still no
+    [U.admin, `select public.media_mark_post('${M4}', true)`],                                                                       // 13 Salma only: no
+    [null, `update public.child_consents set photos_social = true where child_id = '${beta}'`],                                      // 14
+    [U.manager, `select public.media_mark_post('${M2}', true)`],                                                                     // 15 manager may not
+    [U.hana, `select public.media_mark_post('${M2}', true)`],                                                                        // 16
+    [U.owner, `select public.media_mark_post('${M2}', true)`],                                                                       // 17 owner may
+    [U.admin, `select ok_to_post from public.media_items where id = '${M2}'`],                                                       // 18
+    [null, `update public.child_consents set photos_social = false where child_id = '${beta}'`],                                     // 19 consent withdrawn later
+    [U.hana, `select public.media_set_tags('${M2}', array['${alpha}','${beta}']::uuid[])`],                                          // 20 re-tagging re-checks (the post flag is on)
+    [U.admin, `select public.media_mark_post('${M2}', false)`], [U.admin, `select ok_to_post from public.media_items where id = '${M2}'`], // 21, 22
+  ]);
+  check('only admin and management can remove an item; a removed item is gone for parents and teachers but kept for management', !!res[5].error && !res[6].error && ids(res[7]) === [M2].join() && !ids(res[8]).includes(M1) && ids(res[9]).includes(M1));
+  check('"OK to post" needs social media consent for every child in the item', /no_social_consent/.test(res[10].error) && /no_social_consent: Salma/.test(res[12].error) && /no_social_consent/.test(res[13].error), JSON.stringify([res[10].error, res[12].error, res[13].error]));
+  check('only admin or the owner can mark it (not the manager or a teacher); it can be cleared; re-tagging with a child who has no social consent is refused while it is marked', !!res[15].error && !!res[16].error && !res[17].error && res[18].rows[0].ok_to_post === true && /no_social_consent/.test(res[20].error) && !res[21].error && res[22].rows[0].ok_to_post === false, JSON.stringify([res[15].error, res[16].error, res[17].error, res[20].error]));
+
+  // private storage
+  res = await flow([...baseline,
+    [U.hana, `insert into storage.objects (bucket_id, name) values ('media', '${C1}/${ID(980)}.jpg')`],                              // 5 ok
+    [U.hana, `insert into storage.objects (bucket_id, name) values ('media', '${C2}/${ID(981)}.jpg')`],                              // 6 other class
+    [U.parentA, `insert into storage.objects (bucket_id, name) values ('media', '${C1}/${ID(982)}.jpg')`],                           // 7 a parent
+    [U.hana, `insert into storage.objects (bucket_id, name) values ('media', 'not-a-class/x.jpg')`],                                 // 8
+    [null, `insert into storage.objects (bucket_id, name) values ('media', '${C1}/${M1}.jpg'), ('media', '${C1}/${M4}.mp4')`],     // 9 the registered files
+    [U.parentA, `select name from storage.objects where bucket_id = 'media' order by name`],                                         // 10 only Omar's photo
+    [U.parentB, `select name from storage.objects where bucket_id = 'media' order by name`],                                         // 11 Salma's: the video
+    [U.mariam, `select count(*)::int as n from storage.objects where bucket_id = 'media'`],                                          // 12
+    [U.hana, `delete from storage.objects where bucket_id = 'media' and name = '${C1}/${ID(980)}.jpg'`],                             // 13 take back an unregistered file
+    [U.hana, `delete from storage.objects where bucket_id = 'media' and name = '${C1}/${M1}.jpg'`],                                  // 14 registered: refused silently
+    [null, `select count(*)::int as n from storage.objects where bucket_id = 'media'`],                                              // 15
+  ]);
+  check('a teacher can upload only into their own class\'s folder; parents cannot upload', !res[5].error && !!res[6].error && !!res[7].error && !!res[8].error);
+  check('parents can open only the files of items in which their child is tagged; other classes\' teachers see none', res[10].rows.map((x) => x.name).join() === `${C1}/${M1}.jpg,${C1}/${M2}.jpg`.split(',').filter((n) => n.includes(M1)).join() && res[11].rows.map((x) => x.name).join().includes(M4) && !res[11].rows.map((x) => x.name).join().includes(M1) && res[12].rows[0].n === 0, JSON.stringify([res[10].rows, res[11].rows, res[12].rows]));
+  check('an unregistered upload can be taken back; a registered file cannot be deleted by a teacher', res[15].rows[0].n === 2, JSON.stringify(res[15].rows));
+
+  // retention
+  res = await flow([...baseline,
+    [U.admin, `select public.media_settings_save(6, 'archive')`], [U.hana, `select public.media_settings_save(6, 'archive')`], [U.admin, `select public.media_settings_save(0, 'delete')`], [U.admin, `select public.media_settings_save(6, 'burn')`], // 5..8
+    [null, `insert into public.media_items (id, class_id, album_date, kind, storage_path, file_name, mime_type, size_bytes) values ('${ID(990)}', '${C1}', '2026-01-05', 'photo', '${C1}/old.jpg', 'old.jpg', 'image/jpeg', 10)`], // 9
+    [null, `insert into public.media_tags (media_id, child_id) values ('${ID(990)}', '${alpha}')`],                                   // 10
+    [null, `select id, action from public.cka_media_expired((timestamp '2026-10-11 10:00') at time zone 'Africa/Cairo')`],         // 11
+    [U.admin, `select public.media_remove('${M1}')`],                                                                                // 12
+    [null, `select id from public.cka_media_expired((timestamp '2026-12-30 10:00') at time zone 'Africa/Cairo') where action = 'delete'`], // 13 removed more than 30 days ago
+    [null, `select public.cka_media_apply(array['${ID(990)}']::uuid[], 'archive')`],                                                 // 14
+    [U.parentA, `select id from public.media_items where id = '${ID(990)}'`], [U.admin, `select archived from public.media_items where id = '${ID(990)}'`], // 15, 16
+    [U.admin, `select public.cka_media_apply(array['${ID(990)}']::uuid[], 'delete')`],                                               // 17 browsers cannot
+    [null, `select public.cka_media_apply(array['${ID(990)}']::uuid[], 'delete')`],                                                  // 18
+    [null, `select count(*)::int as n from public.media_items where id = '${ID(990)}'`], [null, `select count(*)::int as n from public.media_tags where media_id = '${ID(990)}'`], // 19, 20
+    [U.admin, `select retention_months, action from public.media_settings`],                                                         // 21
+    [U.admin, `select public.media_settings_save(null, 'delete')`], [U.admin, `select retention_months from public.media_settings`],  // 22, 23
+  ]);
+  check('only management sets the retention period; bad settings are refused; "keep for ever" is allowed', !res[5].error && !!res[6].error && !!res[7].error && !!res[8].error && res[21].rows[0].retention_months === 6 && res[21].rows[0].action === 'archive' && !res[22].error && res[23].rows[0].retention_months === null);
+  check('items older than the retention period are listed for the server with the chosen action, and removed items are purged after 30 days', res[11].rows.some((x) => x.id === ID(990) && x.action === 'archive') && !res[11].rows.some((x) => x.id === M1) && res[13].rows.some((x) => x.id === M1), JSON.stringify([res[11].rows, res[13].rows]));
+  check('archiving hides an item from parents but management keeps it; deleting removes the item and its tags; browsers cannot run the clean-up', res[15].rows.length === 0 && res[16].rows[0].archived === true && !!res[17].error && res[19].rows[0].n === 0 && res[20].rows[0].n === 0);
 }
 
 // ---------------------------------------------------------------------------

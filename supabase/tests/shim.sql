@@ -51,4 +51,4 @@ alter table storage.objects enable row level security;
 create function storage.foldername(name text) returns text[] language sql immutable as $$
   select string_to_array(name, '/')
 $$;
-grant select, insert on storage.objects to authenticated;
+grant select, insert, update, delete on storage.objects to authenticated;

@@ -167,3 +167,8 @@ insert into public.events (id, kind, title_en, starts_at, audience, class_id, ne
 insert into public.event_responses (event_id, child_id, answered_by, answer) values
   ('00000000-0000-4000-8000-000000000b02', '00000000-0000-4000-8000-000000000303', '00000000-0000-4000-8000-000000000102', 'yes');
 insert into public.notification_prefs (user_id, announcements) values ('00000000-0000-4000-8000-000000000102', false);
+
+-- Class photo (fake): Omar, whose parents agreed to class photos, in the first class.
+insert into public.media_items (id, class_id, album_date, kind, storage_path, file_name, mime_type, size_bytes) values
+  ('00000000-0000-4000-8000-000000000c01', '00000000-0000-4000-8000-000000000201', current_date, 'photo', '00000000-0000-4000-8000-000000000201/seed-1.jpg', 'SEED MEDIA PHOTO.jpg', 'image/jpeg', 1000);
+insert into public.media_tags (media_id, child_id) values ('00000000-0000-4000-8000-000000000c01', '00000000-0000-4000-8000-000000000301');

@@ -85,3 +85,19 @@ test("the service worker shows only a generic message, in both languages, and op
   assert.ok(man.icons.length >= 1);
   for (const f of ["portal/index.html", "login/index.html"]) assert.match(readFileSync(join(root, f), "utf8"), /rel="manifest"/, f);
 });
+
+const { cleanupMedia } = require("../api/_lib/media-cleanup.js");
+test("media retention: files are deleted before their records, old items are archived, and a failure is retried next time", async () => {
+  const calls = [];
+  const rows = [{ id: "a", storage_path: "c/a.jpg", action: "archive" }, { id: "b", storage_path: "c/b.jpg", action: "delete" }, { id: "d", storage_path: "c/d.mp4", action: "delete" }];
+  const client = { call: async (path, opts = {}) => { calls.push([opts.method || "GET", path, opts.body]); if (path.endsWith("cka_media_expired")) return rows; if (path.endsWith("cka_media_apply")) return opts.body.p_ids.length; return {}; } };
+  const r = await cleanupMedia(client);
+  assert.deepEqual(r, { archived: 1, deleted: 2, failed: 0 });
+  const iDelFile = calls.findIndex((c) => c[0] === "DELETE"), iApply = calls.findIndex((c) => c[1].endsWith("cka_media_apply") && c[2].p_action === "delete");
+  assert.ok(iDelFile >= 0 && iDelFile < iApply, "files first, records after");
+  assert.deepEqual(calls[iDelFile][2].prefixes, ["c/b.jpg", "c/d.mp4"]);
+  const failing = { call: async (path, opts = {}) => { if (path.endsWith("cka_media_expired")) return rows; if (opts.method === "DELETE") throw new Error("storage down"); return 1; } };
+  const r2 = await cleanupMedia(failing);
+  assert.equal(r2.deleted, 0); assert.equal(r2.failed, 2);
+  assert.deepEqual(await cleanupMedia({ call: async () => [] }), { archived: 0, deleted: 0, failed: 0 });
+});
