@@ -648,7 +648,7 @@
   };
   // Shared with js/owner.js (the owner dashboard, attendance sheet and staff-concern form).
   window.CKAStaff = {
-    routes: routes, me: function () { return me; }, isTop: isTop, isMgmt: isMgmt, isOwner: function () { return me.role === "owner"; },
+    ownerCards: [], routes: routes, me: function () { return me; }, isTop: isTop, isMgmt: isMgmt, isOwner: function () { return me.role === "owner"; },
     show: show, card: card, note: note, pill: pill, link: link, field: field, opt: opt, kv: kv, textarea: textarea,
     rpc: rpc, fmt: fmt, when: when, loadingView: loadingView, failView: failView, msgFromError: msgFromError, loadStaff: loadStaff,
     setFlash: function (m) { flash = m; }, takeFlash: function () { var m = flash; flash = null; return m; },
@@ -656,8 +656,8 @@
 
   function go() {
     var parts = location.hash.replace(/^#\/?/, "").split("/"), name = parts[0] === "" ? "" : parts[0];
-    if (me.role === "finance") { name = "attreport"; parts = ["attreport"]; }
-    var tab = name === "case" ? "queue" : name === "investigation" ? "investigations" : name === "application" ? "applications" : (name || "queue");
+    if (me.role === "finance" && ["attreport", "payments", "receipt"].indexOf(name) < 0) { name = "payments"; parts = ["payments"]; }
+    var tab = name === "case" ? "queue" : name === "investigation" ? "investigations" : name === "application" ? "applications" : name === "receipt" ? "payments" : (name || "queue");
     document.querySelectorAll("#nav a").forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-route") === tab); });
     window.scrollTo(0, 0);
     Promise.resolve((routes[name] || queue)(parts)).catch(function () { failView(); });
@@ -681,8 +681,12 @@
     document.querySelector('#nav [data-route="applications"]').hidden = !isMgmt();
     document.querySelector('#nav [data-route="attreport"]').hidden = !isMgmt() && me.role !== "finance";
     document.querySelector('#nav [data-route="admin"]').hidden = !isMgmt();
-    if (me.role === "finance") document.querySelectorAll('#nav a').forEach(function (a) { if (a.getAttribute("data-route") !== "attreport") a.hidden = true; });
-    ['announcements', 'menu', 'events'].forEach(function (r) { document.querySelector('#nav [data-route="' + r + '"]').hidden = !isMgmt(); });
+    if (me.role === "finance") document.querySelectorAll('#nav a').forEach(function (a) { if (["attreport", "payments"].indexOf(a.getAttribute("data-route")) < 0) a.hidden = true; });
+    document.querySelector('#nav [data-route="payments"]').hidden = me.role !== "finance" && me.role !== "owner";
+    document.querySelector('#nav [data-route="birthdays"]').hidden = !isMgmt();
+    document.querySelector('#nav [data-route="transport"]').hidden = !isMgmt();
+    if (!isMgmt() && me.role !== "finance") CKA.client.from("bus_routes").select("id").limit(1).then(function (r) { if (r.data && r.data.length) document.querySelector('#nav [data-route="transport"]').hidden = false; });
+    ['announcements', 'menu', 'events', 'absences'].forEach(function (r) { document.querySelector('#nav [data-route="' + r + '"]').hidden = !isMgmt(); });
     document.getElementById("who").textContent = me.full_name + " · " + t("role." + me.role);
     document.getElementById("app").hidden = false;
     labelNav();

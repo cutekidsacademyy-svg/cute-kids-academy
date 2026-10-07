@@ -147,6 +147,8 @@
 
     // management: add HR entry, record a mistake, mistake types, thresholds
     nodes.push(await manageCards());
+    var more = await Promise.all((S.ownerCards || []).map(function (f) { return Promise.resolve().then(function () { return f(p); }).catch(function () { return null; }); }));
+    more.filter(Boolean).forEach(function (x) { nodes.push(x); });
     S.show(nodes.flat ? nodes.flat() : nodes);
   }
 

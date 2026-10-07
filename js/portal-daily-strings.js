@@ -10,6 +10,7 @@
     "pd.note": "A word from the teacher", "pd.h": "h", "pd.min": "min", "pd.sent_at": "Sent at",
     "pd.send_for": "Kindly send for tomorrow", "pd.i.diapers": "Diapers", "pd.i.wipes": "Wipes", "pd.i.shower_gel": "Shower gel", "pd.i.cotton": "Cotton", "pd.i.extra_clothes": "Extra clothes", "pd.i.other": "Other",
     "pd.home_title": "Kindly send for tomorrow", "pd.home_for": "for",
+    "pd.acc_title": "Accident reports", "pd.acc_unread": "to read", "pd.acc_all_read": "You have read all the accident reports.", "pd.acc_none": "No accident reports. Good news!", "pd.acc_open": "Open the accident reports",
   };
   var ar = {
     "p.nav.daily": "التقرير اليومي",
@@ -20,6 +21,7 @@
     "pd.note": "كلمة من المعلمة", "pd.h": "س", "pd.min": "د", "pd.sent_at": "أُرسل في",
     "pd.send_for": "يُرجى إرسال غداً", "pd.i.diapers": "حفاضات", "pd.i.wipes": "مناديل مبللة", "pd.i.shower_gel": "جل استحمام", "pd.i.cotton": "قطن", "pd.i.extra_clothes": "ملابس إضافية", "pd.i.other": "أخرى",
     "pd.home_title": "يُرجى إرسال غداً", "pd.home_for": "لـ",
+    "pd.acc_title": "تقارير الحوادث", "pd.acc_unread": "بانتظار القراءة", "pd.acc_all_read": "قرأت كل تقارير الحوادث.", "pd.acc_none": "لا توجد تقارير حوادث. أخبار سارة!", "pd.acc_open": "فتح تقارير الحوادث",
   };
   Object.assign(CKA.STR.en, en);
   Object.assign(CKA.STR.ar, ar);

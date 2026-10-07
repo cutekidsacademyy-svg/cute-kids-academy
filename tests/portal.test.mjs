@@ -65,6 +65,8 @@ function fakeSupabase({ failLinks = false } = {}) {
       Object.assign(state.profiles[u.searchParams.get("id").replace("eq.", "")], body); return json(204);
     }
     if (p === "/rest/v1/profiles" && opts.method === "DELETE") { delete state.profiles[u.searchParams.get("id").replace("eq.", "")]; return json(204); }
+    if (p === "/auth/v1/recover") return json(200, {});
+    if (p.startsWith("/auth/v1/admin/users/") && (opts.method || "GET") === "GET") { const id = p.split("/").pop(); return json(200, { id, email: id === ID(4) ? "parent@x.test" : id === ID(7) ? "other@x.test" : undefined, email_confirmed_at: id === ID(4) ? "2026-01-01T00:00:00Z" : null }); }
     if (p.startsWith("/auth/v1/admin/users/")) return json(200, {});
     return json(404, { message: "unexpected call " + p });
   };
@@ -477,4 +479,23 @@ test("a missing Supabase setting gives a clear setup message, not a crash", asyn
   await inviteParent(req, res, {}, async () => { throw new Error("should not be called"); });
   assert.equal(res.statusCode, 500);
   assert.match(res.payload.error, /not set up yet/);
+});
+
+// ------------------------------ resending a parent's invitation ------------------------------
+test("resend invitation: staff can send a fresh invitation or a password email to a parent, nobody else, and never to other roles", async () => {
+  const resend = require("../api/portal-resend-invite.js");
+  // never opened the first invitation: invited again
+  let r = await run(resend, { token: "tok-admin", body: { user_id: ID(7) } });
+  assert.equal(r.status, 200);
+  assert.ok(r.fake.state.calls.some((c) => c.path.startsWith("/auth/v1/invite") && c.body.email === "other@x.test"));
+  // already has an account: a password email instead
+  r = await run(resend, { token: "tok-manager", body: { user_id: ID(4) } });
+  assert.equal(r.status, 200);
+  assert.ok(r.fake.state.calls.some((c) => c.path.startsWith("/auth/v1/recover") && c.body.email === "parent@x.test"));
+  // not a parent, not allowed, bad input, not signed in
+  assert.equal((await run(resend, { token: "tok-admin", body: { user_id: ID(5) } })).status, 404);
+  assert.equal((await run(resend, { token: "tok-teacher", body: { user_id: ID(7) } })).status, 403);
+  assert.equal((await run(resend, { token: "tok-parent", body: { user_id: ID(7) } })).status, 403);
+  assert.equal((await run(resend, { token: "tok-admin", body: { user_id: "nope" } })).status, 400);
+  assert.equal((await run(resend, { body: { user_id: ID(7) } })).status, 401);
 });

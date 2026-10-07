@@ -98,7 +98,7 @@ function walk(dir, out = []) {
   return out;
 }
 const portalJs = ["js/login.js", "js/portal-core.js", "js/portal-parent.js", "js/portal-parent-strings.js", "js/staff.js", "js/owner.js", "js/routine.js", "js/owner-charts.js",
-  "js/staff-strings.js", "js/staff-investigation-strings.js", "js/staff-report-strings.js", "js/staff-owner-strings.js", "js/staff-routine-strings.js", "js/applications.js", "js/door.js", "js/portal-ask.js", "js/portal-home.js", "js/portal-home-strings.js", "js/admin.js", "js/admin-strings.js", "js/photos.js", "js/photos-strings.js", "js/portal-photos.js", "js/comm-admin.js", "js/staff-comm-strings.js", "js/portal-news.js", "js/portal-calendar.js", "js/portal-comm-strings.js", "js/pwa.js", "js/daily.js", "js/staff-daily-strings.js", "js/portal-daily.js", "js/portal-daily-strings.js", "js/staff-door-strings.js", "js/portal-child.js", "js/portal-attendance.js", "js/portal-attendance-strings.js", "js/portal-child-strings.js", "js/staff-applications-strings.js", "js/portal-logic.js"];
+  "js/staff-strings.js", "js/staff-investigation-strings.js", "js/staff-report-strings.js", "js/staff-owner-strings.js", "js/staff-routine-strings.js", "js/applications.js", "js/door.js", "js/absences.js", "js/absences-strings.js", "js/payments.js", "js/payments-strings.js", "js/receipt.js", "js/portal-payments.js", "js/birthdays.js", "js/transport.js", "js/transport-strings.js", "js/portal-transport.js", "js/portal-messages.js", "js/portal-messages-strings.js", "js/birthday-wall.js","js/portal-ask.js", "js/portal-home.js", "js/portal-home-strings.js", "js/admin.js", "js/admin-strings.js", "js/photos.js", "js/photos-strings.js", "js/portal-photos.js", "js/comm-admin.js", "js/staff-comm-strings.js", "js/portal-news.js", "js/portal-calendar.js", "js/portal-comm-strings.js", "js/pwa.js", "js/daily.js", "js/staff-daily-strings.js", "js/portal-daily.js", "js/portal-daily-strings.js", "js/staff-door-strings.js", "js/portal-child.js", "js/portal-attendance.js", "js/portal-attendance-strings.js", "js/portal-child-strings.js", "js/staff-applications-strings.js", "js/portal-logic.js"];
 
 test("portal pages never turn text into HTML (no innerHTML, eval or document.write)", () => {
   const bad = [];
@@ -181,7 +181,7 @@ test("server functions never print secrets or stack traces to the caller", () =>
 test("public endpoints (the registration form) are rate-limited, size-limited and never show database text", () => {
   const dir = join(root, "api");
   const publics = readdirSync(dir).filter((f) => f.endsWith(".js") && !f.startsWith("_") && /publicEndpoint\(/.test(readFileSync(join(dir, f), "utf8")));
-  assert.deepEqual(publics.sort(), ["portal-register-upload.js", "portal-register.js"], "a new public function must be added here on purpose");
+  assert.deepEqual(publics.sort(), ["birthday-wall.js", "portal-register-upload.js", "portal-register.js"], "a new public function must be added here on purpose");
   for (const f of publics) {
     const text = readFileSync(join(dir, f), "utf8");
     assert.match(text, /registration_rate_hit/, f + " must count and limit requests");

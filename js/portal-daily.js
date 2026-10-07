@@ -14,6 +14,14 @@
   function sleepText(m) { return Math.floor(m / 60) + t("pd.h") + " " + (m % 60) + t("pd.min"); }
   function itemsText(r) { return r.items.map(function (k) { return k === "other" && r.other_text ? r.other_text : t("pd.i." + k); }).join(" · "); }
 
+  // The Report tab also holds the accident reports (what happened, first aid, when the family was called) with the "I've read this" button.
+  async function accidentCard() {
+    var r = await client.rpc("parent_incidents"), list = r.data || [], unread = list.filter(function (i) { return !i.parent_signed_at; }).length;
+    var kids = [el("h2", { text: "⚠ " + t("pd.acc_title") })];
+    kids.push(el("p", { class: unread ? "att-msg bad" : "p-sub", text: list.length ? (unread ? unread + " " + t("pd.acc_unread") : t("pd.acc_all_read")) : t("pd.acc_none") }));
+    if (list.length) kids.push(P.link("#/reports", t("pd.acc_open"), "btn btn-outline btn-small"));
+    return P.card(kids);
+  }
   async function page() {
     P.loadingView();
     var kids = P.children(), nodes = [P.card([el("h1", { text: t("pd.title") })])];
@@ -31,7 +39,7 @@
     var kid = kids.filter(function (k) { return k.id === chosen; })[0];
     var res = await client.from("daily_reports").select("*").eq("child_id", kid.id).order("report_date", { ascending: false }).limit(30);
     var reports = (res.data || []).slice().sort(function (a, b) { return a.report_date < b.report_date ? 1 : -1; });
-    if (!reports.length) { nodes.push(P.card([el("p", { class: "p-sub", text: t("pd.none") })])); return P.show(nodes); }
+    if (!reports.length) { nodes.push(P.card([el("p", { class: "p-sub", text: t("pd.none") })])); nodes.push(await accidentCard().catch(function () { return null; })); return P.show(nodes); }
     var r = reports.filter(function (x) { return x.report_date === day; })[0] || reports[0];
     day = r.report_date;
 
@@ -47,6 +55,7 @@
       });
       nodes.push(P.card([el("h2", { text: t("pd.past") }), past]));
     }
+    nodes.push(await accidentCard().catch(function () { return null; }));
     P.show(nodes);
   }
 

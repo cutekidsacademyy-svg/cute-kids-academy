@@ -24,6 +24,9 @@
     "ad.set.close": "Closing time (pickups after this count as overtime)", "ad.set.save": "Save", "ad.set.saved": "Settings saved.",
     "ad.fixed.title": "Rules that are built in", "ad.fixed.hours": "Working days and hours: Sunday to Thursday, 8:00 am to 6:00 pm, Cairo time. Friday and Saturday are not working days.", "ad.fixed.urgency": "Urgency promises: Critical: acknowledge within 1 hour and call the parent; Urgent: acknowledge within 2 working hours, resolve within 24 hours; Can wait: acknowledge within 1 working day, resolve within 3 business days.",
     "ad.fixed.change": "These rules, the wording of consents and the text of the emails are fixed in the system. If you want them changed, ask the person who maintains the system.", "ad.fixed.links": "Set elsewhere:", "ad.fixed.reports": "When reports are sent: Daily reports", "ad.fixed.photos": "How long photos are kept: Photos",
+    "ad.pa.resend": "Resend the invitation", "ad.pa.resent": "The email was sent.", "ad.pa.off": "Switch off access", "ad.pa.on": "Switch access on", "ad.pa.confirm_off": "Switch off this parent's access? They will not be able to sign in.", "ad.pa.switched_off": "Access switched off.", "ad.pa.switched_on": "Access switched on.",
+    "ad.pa.add": "Invite the other parent", "ad.pa.add_hint": "Each parent has their own login and gets every notification about the child.", "ad.pa.name": "Full name", "ad.pa.email": "Email", "ad.pa.phone": "Phone", "ad.pa.lang": "Language", "ad.pa.send": "Send the invitation",
+    "ad.pa.need": "Please write the name and the email address.", "ad.pa.added": "The invitation was sent.", "ad.pa.full": "This child already has two parents with access.", "ad.pa.status": "Access",
   };
   var ar = {
     "s.nav.admin": "الإدارة", "role.finance": "المالية", "s.type.question": "سؤال", "s.type.missing_item": "غرض مفقود",
@@ -48,6 +51,9 @@
     "ad.set.close": "وقت الإغلاق (الاستلام بعده يُحسب وقتاً إضافياً)", "ad.set.save": "حفظ", "ad.set.saved": "تم حفظ الإعدادات.",
     "ad.fixed.title": "قواعد مدمجة في النظام", "ad.fixed.hours": "أيام وساعات العمل: من الأحد إلى الخميس، من 8:00 صباحاً إلى 6:00 مساءً بتوقيت القاهرة. الجمعة والسبت ليستا يومَي عمل.", "ad.fixed.urgency": "مواعيد الأولوية: حرج: الرد خلال ساعة والاتصال بوليّ الأمر؛ عاجل: الرد خلال ساعتي عمل والحل خلال 24 ساعة؛ يمكن الانتظار: الرد خلال يوم عمل والحل خلال 3 أيام عمل.",
     "ad.fixed.change": "هذه القواعد وصياغة الموافقات ونصوص الرسائل ثابتة في النظام. إذا أردت تغييرها فاطلب ذلك ممن يتولى صيانة النظام.", "ad.fixed.links": "تُضبط في مكان آخر:", "ad.fixed.reports": "موعد إرسال التقارير: التقارير اليومية", "ad.fixed.photos": "مدة الاحتفاظ بالصور: الصور",
+    "ad.pa.resend": "إعادة إرسال الدعوة", "ad.pa.resent": "تم إرسال الرسالة.", "ad.pa.off": "إيقاف الوصول", "ad.pa.on": "تفعيل الوصول", "ad.pa.confirm_off": "هل تريد إيقاف وصول وليّ الأمر؟ لن يتمكن من تسجيل الدخول.", "ad.pa.switched_off": "تم إيقاف الوصول.", "ad.pa.switched_on": "تم تفعيل الوصول.",
+    "ad.pa.add": "دعوة وليّ الأمر الآخر", "ad.pa.add_hint": "لكل وليّ أمر حسابه الخاص ويصله كل إشعار عن الطفل.", "ad.pa.name": "الاسم الكامل", "ad.pa.email": "البريد الإلكتروني", "ad.pa.phone": "الهاتف", "ad.pa.lang": "اللغة", "ad.pa.send": "إرسال الدعوة",
+    "ad.pa.need": "يُرجى كتابة الاسم والبريد الإلكتروني.", "ad.pa.added": "تم إرسال الدعوة.", "ad.pa.full": "لدى هذا الطفل وليّا أمر لهما حق الوصول بالفعل.", "ad.pa.status": "الوصول",
   };
   Object.assign(CKA.STR.en, en);
   Object.assign(CKA.STR.ar, ar);

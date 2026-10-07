@@ -44,7 +44,7 @@
     var nodes = [];
     // quick buttons
     nodes.push(P.card([el("h1", { text: CKA.greeting(P.profile().full_name) }),
-      el("div", { class: "quick" }, [big("#/ask", "❓", t("hm.q_ask"), "btn-pink"), big("#/attendance", "🏠", t("hm.q_absence")), big("#/ask/missing", "🔍", t("hm.q_missing"))]),
+      el("div", { class: "quick" }, [big("#/ask", "❓", t("hm.q_ask"), "btn-pink"), big("#/attendance", "🏠", t("hm.q_absence")), big("#/ask/missing", "🔍", t("hm.q_missing")), big("#/payments", "💳", t("hm.q_pay"))]),
       el("p", { style: "margin-top:10px" }, [P.link("#/new", t("hm.q_concern"))])]));
 
     // one card per child
@@ -95,7 +95,7 @@
 
   // ------------------------------------------------------------------ More
   function more() {
-    var items = [["#/attendance", "🏠", "mo.attendance"], ["#/child", "🧒", "mo.child"], ["#/news", "📰", "mo.news"], ["#/reports", "⚠", "mo.accidents"], ["#/ask", "❓", "mo.ask"], ["#/new", "📝", "mo.concern"], ["#/rate", "⭐", "mo.rate"], ["#/settings", "⚙", "mo.settings"]];
+    var items = [["#/attendance", "🏠", "mo.attendance"], ["#/child", "🧒", "mo.child"], ["#/payments", "💳", "mo.payments"], ["#/messages", "✉", "mo.messages"], ["#/transport", "🚌", "mo.transport"],["#/news", "📰", "mo.news"],["#/reports", "⚠", "mo.accidents"], ["#/ask", "❓", "mo.ask"], ["#/new", "📝", "mo.concern"], ["#/rate", "⭐", "mo.rate"], ["#/settings", "⚙", "mo.settings"]];
     P.show([P.card([el("h1", { text: t("mo.title") })].concat(items.map(function (x) { return el("a", { class: "case-item", href: x[0], text: x[1] + "  " + t(x[2]) }); })))]);
   }
 

@@ -198,12 +198,30 @@
     var add = el("button", { type: "button", class: "btn btn-pink", text: "+ " + t("ce.new") });
     add.addEventListener("click", function () { editEvent = { id: null }; events(); });
     head.appendChild(el("div", { class: "actions" }, [add])); nodes.push(head);
+    var calls = [];
+    try { calls = await S.rpc("approval_call_list"); } catch (e) {}
+    if (calls.length) nodes.push(callCard(calls));
     if (editEvent) nodes.push(eventForm(editEvent, classes));
     var upcoming = list.filter(function (e) { return (e.ends_at || e.starts_at) >= now; }), past = list.filter(function (e) { return (e.ends_at || e.starts_at) < now; }).reverse();
     if (!list.length) nodes.push(S.card([el("p", { class: "p-sub", text: t("ce.none") })]));
     if (upcoming.length) nodes.push(S.card([el("h2", { text: t("ce.upcoming") })].concat(upcoming.map(function (e) { return eventRow(e, classes); }))));
     if (past.length) nodes.push(S.card([el("h2", { text: t("ce.past") })].concat(past.slice(0, 15).map(function (e) { return eventRow(e, classes); }))));
     takeFlash(nodes); S.show(nodes);
+  }
+
+  function callCard(calls) {
+    var box = el("div", {});
+    calls.forEach(function (c) {
+      var note = input("text", { maxlength: "300", placeholder: t("ce.call_note") }), msg = el("div", {}), done = el("button", { type: "button", class: "btn btn-pink btn-small", text: t("ce.i_called") });
+      done.addEventListener("click", async function () {
+        msg.textContent = "";
+        if (note.value.trim().length < 2) { msg.appendChild(S.note("err", t("ce.call_need"))); return; }
+        try { await S.rpc("approval_call_log", { p_event: c.event_id, p_child: c.child_id, p_note: note.value }); events(); } catch (e) { msg.appendChild(S.note("err", S.msgFromError(e))); }
+      });
+      box.appendChild(el("div", { class: "check-row" }, [el("strong", { text: c.child_name + " · " + c.event_title }), el("div", { text: c.parents + (c.phones ? " · " + c.phones : "") }),
+        c.called_at ? el("div", { class: "att-msg ok", text: "✓ " + t("ce.called") + ": " + (c.note || "") }) : el("div", {}, [note, msg, done])]));
+    });
+    return S.card([el("h2", { text: "☎ " + t("ce.call_list") }), el("p", { class: "p-sub", text: t("ce.call_hint") }), box]);
   }
 
   function eventRow(e, classes) {
@@ -220,8 +238,9 @@
     if (openAnswers === e.id) S.rpc("event_responses_summary", { p_event: e.id }).then(function (rows) {
       var yes = rows.filter(function (r) { return r.answer === "yes"; }).length, no = rows.filter(function (r) { return r.answer === "no"; }).length, wait = rows.length - yes - no;
       holder.appendChild(el("p", { class: "att-msg " + (wait ? "bad" : "ok"), text: t("ce.counts") + ": " + yes + " / " + no + " / " + wait }));
-      var head = el("tr", {}, [t("ce.family"), t("ce.answers"), t("ce.answered_by")].map(function (h) { return el("th", { text: h }); }));
-      var body = rows.map(function (r) { return el("tr", {}, [el("td", { text: r.child_name + (r.class_name ? " (" + r.class_name + ")" : "") + "\n" + r.parents }), el("td", { text: r.answer ? t("ce." + r.answer) : "— " + t("ce.missing") }), el("td", { text: r.answered_by_name || "" })]); });
+      function st(r) { return r.status === "yes" || r.status === "no" ? t("ce." + r.status) : "— " + t(r.status === "no_answer" ? "ce.no_answer" : "ce.waiting"); }
+      var head = el("tr", {}, [t("ce.family"), t("ce.answers"), t("ce.answered_by"), t("ce.reminders")].map(function (h) { return el("th", { text: h }); }));
+      var body = rows.map(function (r) { return el("tr", {}, [el("td", { text: r.child_name + (r.class_name ? " (" + r.class_name + ")" : "") + "\n" + r.parents }), el("td", { text: st(r) }), el("td", { text: r.answered_by_name || "" }), el("td", { text: r.reminders ? r.reminders + (r.last_reminder ? " · " + fmtDT(r.last_reminder) : "") : "0" })]); });
       holder.appendChild(el("div", { class: "tbl-wrap" }, [el("table", { class: "tbl" }, [el("thead", {}, [head]), el("tbody", {}, body)])]));
     }).catch(function () {});
     return el("div", { class: "action" }, kids);

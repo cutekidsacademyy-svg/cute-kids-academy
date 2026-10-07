@@ -20,7 +20,7 @@
     "ce.f.title_en": "Title (English)", "ce.f.title_ar": "Title (Arabic)", "ce.f.details_en": "Details (English)", "ce.f.details_ar": "Details (Arabic)", "ce.f.starts": "Starts", "ce.f.ends": "Ends (optional)", "ce.f.all_day": "All day",
     "ce.f.place": "Place", "ce.f.cost": "Cost (EGP, optional)", "ce.f.audience": "Who is it for?", "ce.f.needs": "Parents must approve (yes or no)", "ce.f.deadline": "Answer deadline", "ce.save": "Save", "ce.edit": "Edit", "ce.delete": "Delete", "ce.confirm_delete": "Delete this calendar item?",
     "ce.need": "Please give a title and a start time.", "ce.need_deadline": "Please choose an answer deadline before the event starts.", "ce.saved": "Saved.", "ce.err": "That could not be saved.", "ce.answers": "Answers", "ce.yes": "Yes", "ce.no": "No", "ce.missing": "Not answered",
-    "ce.family": "Family", "ce.answered_by": "Answered by", "ce.counts": "yes / no / waiting", "ce.upcoming": "Upcoming", "ce.past": "Past",
+    "ce.waiting": "Waiting", "ce.no_answer": "No answer (counts as not approved)", "ce.reminders": "Reminders", "ce.call_list": "Families to phone today", "ce.call_hint": "Event answers are due today and these families have not answered.", "ce.i_called": "I called", "ce.called": "Called", "ce.call_note": "What did the parent say?", "ce.call_need": "Please write what the parent said.", "ce.no_calls": "No one to call today.", "ce.family": "Family", "ce.answered_by": "Answered by", "ce.counts": "yes / no / waiting", "ce.upcoming": "Upcoming", "ce.past": "Past",
   };
   var ar = {
     "s.nav.announcements": "الإعلانات", "s.nav.menu": "القائمة والجدول", "s.nav.events": "الفعاليات",
@@ -42,7 +42,7 @@
     "ce.f.title_en": "العنوان (إنجليزي)", "ce.f.title_ar": "العنوان (عربي)", "ce.f.details_en": "التفاصيل (إنجليزي)", "ce.f.details_ar": "التفاصيل (عربي)", "ce.f.starts": "يبدأ", "ce.f.ends": "ينتهي (اختياري)", "ce.f.all_day": "طوال اليوم",
     "ce.f.place": "المكان", "ce.f.cost": "التكلفة (جنيه، اختياري)", "ce.f.audience": "لمن هو؟", "ce.f.needs": "يجب أن يوافق أولياء الأمور (نعم أو لا)", "ce.f.deadline": "آخر موعد للرد", "ce.save": "حفظ", "ce.edit": "تعديل", "ce.delete": "حذف", "ce.confirm_delete": "هل تريد حذف هذا العنصر من التقويم؟",
     "ce.need": "يُرجى كتابة عنوان ووقت البدء.", "ce.need_deadline": "يُرجى اختيار آخر موعد للرد قبل بدء الفعالية.", "ce.saved": "تم الحفظ.", "ce.err": "تعذّر الحفظ.", "ce.answers": "الردود", "ce.yes": "نعم", "ce.no": "لا", "ce.missing": "لم يجب",
-    "ce.family": "الأسرة", "ce.answered_by": "أجاب", "ce.counts": "نعم / لا / بالانتظار", "ce.upcoming": "القادمة", "ce.past": "السابقة",
+    "ce.waiting": "بالانتظار", "ce.no_answer": "لا رد (يُعدّ غير موافق)", "ce.reminders": "التذكيرات", "ce.call_list": "أسر للاتصال بها اليوم", "ce.call_hint": "ينتهي اليوم موعد الرد على الفعاليات ولم ترد هذه الأسر.", "ce.i_called": "اتصلت", "ce.called": "تم الاتصال", "ce.call_note": "ماذا قال وليّ الأمر؟", "ce.call_need": "يُرجى كتابة ما قاله وليّ الأمر.", "ce.no_calls": "لا أحد للاتصال به اليوم.", "ce.family": "الأسرة", "ce.answered_by": "أجاب", "ce.counts": "نعم / لا / بالانتظار", "ce.upcoming": "القادمة", "ce.past": "السابقة",
   };
   Object.assign(CKA.STR.en, en);
   Object.assign(CKA.STR.ar, ar);

@@ -468,7 +468,7 @@
   function go() {
     var parts = location.hash.replace(/^#\/?/, "").split("/");
     route = parts[0] || "home";
-    document.querySelectorAll("#nav a, .p-bottom a").forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-route") === route || (route === "home" && a.getAttribute("data-route") === "home")); });
+    document.querySelectorAll("#nav a, .p-bottom a, .p-bar a[data-key]").forEach(function (a) { a.classList.toggle("active", a.getAttribute("data-route") === route || (route === "home" && a.getAttribute("data-route") === "home")); });
     window.scrollTo(0, 0);
     var extra = window.CKAParent.routes[route];
     var run = extra ? function () { return extra(parts); }
@@ -484,10 +484,10 @@
     children = q.data || [];
     try { var s = await (await fetch("/content/settings.json")).json(); phone = s.phone || ""; } catch (e) { phone = ""; }
     document.getElementById("app").hidden = false;
-    document.querySelectorAll("#nav a, .p-bottom a").forEach(function (a) { a.textContent = t(a.getAttribute("data-key")); });
+    document.querySelectorAll("#nav a, .p-bottom a, .p-bar a[data-key]").forEach(function (a) { a.textContent = t(a.getAttribute("data-key")); });
     window.addEventListener("hashchange", go);
     document.addEventListener("cka-lang", function () {
-      document.querySelectorAll("#nav a, .p-bottom a").forEach(function (a) { a.textContent = t(a.getAttribute("data-key")); });
+      document.querySelectorAll("#nav a, .p-bottom a, .p-bar a[data-key]").forEach(function (a) { a.textContent = t(a.getAttribute("data-key")); });
       go();
     });
     go();

@@ -149,7 +149,7 @@
           });
         });
         row.appendChild(el("div", { class: "actions" }, [y, n]));
-      } else if (a == null) row.appendChild(el("div", { class: "p-who", text: t("cal.closed_answers") }));
+      } else if (a == null) row.appendChild(el("div", { class: "p-who att-msg bad", text: t("cal.no_answer_not_approved") }));
       box.appendChild(row);
     });
     return box;

@@ -9,6 +9,13 @@
   function lang() { return CKA.getLang(); }
   function fmtDate(iso) { return new Intl.DateTimeFormat(lang() === "ar" ? "ar-EG" : "en-GB", { timeZone: "Africa/Cairo", dateStyle: "medium" }).format(new Date(iso)); }
   function fmtDT(iso) { return new Intl.DateTimeFormat(lang() === "ar" ? "ar-EG" : "en-GB", { timeZone: "Africa/Cairo", dateStyle: "medium", timeStyle: "short" }).format(new Date(iso)); }
+  async function api(path, body) {
+    var s = await client.auth.getSession();
+    var res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + s.data.session.access_token }, body: JSON.stringify(body) });
+    var data = {}; try { data = await res.json(); } catch (e) {}
+    if (!res.ok || !data.ok) throw new Error(data.error || t("s.error"));
+    return data;
+  }
   function guard() { if (!S.isMgmt()) { S.routes[""](); return false; } return true; }
   function input(type, attrs, value) { var i = el("input", Object.assign({ type: type }, attrs || {})); if (value != null) i.value = value; return i; }
   function accessPill(a) { return S.pill((a === "active" ? "✓ " : a === "off" ? "⛔ " : "✉ ") + t("ad.access." + a), a === "off" ? "urg-critical" : a === "invited" ? "urg-urgent" : "st-resolved"); }
@@ -90,9 +97,44 @@
     }
     nodes.push(S.card(kids));
 
-    nodes.push(S.card([el("h2", { text: t("ad.pr.parents") })].concat(p.parents.length ? p.parents.map(function (x) {
-      return el("div", { class: "kv" }, [el("strong", { text: x.name }), x.phone ? el("a", { class: "p-link", href: "tel:" + x.phone.replace(/\s+/g, ""), text: x.phone, dir: "ltr" }) : null, x.email ? el("small", { dir: "ltr", text: x.email }) : null, accessPill(x.access)].filter(Boolean));
-    }) : [el("p", { class: "p-sub", text: t("ad.pr.none") })])));
+    // two parents per child, each with their own login: status, resend, switch off or on, invite the other parent
+    var pmsg = el("div", {});
+    function accessDone(text) { flash = { kind: "ok", text: text }; childProfile(id); }
+    function parentRow(x) {
+      var acts = el("div", { class: "actions" });
+      if (x.access === "invited") {
+        var rs = el("button", { type: "button", class: "btn btn-outline btn-small", text: "✉ " + t("ad.pa.resend") });
+        rs.addEventListener("click", async function () { rs.disabled = true; pmsg.textContent = ""; try { await api("/api/portal-resend-invite", { user_id: x.id }); pmsg.appendChild(S.note("ok", t("ad.pa.resent"))); } catch (e) { pmsg.appendChild(S.note("err", S.msgFromError(e))); } rs.disabled = false; });
+        acts.appendChild(rs);
+      }
+      if (x.access === "off") {
+        var on = el("button", { type: "button", class: "btn btn-outline btn-small", text: t("ad.pa.on") });
+        on.addEventListener("click", async function () { on.disabled = true; try { await api("/api/portal-set-active", { user_id: x.id, active: true }); accessDone(t("ad.pa.switched_on")); } catch (e) { on.disabled = false; pmsg.textContent = ""; pmsg.appendChild(S.note("err", S.msgFromError(e))); } });
+        acts.appendChild(on);
+      } else {
+        var off = el("button", { type: "button", class: "btn btn-outline btn-small", text: t("ad.pa.off") });
+        off.addEventListener("click", async function () { if (!window.confirm(t("ad.pa.confirm_off"))) return; off.disabled = true; try { await api("/api/portal-set-active", { user_id: x.id, active: false }); accessDone(t("ad.pa.switched_off")); } catch (e) { off.disabled = false; pmsg.textContent = ""; pmsg.appendChild(S.note("err", S.msgFromError(e))); } });
+        acts.appendChild(off);
+      }
+      return el("div", { class: "kv" }, [el("strong", { text: x.name }), x.phone ? el("a", { class: "p-link", href: "tel:" + x.phone.replace(/\s+/g, ""), text: x.phone, dir: "ltr" }) : null, x.email ? el("small", { dir: "ltr", text: x.email }) : null, accessPill(x.access), acts].filter(Boolean));
+    }
+    var pcard = [el("h2", { text: t("ad.pr.parents") })].concat(p.parents.length ? p.parents.map(parentRow) : [el("p", { class: "p-sub", text: t("ad.pr.none") })]);
+    if (c.active) {
+      if (p.parents.length >= 2) pcard.push(el("p", { class: "p-sub", text: t("ad.pa.full") }));
+      else {
+        var pn = el("input", { type: "text", maxlength: "120" }), pe = el("input", { type: "email", maxlength: "254", dir: "ltr" }), pph = el("input", { type: "tel", maxlength: "30", dir: "ltr" });
+        var pl = el("select", {}, [S.opt("ar", "العربية"), S.opt("en", "English")]), sendInv = el("button", { type: "button", class: "btn btn-pink btn-small", text: t("ad.pa.send") });
+        sendInv.addEventListener("click", async function () {
+          pmsg.textContent = ""; if (!pn.value.trim() || !pe.value.trim()) { pmsg.appendChild(S.note("err", t("ad.pa.need"))); return; }
+          sendInv.disabled = true;
+          try { await api("/api/portal-invite-parent", { email: pe.value, full_name: pn.value, phone: pph.value, language: pl.value, child_ids: [id] }); accessDone(t("ad.pa.added")); }
+          catch (e) { sendInv.disabled = false; pmsg.appendChild(S.note("err", S.msgFromError(e))); }
+        });
+        pcard.push(el("details", { class: "action" }, [el("summary", { text: t("ad.pa.add") }), el("p", { class: "p-sub", text: t("ad.pa.add_hint") }), S.field(t("ad.pa.name"), pn), S.field(t("ad.pa.email"), pe), S.field(t("ad.pa.phone"), pph), S.field(t("ad.pa.lang"), pl), sendInv]));
+      }
+    }
+    pcard.push(pmsg);
+    nodes.push(S.card(pcard));
     nodes.push(S.card([el("h2", { text: t("ad.pr.pickups") })].concat(p.pickups.length ? p.pickups.map(function (x) {
       return el("div", { class: "kv" }, [el("strong", { text: x.name + " · " + x.relationship }), el("small", { dir: "ltr", text: x.phone }), x.has_id_photo ? el("small", { text: "✓ " + t("ad.pr.id_photo") }) : null].filter(Boolean));
     }) : [el("p", { class: "p-sub", text: t("ad.pr.none") })])));

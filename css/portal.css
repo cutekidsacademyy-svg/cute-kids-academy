@@ -241,3 +241,9 @@ tr.row-watch td{background:#fff8ee}
   .p-bottom a.active{background:var(--pink-light);color:var(--pink-dark)}
 }
 a.btn{text-decoration:none}
+
+/* Receipts print as a clean page */
+.receipt{max-width:520px;margin-inline:auto;text-align:center}
+.receipt .kv{justify-content:space-between;text-align:start}
+@media print{.p-header,.p-bottom,.no-print,.p-link{display:none!important}body{background:#fff}.receipt{border:0;box-shadow:none}}
+.action>small{display:block}

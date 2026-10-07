@@ -3,7 +3,7 @@
 (function () {
   var en = {
     "p.nav.more": "More", "p.nav.report": "Report",
-    "hm.q_ask": "Ask a question", "hm.q_absence": "Report an absence", "hm.q_missing": "Report a missing item", "hm.q_concern": "Raise a concern or complaint",
+    "hm.q_ask": "Ask a question", "hm.q_absence": "Report an absence", "hm.q_missing": "Report a missing item", "hm.q_pay": "Payments", "hm.q_concern": "Raise a concern or complaint",
     "hm.child_status": "Today", "hm.not_arrived": "Not arrived yet", "hm.in_at": "Checked in at", "hm.out_at": "Collected at", "hm.by": "by", "hm.told_absent": "You told us: absent", "hm.told_late": "You told us: coming late",
     "hm.report_ready": "Today's report is ready", "hm.report_open": "Read the report", "hm.report_coming": "Today's report is being prepared. It arrives before pickup.", "hm.report_none": "No report yet today.",
     "hm.month": "This month", "hm.attended": "Days attended", "hm.absent_told": "Days absent (you told us)", "hm.absent_not": "Days absent (not reported)", "hm.late": "Late pickups",
@@ -19,7 +19,7 @@
   };
   var ar = {
     "p.nav.more": "المزيد", "p.nav.report": "التقرير",
-    "hm.q_ask": "اسأل سؤالاً", "hm.q_absence": "أبلغ عن غياب", "hm.q_missing": "أبلغ عن غرض مفقود", "hm.q_concern": "قدّم ملاحظة أو شكوى",
+    "hm.q_ask": "اسأل سؤالاً", "hm.q_absence": "أبلغ عن غياب", "hm.q_missing": "أبلغ عن غرض مفقود", "hm.q_pay": "المدفوعات", "hm.q_concern": "قدّم ملاحظة أو شكوى",
     "hm.child_status": "اليوم", "hm.not_arrived": "لم يصل بعد", "hm.in_at": "حضر في", "hm.out_at": "استُلم في", "hm.by": "بواسطة", "hm.told_absent": "أخبرتنا: غائب", "hm.told_late": "أخبرتنا: سيتأخر",
     "hm.report_ready": "تقرير اليوم جاهز", "hm.report_open": "قراءة التقرير", "hm.report_coming": "يجري إعداد تقرير اليوم. يصلك قبل الاستلام.", "hm.report_none": "لا يوجد تقرير اليوم بعد.",
     "hm.month": "هذا الشهر", "hm.attended": "أيام الحضور", "hm.absent_told": "أيام الغياب (أخبرتنا)", "hm.absent_not": "أيام الغياب (دون إبلاغ)", "hm.late": "استلام متأخر",
