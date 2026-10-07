@@ -114,3 +114,35 @@ test("the parent form states the 8 am rule and the child-safety wording is never
   assert.match(door, /dr\.warn/);
   assert.match(door, /off_list_needs_parent_approval/);
 });
+
+test("daily report wording (staff and parent): same keys in both languages, every key used exists", () => {
+  for (const [strings, script, prefix, extra] of [
+    ["js/staff-daily-strings.js", "js/daily.js", "dl", []],
+    ["js/portal-daily-strings.js", "js/portal-daily.js", "pd", ["pd.lunch.more", "pd.lunch.all", "pd.lunch.half", "pd.lunch.little", "pd.lunch.none", "pd.mood.happy", "pd.mood.calm", "pd.mood.tired", "pd.mood.upset",
+      "pd.i.diapers", "pd.i.wipes", "pd.i.shower_gel", "pd.i.cotton", "pd.i.extra_clothes", "pd.i.other"]],
+  ]) {
+    const c = { CKA: { STR: { en: {}, ar: {} } } };
+    vm.runInNewContext(read(strings), c);
+    const { en, ar } = c.CKA.STR;
+    assert.deepEqual(Object.keys(ar).sort(), Object.keys(en).sort(), strings);
+    for (const k of Object.keys(en)) assert.ok(String(ar[k]).trim() && String(en[k]).trim(), k);
+    const used = new Set(extra);
+    for (const m of read(script).matchAll(new RegExp('\bt\("(' + prefix + '\.[A-Za-z0-9_.]+)"\)', "g"))) used.add(m[1]);
+    if (prefix === "dl") {
+      for (const k of ["more", "all", "half", "little", "none"]) used.add("dl.lunch." + k);
+      for (const k of ["happy", "calm", "tired", "upset"]) used.add("dl.mood." + k);
+      for (const k of ["diapers", "wipes", "shower_gel", "cotton", "extra_clothes", "other"]) used.add("dl.i." + k);
+      for (const k of ["none", "draft", "sent"]) used.add("dl.st." + k);
+    }
+    assert.deepEqual([...used].filter((k) => !(k in en)), [], strings);
+  }
+});
+
+test("the daily-report screens are wired in, send only through the database functions, and never write HTML", () => {
+  const staff = read("staff/index.html"), portal = read("portal/index.html"), daily = read("js/daily.js");
+  for (const f of ["staff-daily-strings.js", "daily.js"]) assert.match(staff, new RegExp(f.replace(".", "\.")));
+  for (const f of ["portal-daily-strings.js", "portal-daily.js"]) assert.match(portal, new RegExp(f.replace(".", "\.")));
+  for (const fn of ["report_sheet", "report_save_many", "report_send", "report_edit_sent", "send_request_save", "report_overview", "report_settings_save"]) assert.match(daily, new RegExp(fn));
+  assert.ok(!/\.from\("daily_reports"\)\s*\.(insert|update|delete)/.test(daily));
+  assert.match(read("js/portal-parent.js"), /homeCards/);
+});

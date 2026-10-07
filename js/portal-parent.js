@@ -78,7 +78,8 @@
 
     var casesCard = card([el("h2", { text: t("p.home.cases") })].concat(
       open.length ? open.map(caseItem) : [el("p", { class: "p-sub", text: t("p.home.nocases") })]));
-    var nodes = [hello, kids, casesCard];
+    var extras = await Promise.all(window.CKAParent.homeCards.map(function (f) { return Promise.resolve().then(f).catch(function () { return null; }); }));
+    var nodes = [hello].concat(extras.filter(Boolean), [kids, casesCard]);
     if (closed.length) nodes.push(card([el("h2", { text: t("p.home.past") })].concat(closed.map(caseItem))));
     show(nodes);
   }
@@ -459,7 +460,7 @@
 
   // Shared with the other parent pages (js/portal-child.js: "My child").
   window.CKAParent = {
-    routes: {}, show: show, card: card, note: note, pill: pill, link: link, field: field, loadingView: loadingView, failView: failView,
+    routes: {}, homeCards: [], show: show, card: card, note: note, pill: pill, link: link, field: field, loadingView: loadingView, failView: failView,
     profile: function () { return profile; }, phone: function () { return phone; }, children: function () { return children; }, prepareImage: prepareImage, fmt: fmt, setProfile: function (p) { profile = p; },
   };
 

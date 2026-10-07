@@ -79,6 +79,13 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 - [ ] Leave a pretend child unchecked at 9:30 on a school day: the admin gets one email with a count (no names) and the Door screen shows the child under "Not arrived and nobody told us".
 - [ ] The scheduler (step 3) must be running every 15 minutes with `check: true`: that is what flags the 9:30 children.
 
+### Daily reports (Prompt 13)
+
+- [ ] As a teacher on a phone: check two pretend children in at the **Door**, then open **Daily reports**: tick both, tap lunch and mood for everyone, open one child and add water, milk, sleep, diapers, stools and one personal sentence. A child with an allergy shows a red allergy warning above the meal buttons.
+- [ ] Enter a temperature of 38.4 on a pretend child: the class staff and the admins get an alert email (no name or number in it). The parent's report shows the high temperature with a gentle note.
+- [ ] Tap **Save and send**: the parent sees the report in **Daily report**, gets an email, and "Kindly send for tomorrow" appears on their home screen. The teacher can no longer change it; admin can, with a reason (it is recorded).
+- [ ] After 4 pm the teacher sees who still needs a personal sentence; at the automatic-send time (default 16:30, changeable by admin on the same page) every report with entries goes out by itself. This needs the scheduler (step 3).
+
 ## 7. Staff first (one week)
 
 - [ ] Staff use the portal with a few pretend cases for a week, so they learn the screens before any family sees them.
@@ -114,5 +121,5 @@ The portal code lives on the `portal` branch and has a private-ish preview link.
 
 ### What is not built yet
 
-Daily reports, announcements and events, photos and videos, the admin area,
+Announcements and events, photos and videos, the admin area,
 the parent dashboard and calendar, absence follow-up, approval reminders, payments, transport and birthdays (Prompts 12 to 20 and the rest of Prompt 21).

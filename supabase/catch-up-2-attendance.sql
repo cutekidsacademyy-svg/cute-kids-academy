@@ -1,4 +1,4 @@
--- CATCH-UP 2: attendance and pickup (Prompt 12) plus the security hardening. Paste into the Supabase SQL editor and run ONCE.
+-- CATCH-UP 2: attendance and pickup (Prompt 12), daily reports (Prompt 13) and any later migrations, plus the security hardening. Paste into the Supabase SQL editor and run ONCE.
 -- Only for a project that already ran an earlier catch-up-migrations.sql (one that did NOT include 20261006121500_attendance.sql).
 -- Generated from supabase/migrations/*.sql: do not edit; run  bash regen.sh
 
