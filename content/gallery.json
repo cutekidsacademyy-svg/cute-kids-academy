@@ -15,6 +15,55 @@
       "color": "#FDE6F1"
     },
     {
+      "image": "/images/uploads/classrooms-reception-lobby.jpg",
+      "category": "Classrooms",
+      "alt": "Reception and lobby",
+      "emoji": "🏫",
+      "color": "#FDE6F1"
+    },
+    {
+      "image": "/images/uploads/classrooms-arabic-letters-room.jpg",
+      "category": "Classrooms",
+      "alt": "Classroom with Arabic letters corner",
+      "emoji": "🔤",
+      "color": "#FDE6F1"
+    },
+    {
+      "image": "/images/uploads/classrooms-paris-mural-room.jpg",
+      "category": "Classrooms",
+      "alt": "Classroom with Paris mural",
+      "emoji": "🗼",
+      "color": "#FDE6F1"
+    },
+    {
+      "image": "/images/uploads/classrooms-bathroom.jpg",
+      "category": "Classrooms",
+      "alt": "Children's bathroom",
+      "emoji": "🚽",
+      "color": "#FDE6F1"
+    },
+    {
+      "image": "/images/uploads/classrooms-swimming-pool.jpg",
+      "category": "Classrooms",
+      "alt": "Swimming pool",
+      "emoji": "🏊",
+      "color": "#FDE6F1"
+    },
+    {
+      "image": "/images/uploads/classrooms-playhouse-hall.jpg",
+      "category": "Classrooms",
+      "alt": "Playhouse: library, supermarket, doctor's office and space corner",
+      "emoji": "🎪",
+      "color": "#FDE6F1"
+    },
+    {
+      "image": "/images/uploads/classrooms-baby-room.jpg",
+      "category": "Classrooms",
+      "alt": "Babies room",
+      "emoji": "🍼",
+      "color": "#FDE6F1"
+    },
+    {
       "image": "",
       "category": "Classroom",
       "alt": "Montessori & Circle Time",
