@@ -8,13 +8,6 @@
       "color": "#FDE6F1"
     },
     {
-      "image": "/images/uploads/eedf5429-e787-408a-b6d7-56e6df61d945.jpg",
-      "category": "Classrooms",
-      "alt": "Toilets",
-      "emoji": "🚽",
-      "color": "#FDE6F1"
-    },
-    {
       "image": "/images/uploads/classrooms-reception-lobby.jpg",
       "category": "Classrooms",
       "alt": "Reception and lobby",
@@ -43,13 +36,6 @@
       "color": "#FDE6F1"
     },
     {
-      "image": "/images/uploads/classrooms-swimming-pool.jpg",
-      "category": "Classrooms",
-      "alt": "Swimming pool",
-      "emoji": "🏊",
-      "color": "#FDE6F1"
-    },
-    {
       "image": "/images/uploads/classrooms-playhouse-hall.jpg",
       "category": "Classrooms",
       "alt": "Playhouse: library, supermarket, doctor's office and space corner",
@@ -62,69 +48,6 @@
       "alt": "Babies room",
       "emoji": "🍼",
       "color": "#FDE6F1"
-    },
-    {
-      "image": "",
-      "category": "Classroom",
-      "alt": "Montessori & Circle Time",
-      "emoji": "🧩",
-      "color": "#FDE6F1"
-    },
-    {
-      "image": "",
-      "category": "Events",
-      "alt": "Graduation Day",
-      "emoji": "🎓",
-      "color": "#E4F7FC"
-    },
-    {
-      "image": "",
-      "category": "Events",
-      "alt": "Bazaar Market Day",
-      "emoji": "🛍️",
-      "color": "#FFF3D6"
-    },
-    {
-      "image": "",
-      "category": "Events",
-      "alt": "Family Bonding Day",
-      "emoji": "👨‍👩‍👧‍👦",
-      "color": "#E4F7FC"
-    },
-    {
-      "image": "",
-      "category": "Meals",
-      "alt": "Healthy Daily Meals",
-      "emoji": "🍎",
-      "color": "#FFF3D6"
-    },
-    {
-      "image": "/images/uploads/babies-classroom-overview.webp",
-      "category": "Babies Classroom",
-      "alt": "Babies classroom overview",
-      "emoji": "🍼",
-      "color": "#E4F7FC"
-    },
-    {
-      "image": "/images/uploads/babies-classroom-play-area.webp",
-      "category": "Babies Classroom",
-      "alt": "Babies classroom play area",
-      "emoji": "🍼",
-      "color": "#E4F7FC"
-    },
-    {
-      "image": "/images/uploads/babies-classroom-cribs.webp",
-      "category": "Babies Classroom",
-      "alt": "Babies classroom cribs",
-      "emoji": "🍼",
-      "color": "#E4F7FC"
-    },
-    {
-      "image": "/images/uploads/babies-classroom-toys.webp",
-      "category": "Babies Classroom",
-      "alt": "Babies classroom toys",
-      "emoji": "🍼",
-      "color": "#E4F7FC"
     },
     {
       "image": "/images/uploads/playhouse-classroom-entrance.webp",
